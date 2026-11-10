@@ -66,3 +66,28 @@ class DependencyType(StrEnum):
     """Art einer Abhängigkeit zwischen Arbeitspaketen (Gantt)."""
 
     FINISH_TO_START = "finish_to_start"
+
+
+class MaterialCategory(StrEnum):
+    """Kategorie eines Artikels im Materialkatalog."""
+
+    TIMBER = "timber"
+    FASTENERS = "fasteners"
+    INSULATION = "insulation"
+    MEMBRANE = "membrane"
+    OTHER = "other"
+
+
+class PriceTargetType(StrEnum):
+    """Worauf sich ein Preis bezieht."""
+
+    MATERIAL_ITEM = "material_item"
+    COST_TYPE = "cost_type"
+
+
+class PriceSource(StrEnum):
+    """Herkunft eines Preises."""
+
+    MANUAL = "manual"
+    IMPORT = "import"
+    SUPPLIER = "supplier"
