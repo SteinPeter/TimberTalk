@@ -11,6 +11,7 @@ def import_all_models() -> None:
     """Importiert alle Domänen-Modelle, damit `Base.metadata` vollständig ist."""
     # Beim Ergänzen einer Domäne hier eintragen, sonst fehlt sie in den Migrationen.
     from timbertalk_core.domain.audit import models as audit_models
+    from timbertalk_core.domain.bookings import models as booking_models
     from timbertalk_core.domain.catalog import models as catalog_models
     from timbertalk_core.domain.company import models as company_models
     from timbertalk_core.domain.customers import models as customer_models
@@ -33,6 +34,7 @@ def import_all_models() -> None:
         project_models.WorkPackageDependency,
         catalog_models.MaterialItem,
         catalog_models.Price,
+        booking_models.Booking,
     )
 
 

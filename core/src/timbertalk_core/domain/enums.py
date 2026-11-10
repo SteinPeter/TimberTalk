@@ -91,3 +91,19 @@ class PriceSource(StrEnum):
     MANUAL = "manual"
     IMPORT = "import"
     SUPPLIER = "supplier"
+
+
+class BookingStatus(StrEnum):
+    """Status einer Buchung; `locked` setzt erst die Rechnung (Block 3)."""
+
+    DRAFT = "draft"
+    CONFIRMED = "confirmed"
+    LOCKED = "locked"
+    CANCELLED = "cancelled"
+
+
+class DistanceMethod(StrEnum):
+    """Wie eine Fahrtstrecke ermittelt wurde."""
+
+    MANUAL = "manual"
+    ROUTE = "route"

@@ -5,6 +5,7 @@ from __future__ import annotations
 
 def import_all_services() -> None:
     """Importiert jedes Service-Modul; beim Ergänzen einer Domäne hier eintragen."""
+    from timbertalk_core.domain.bookings import service as booking_service
     from timbertalk_core.domain.catalog import service as catalog_service
     from timbertalk_core.domain.company import service as company_service
     from timbertalk_core.domain.customers import service as customer_service
@@ -13,6 +14,7 @@ def import_all_services() -> None:
     from timbertalk_core.domain.reference import service as reference_service
 
     _ = (
+        booking_service,
         catalog_service,
         company_service,
         customer_service,

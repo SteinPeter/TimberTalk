@@ -10,3 +10,4 @@ Protokoll der mit KI-Unterstützung erzeugten Code-Anteile (für den Abschlussbe
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 4: Referenzdaten – company, settings, tax_rates, units, cost_types, custom_field_definitions samt Repositories, Services und Validierung der Zusatzfelder |
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 5: Mitarbeiter, Kunden, Projekte und Arbeitspakete samt Projektnummern-Vergabe und Zyklenprüfung bei Abhängigkeiten |
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 6: Materialkatalog und Preise mit Gültigkeitszeiträumen, `get_price` mit Vorrangkette und Prüfung auf Überlappung |
+| 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 7: Buchungen mit Details-Registry je Buchungsart, Statusübergängen (draft/confirmed/locked/cancelled) und Preisermittlung |
