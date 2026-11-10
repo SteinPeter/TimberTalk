@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import ConnectionPoolEntry
 
 from timbertalk_core.config import Settings, get_settings
+from timbertalk_core.db.audit import install_audit_listener
 
 
 def _is_sqlite(url: str) -> bool:
@@ -66,8 +67,10 @@ def create_db_engine(settings: Settings | None = None, **kwargs: Any) -> Engine:
 
 
 def create_session_factory(engine: Engine) -> sessionmaker[Session]:
-    """Erzeugt die Session-Fabrik zur übergebenen Engine."""
-    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
+    """Erzeugt die Session-Fabrik zur Engine, inklusive zentraler Audit-Erzeugung."""
+    factory = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False, future=True)
+    install_audit_listener(factory)
+    return factory
 
 
 @contextmanager

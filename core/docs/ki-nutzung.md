@@ -6,3 +6,4 @@ Protokoll der mit KI-Unterstützung erzeugten Code-Anteile (für den Abschlussbe
 | --- | --- | --- |
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 1: Projektgerüst – `pyproject.toml`, `config.py`, `.env.example`, `/health`-Endpunkt, ruff/mypy/pytest-Konfiguration, Tests |
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 2: DB-Grundlage – Basisklasse mit Naming-Convention, Mixins, Typen `GUID`/`Money`/`Quantity`/`UtcDateTime`, Session mit SQLite-Pragmas, Alembic-Einrichtung, Tests |
+| 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 3: ServiceContext, fachliche Fehler, zentrales Audit-Log über SQLAlchemy-Events, Operation-Registry für MCP, Migration `audit_events`, Tests |

@@ -6,7 +6,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, ClassVar
 
-from sqlalchemy import JSON, Integer, Table
+from sqlalchemy import JSON, FromClause, Integer
 from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
@@ -46,7 +46,7 @@ class VersionMixin:
     """Zähler für optimistisches Sperren; wird von SQLAlchemy selbst hochgezählt."""
 
     if TYPE_CHECKING:
-        __table__: ClassVar[Table]
+        __table__: ClassVar[FromClause]
 
     version: Mapped[int] = mapped_column(Integer, nullable=False)
 

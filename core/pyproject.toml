@@ -65,7 +65,9 @@ classmethod-decorators = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/*" = ["B008"]
+# Die Fehlernamen (NotFound, Conflict, ...) sind im Auftrag so festgelegt.
+"src/timbertalk_core/errors.py" = ["N818"]
+"tests/*" = ["B008", "SLF001"]
 "src/timbertalk_core/scripts/*" = ["T20"]
 "migrations/*" = ["I001"]
 
