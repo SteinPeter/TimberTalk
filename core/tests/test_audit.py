@@ -5,13 +5,16 @@ from __future__ import annotations
 from decimal import Decimal
 
 import pytest
-from sqlalchemy import Engine, MetaData, String, select
+from sqlalchemy import Engine, MetaData, String, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column, sessionmaker
+from sqlalchemy.pool import StaticPool
 
 from timbertalk_core.clock import utc_now
 from timbertalk_core.context import ActorType, ServiceContext, Source
 from timbertalk_core.db.base import NAMING_CONVENTION
+from timbertalk_core.db.metadata import get_metadata
 from timbertalk_core.db.mixins import EntityMixin
+from timbertalk_core.db.session import create_session_factory
 from timbertalk_core.db.types import Money
 from timbertalk_core.domain.audit.models import AuditEvent
 
@@ -131,6 +134,37 @@ def test_audit_eintraege_erzeugen_keine_eigenen_eintraege(ctx: ServiceContext) -
     ctx.session.commit()
     ctx.session.commit()
     assert len(_events(ctx.session)) == 1
+
+
+def test_viele_fabriken_hintereinander_protokollieren_weiter() -> None:
+    """Jede neue Session-Fabrik muss protokollieren, auch wenn alte eingesammelt wurden.
+
+    SQLAlchemy verwaltet Ereignis-Ziele anhand der Objekt-Kennung. Wird eine alte
+    Fabrik freigegeben und eine neue an derselben Speicheradresse angelegt, darf das
+    Protokoll nicht still ausfallen.
+    """
+    import gc
+
+    for _ in range(40):
+        db = create_engine(
+            "sqlite+pysqlite:///:memory:",
+            poolclass=StaticPool,
+            connect_args={"check_same_thread": False},
+        )
+        get_metadata().create_all(db)
+        ProbeBase.metadata.create_all(db)
+        factory = create_session_factory(db)
+        with factory() as session:
+            context = ServiceContext(session=session, actor_type=ActorType.USER)
+            session.add(AuditProbe(label="Fabrik"))
+            session.commit()
+            assert [event.action for event in _events(session)] == ["create"], (
+                "Das Änderungsprotokoll ist still ausgefallen"
+            )
+            assert context.session is session
+        db.dispose()
+        del factory, db
+        gc.collect()
 
 
 def test_kontext_haengt_sich_an_die_session(engine: Engine) -> None:

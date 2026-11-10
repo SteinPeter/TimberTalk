@@ -1,0 +1,1 @@
+"""KI-Verbrauch und Modellpreise."""

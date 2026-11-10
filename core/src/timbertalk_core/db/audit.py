@@ -157,6 +157,13 @@ def record_changes(session: Session, _flush_context: Any = None, _instances: Any
 
 
 def install_audit_listener(factory: sessionmaker[Session]) -> None:
-    """Hängt die zentrale Audit-Erzeugung an eine Session-Fabrik."""
-    if not event.contains(factory, "before_flush", record_changes):
-        event.listen(factory, "before_flush", record_changes)
+    """Hängt die zentrale Audit-Erzeugung an eine Session-Fabrik.
+
+    Bewusst ohne Prüfung auf eine bestehende Registrierung: SQLAlchemy verwaltet
+    Ereignis-Ziele anhand der Objekt-Kennung (`id()`). Wird eine alte Fabrik
+    eingesammelt und eine neue an derselben Speicheradresse angelegt, meldet
+    `event.contains` fälschlich eine bestehende Registrierung – das Protokoll
+    würde dann still ausfallen. Eine frisch erzeugte Fabrik hat nie einen
+    Listener, deshalb kann hier keine Doppelregistrierung entstehen.
+    """
+    event.listen(factory, "before_flush", record_changes)

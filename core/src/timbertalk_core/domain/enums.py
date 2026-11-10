@@ -107,3 +107,39 @@ class DistanceMethod(StrEnum):
 
     MANUAL = "manual"
     ROUTE = "route"
+
+
+class AttachmentKind(StrEnum):
+    """Art einer angehängten Datei."""
+
+    PHOTO = "photo"
+    DELIVERY_NOTE = "delivery_note"
+    INVOICE_IN = "invoice_in"
+    CAD = "cad"
+    OTHER = "other"
+
+
+class UsageModule(StrEnum):
+    """Modul, dem ein KI-Aufruf zugerechnet wird."""
+
+    A = "a"
+    B = "b"
+
+
+class UsagePeriod(StrEnum):
+    """Zeitraster der Verbrauchsübersicht."""
+
+    DAY = "day"
+    MONTH = "month"
+    YEAR = "year"
+
+
+class UsageGrouping(StrEnum):
+    """Gruppierung der Verbrauchsübersicht."""
+
+    MODEL = "model"
+    PROVIDER = "provider"
+    MODULE = "module"
+    FEATURE = "feature"
+    PROJECT = "project"
+    ACTOR = "actor"
