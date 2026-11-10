@@ -24,3 +24,45 @@ class CustomFieldDataType(StrEnum):
     DATE = "date"
     BOOL = "bool"
     ENUM = "enum"
+
+
+class EmployeeRole(StrEnum):
+    """Rolle eines Mitarbeiters im Betrieb."""
+
+    OWNER = "owner"
+    MASTER = "master"
+    JOURNEYMAN = "journeyman"
+    APPRENTICE = "apprentice"
+    OFFICE = "office"
+
+
+class CustomerType(StrEnum):
+    """Art eines Kunden; steuert später die Rechnungsregeln."""
+
+    PRIVATE = "private"
+    BUSINESS = "business"
+
+
+class ProjectStatus(StrEnum):
+    """Status eines Projekts von der Anfrage bis zum Abschluss."""
+
+    INQUIRY = "inquiry"
+    PLANNED = "planned"
+    ACTIVE = "active"
+    DONE = "done"
+    CANCELLED = "cancelled"
+
+
+class WorkPackageStatus(StrEnum):
+    """Status eines Arbeitspakets."""
+
+    PLANNED = "planned"
+    ACTIVE = "active"
+    DONE = "done"
+    CANCELLED = "cancelled"
+
+
+class DependencyType(StrEnum):
+    """Art einer Abhängigkeit zwischen Arbeitspaketen (Gantt)."""
+
+    FINISH_TO_START = "finish_to_start"

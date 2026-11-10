@@ -12,6 +12,9 @@ def import_all_models() -> None:
     # Beim Ergänzen einer Domäne hier eintragen, sonst fehlt sie in den Migrationen.
     from timbertalk_core.domain.audit import models as audit_models
     from timbertalk_core.domain.company import models as company_models
+    from timbertalk_core.domain.customers import models as customer_models
+    from timbertalk_core.domain.people import models as people_models
+    from timbertalk_core.domain.projects import models as project_models
     from timbertalk_core.domain.reference import models as reference_models
 
     _ = (
@@ -22,6 +25,11 @@ def import_all_models() -> None:
         reference_models.Unit,
         reference_models.CostType,
         reference_models.CustomFieldDefinition,
+        people_models.Employee,
+        customer_models.Customer,
+        project_models.Project,
+        project_models.WorkPackage,
+        project_models.WorkPackageDependency,
     )
 
 
