@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field
 
 from timbertalk_core.domain.enums import AttachmentKind
-from timbertalk_core.schemas import Attributes, BaseSchema, QuantityValue
+from timbertalk_core.schemas import BaseSchema, QuantityValue
 
 
 class AttachmentCreate(BaseSchema):
@@ -33,7 +34,7 @@ class AttachmentCreate(BaseSchema):
     lat: QuantityValue | None = Field(default=None, description="Breitengrad der Aufnahme")
     lon: QuantityValue | None = Field(default=None, description="Längengrad der Aufnahme")
     note: str | None = None
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class AttachmentUpdate(BaseSchema):

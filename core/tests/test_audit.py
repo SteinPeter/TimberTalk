@@ -167,6 +167,35 @@ def test_viele_fabriken_hintereinander_protokollieren_weiter() -> None:
         gc.collect()
 
 
+def test_zwei_kontexte_auf_einer_session_werden_richtig_zugeordnet(
+    session: Session,
+) -> None:
+    """Jede Änderung muss dem Kontext zugeschrieben werden, der sie auslöst.
+
+    Im Seed teilen sich ein Import und ein bestätigender Mensch eine Session. Ohne
+    erneutes Binden würde der zuletzt erzeugte Kontext alle Einträge übernehmen.
+    """
+    import_ctx = ServiceContext(session=session, actor_type=ActorType.SYSTEM, source=Source.IMPORT)
+    mensch_ctx = ServiceContext(session=session, actor_type=ActorType.USER, source=Source.MANUAL)
+
+    # Der Import handelt, obwohl der Menschen-Kontext später erzeugt wurde.
+    session.add(AuditProbe(label="aus Import"))
+    import_ctx.flush()
+    session.commit()
+
+    session.add(AuditProbe(label="von Hand"))
+    mensch_ctx.flush()
+    session.commit()
+
+    nach_label = {
+        event.changes["label"]["new"]: event for event in _events(session) if "label" in event.changes
+    }
+    assert nach_label["aus Import"].actor_type == ActorType.SYSTEM.value
+    assert nach_label["aus Import"].source == Source.IMPORT.value
+    assert nach_label["von Hand"].actor_type == ActorType.USER.value
+    assert nach_label["von Hand"].source == Source.MANUAL.value
+
+
 def test_kontext_haengt_sich_an_die_session(engine: Engine) -> None:
     from timbertalk_core.db.audit import CONTEXT_KEY
 

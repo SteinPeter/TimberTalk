@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from timbertalk_core import __version__
 from timbertalk_core.api.errors import register_error_handlers
+from timbertalk_core.api.middleware import TransactionMiddleware
 from timbertalk_core.api.routers import (
     attachments,
     audit,
@@ -105,6 +106,7 @@ def create_app(
         version=__version__,
         lifespan=lifespan,
     )
+    application.add_middleware(TransactionMiddleware)
     register_error_handlers(application)
 
     @application.get("/health", tags=["System"], summary="Verfügbarkeit prüfen")

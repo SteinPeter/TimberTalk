@@ -8,7 +8,7 @@ from typing import Any
 
 from pydantic import Field
 
-from timbertalk_core.schemas import Attributes, BaseSchema, QuantityValue
+from timbertalk_core.schemas import BaseSchema, QuantityValue
 
 
 class CompanyUpsert(BaseSchema):
@@ -27,7 +27,7 @@ class CompanyUpsert(BaseSchema):
     email: str | None = Field(default=None, max_length=200)
     home_lat: QuantityValue | None = Field(default=None, description="Breitengrad des Betriebssitzes")
     home_lon: QuantityValue | None = Field(default=None, description="Längengrad des Betriebssitzes")
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class CompanyRead(BaseSchema):

@@ -59,7 +59,7 @@ def create_unit(ctx: ServiceContext, data: UnitCreate) -> UnitRead:
         code=data.code,
     )
     unit = repository.add(Unit(**data.model_dump()))
-    ctx.session.flush()
+    ctx.flush()
     return UnitRead.model_validate(unit)
 
 
@@ -128,7 +128,7 @@ def update_unit(
     unit = require_found(repository.get(unit_id), UNIT_DE, unit_id)
     check_version(unit, expected_version, UNIT_DE)
     apply_updates(unit, data)
-    ctx.session.flush()
+    ctx.flush()
     return UnitRead.model_validate(unit)
 
 
@@ -144,7 +144,7 @@ def delete_unit(ctx: ServiceContext, unit_id: uuid.UUID, expected_version: int |
     unit = require_found(repository.get(unit_id), UNIT_DE, unit_id)
     check_version(unit, expected_version, UNIT_DE)
     repository.soft_delete(unit)
-    ctx.session.flush()
+    ctx.flush()
     return UnitRead.model_validate(unit)
 
 
@@ -174,7 +174,7 @@ def create_cost_type(ctx: ServiceContext, data: CostTypeCreate) -> CostTypeRead:
     values = data.model_dump()
     values["attributes"] = validate_attributes(ctx, CostType.__tablename__, values["attributes"])
     cost_type = repository.add(CostType(**values))
-    ctx.session.flush()
+    ctx.flush()
     return CostTypeRead.model_validate(cost_type)
 
 
@@ -253,7 +253,7 @@ def update_cost_type(
     changes = apply_updates(cost_type, data, skip=["attributes"])
     if "attributes" in changes:
         cost_type.attributes = validate_attributes(ctx, CostType.__tablename__, changes["attributes"])
-    ctx.session.flush()
+    ctx.flush()
     return CostTypeRead.model_validate(cost_type)
 
 
@@ -271,7 +271,7 @@ def delete_cost_type(
     cost_type = require_found(repository.get(cost_type_id), COST_TYPE_DE, cost_type_id)
     check_version(cost_type, expected_version, COST_TYPE_DE)
     repository.soft_delete(cost_type)
-    ctx.session.flush()
+    ctx.flush()
     return CostTypeRead.model_validate(cost_type)
 
 
@@ -315,7 +315,7 @@ def create_custom_field(ctx: ServiceContext, data: CustomFieldDefinitionCreate) 
     )
     _check_enum_values(data)
     definition = repository.add(CustomFieldDefinition(**data.model_dump()))
-    ctx.session.flush()
+    ctx.flush()
     return CustomFieldDefinitionRead.model_validate(definition)
 
 
@@ -393,7 +393,7 @@ def update_custom_field(
         )
         _check_enum_values(merged)
     apply_updates(definition, data)
-    ctx.session.flush()
+    ctx.flush()
     return CustomFieldDefinitionRead.model_validate(definition)
 
 
@@ -415,5 +415,5 @@ def delete_custom_field(
     definition = require_found(repository.get(definition_id), CUSTOM_FIELD_DE, definition_id)
     check_version(definition, expected_version, CUSTOM_FIELD_DE)
     repository.soft_delete(definition)
-    ctx.session.flush()
+    ctx.flush()
     return CustomFieldDefinitionRead.model_validate(definition)

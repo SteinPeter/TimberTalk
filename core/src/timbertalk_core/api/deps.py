@@ -9,7 +9,6 @@ Stelle ersetzt.
 from __future__ import annotations
 
 import uuid
-from collections.abc import Iterator
 from typing import Annotated
 
 from fastapi import Depends, Header, Request
@@ -53,18 +52,25 @@ def require_api_key(
         raise PermissionDenied("Der API-Schlüssel fehlt oder ist falsch; bitte Kopfzeile X-API-Key setzen.")
 
 
-def get_session(request: Request) -> Iterator[Session]:
-    """Stellt eine Session bereit und schreibt bzw. verwirft die Transaktion am Ende."""
-    factory = request.app.state.session_factory
-    session: Session = factory()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()
+SESSION_STATE_KEY = "db_session"
+"""Schlüssel, unter dem die Session der Anfrage in `request.state` liegt."""
+
+
+def get_session(request: Request) -> Session:
+    """Stellt die Session dieser Anfrage bereit; sie wird bei der ersten Nutzung geöffnet.
+
+    Die Transaktion schließt bewusst nicht diese Abhängigkeit ab, sondern
+    `TransactionMiddleware`. Code nach einem `yield` in einer Abhängigkeit läuft bei
+    FastAPI erst, **nachdem** die Antwort gesendet wurde. Ein `commit` an dieser Stelle
+    käme zu spät: die nächste Anfrage könnte den eigenen Schreibvorgang noch nicht sehen.
+    """
+    vorhanden = getattr(request.state, SESSION_STATE_KEY, None)
+    if vorhanden is not None:
+        session: Session = vorhanden
+        return session
+    session = request.app.state.session_factory()
+    setattr(request.state, SESSION_STATE_KEY, session)
+    return session
 
 
 def _parse_uuid(value: str | None, feld: str) -> uuid.UUID | None:

@@ -72,7 +72,7 @@ def create_model_price(ctx: ServiceContext, data: ModelPriceCreate) -> ModelPric
         model=data.model,
     )
     price = repository.add(ModelPrice(**data.model_dump()))
-    ctx.session.flush()
+    ctx.flush()
     return ModelPriceRead.model_validate(price)
 
 
@@ -148,7 +148,7 @@ def delete_model_price(
     price = require_found(repository.get(model_price_id), MODEL_PRICE_DE, model_price_id)
     check_version(price, expected_version, MODEL_PRICE_DE)
     repository.soft_delete(price)
-    ctx.session.flush()
+    ctx.flush()
     return ModelPriceRead.model_validate(price)
 
 
@@ -191,7 +191,7 @@ def record_usage(ctx: ServiceContext, data: UsageRecord) -> UsageRead:
             model_price_id=price.id,
         )
     )
-    ctx.session.flush()
+    ctx.flush()
     return UsageRead.model_validate(usage)
 
 

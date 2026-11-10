@@ -62,7 +62,7 @@ def set_company(ctx: ServiceContext, data: CompanyUpsert, expected_version: int 
         for field, value in values.items():
             setattr(existing, field, value)
         company = existing
-    ctx.session.flush()
+    ctx.flush()
     return CompanyRead.model_validate(company)
 
 
@@ -94,7 +94,7 @@ def set_setting(ctx: ServiceContext, data: SettingUpsert) -> SettingRead:
         if data.label_de is not None:
             existing.label_de = data.label_de
         setting = existing
-    ctx.session.flush()
+    ctx.flush()
     return SettingRead.model_validate(setting)
 
 
@@ -140,7 +140,7 @@ def delete_setting(ctx: ServiceContext, key: str) -> SettingRead:
     if setting is None:
         raise NotFound(f"Die Einstellung '{key}' ist nicht hinterlegt.", key=key)
     repository.soft_delete(setting)
-    ctx.session.flush()
+    ctx.flush()
     return SettingRead.model_validate(setting)
 
 
@@ -186,7 +186,7 @@ def create_tax_rate(ctx: ServiceContext, data: TaxRateCreate) -> TaxRateRead:
     repository = TaxRateRepository(ctx.session)
     _check_tax_rate_period(repository, data.code, data.valid_from, data.valid_to)
     tax_rate = repository.add(TaxRate(**data.model_dump()))
-    ctx.session.flush()
+    ctx.flush()
     return TaxRateRead.model_validate(tax_rate)
 
 
@@ -269,7 +269,7 @@ def update_tax_rate(
     if "valid_from" in changes or "valid_to" in changes:
         _check_tax_rate_period(repository, tax_rate.code, neuer_beginn, neues_ende, exclude_id=tax_rate.id)
     apply_updates(tax_rate, data)
-    ctx.session.flush()
+    ctx.flush()
     return TaxRateRead.model_validate(tax_rate)
 
 
@@ -287,5 +287,5 @@ def delete_tax_rate(
     tax_rate = require_found(repository.get(tax_rate_id), TAX_RATE_DE, tax_rate_id)
     check_version(tax_rate, expected_version, TAX_RATE_DE)
     repository.soft_delete(tax_rate)
-    ctx.session.flush()
+    ctx.flush()
     return TaxRateRead.model_validate(tax_rate)

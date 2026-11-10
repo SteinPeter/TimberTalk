@@ -42,7 +42,7 @@ def create_employee(ctx: ServiceContext, data: EmployeeCreate) -> EmployeeRead:
     values = data.model_dump()
     values["attributes"] = validate_attributes(ctx, Employee.__tablename__, values["attributes"])
     employee = repository.add(Employee(**values))
-    ctx.session.flush()
+    ctx.flush()
     return EmployeeRead.model_validate(employee)
 
 
@@ -110,7 +110,7 @@ def update_employee(
     changes = apply_updates(employee, data, skip=["attributes"])
     if "attributes" in changes:
         employee.attributes = validate_attributes(ctx, Employee.__tablename__, changes["attributes"])
-    ctx.session.flush()
+    ctx.flush()
     return EmployeeRead.model_validate(employee)
 
 
@@ -128,5 +128,5 @@ def delete_employee(
     employee = require_found(repository.get(employee_id), EMPLOYEE_DE, employee_id)
     check_version(employee, expected_version, EMPLOYEE_DE)
     repository.soft_delete(employee)
-    ctx.session.flush()
+    ctx.flush()
     return EmployeeRead.model_validate(employee)

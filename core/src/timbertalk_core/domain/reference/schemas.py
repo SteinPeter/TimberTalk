@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime
+from typing import Any
 
 from pydantic import Field
 
 from timbertalk_core.domain.enums import CostTypeKind, CustomFieldDataType
-from timbertalk_core.schemas import Attributes, BaseSchema, MoneyValue
+from timbertalk_core.schemas import BaseSchema, MoneyValue
 
 
 class UnitCreate(BaseSchema):
@@ -57,7 +58,7 @@ class CostTypeCreate(BaseSchema):
     labor_share: bool = Field(default=False, description="Lohnanteil im Sinne von § 35a EStG")
     active: bool = True
     sort_order: int = 100
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class CostTypeUpdate(BaseSchema):

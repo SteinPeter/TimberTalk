@@ -55,7 +55,7 @@ def create_attachment(ctx: ServiceContext, data: AttachmentCreate) -> Attachment
     values["file_path"] = _check_relative_path(data.file_path)
     values["attributes"] = validate_attributes(ctx, Attachment.__tablename__, values["attributes"])
     attachment = AttachmentRepository(ctx.session).add(Attachment(**values))
-    ctx.session.flush()
+    ctx.flush()
     return AttachmentRead.model_validate(attachment)
 
 
@@ -127,7 +127,7 @@ def update_attachment(
     changes = apply_updates(attachment, data, skip=["attributes"])
     if "attributes" in changes:
         attachment.attributes = validate_attributes(ctx, Attachment.__tablename__, changes["attributes"])
-    ctx.session.flush()
+    ctx.flush()
     return AttachmentRead.model_validate(attachment)
 
 
@@ -145,5 +145,5 @@ def delete_attachment(
     attachment = require_found(repository.get(attachment_id), ATTACHMENT_DE, attachment_id)
     check_version(attachment, expected_version, ATTACHMENT_DE)
     repository.soft_delete(attachment)
-    ctx.session.flush()
+    ctx.flush()
     return AttachmentRead.model_validate(attachment)

@@ -34,7 +34,7 @@ def create_customer(ctx: ServiceContext, data: CustomerCreate) -> CustomerRead:
     values = data.model_dump()
     values["attributes"] = validate_attributes(ctx, Customer.__tablename__, values["attributes"])
     customer = repository.add(Customer(**values))
-    ctx.session.flush()
+    ctx.flush()
     return CustomerRead.model_validate(customer)
 
 
@@ -107,7 +107,7 @@ def update_customer(
     changes = apply_updates(customer, data, skip=["attributes"])
     if "attributes" in changes:
         customer.attributes = validate_attributes(ctx, Customer.__tablename__, changes["attributes"])
-    ctx.session.flush()
+    ctx.flush()
     return CustomerRead.model_validate(customer)
 
 
@@ -125,5 +125,5 @@ def delete_customer(
     customer = require_found(repository.get(customer_id), CUSTOMER_DE, customer_id)
     check_version(customer, expected_version, CUSTOMER_DE)
     repository.soft_delete(customer)
-    ctx.session.flush()
+    ctx.flush()
     return CustomerRead.model_validate(customer)

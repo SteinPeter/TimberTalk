@@ -38,9 +38,6 @@ QuantityValue = Annotated[
 ]
 """Menge; niemals `float`, höchstens sechs Nachkommastellen."""
 
-Attributes = Annotated[dict[str, Any], Field(default_factory=dict)]
-"""Zusatzfelder laut `custom_field_definitions`."""
-
 
 class BaseSchema(BaseModel):
     """Grundlage aller Schemas; liest auch aus ORM-Objekten."""

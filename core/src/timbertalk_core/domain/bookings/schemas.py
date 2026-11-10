@@ -10,7 +10,7 @@ from pydantic import Field
 
 from timbertalk_core.context import Source
 from timbertalk_core.domain.enums import BookingStatus, CostTypeKind
-from timbertalk_core.schemas import Attributes, BaseSchema, MoneyValue, QuantityValue
+from timbertalk_core.schemas import BaseSchema, MoneyValue, QuantityValue
 
 
 class BookingCreate(BaseSchema):
@@ -41,7 +41,7 @@ class BookingCreate(BaseSchema):
     source_ref: str | None = Field(
         default=None, max_length=200, description="Verweis, z. B. Transkript-Kennung"
     )
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class BookingUpdate(BaseSchema):

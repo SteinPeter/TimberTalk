@@ -187,7 +187,7 @@ def create_booking(ctx: ServiceContext, data: BookingCreate) -> BookingRead:
     values["status"] = BookingStatus.DRAFT.value
 
     booking = repository.add(Booking(**values))
-    ctx.session.flush()
+    ctx.flush()
     return to_read(ctx, booking)
 
 
@@ -310,7 +310,7 @@ def update_booking(
         booking.details = validate_details(kind, changes["details"])
     if "attributes" in changes:
         booking.attributes = validate_attributes(ctx, Booking.__tablename__, changes["attributes"])
-    ctx.session.flush()
+    ctx.flush()
     return to_read(ctx, booking)
 
 
@@ -342,7 +342,7 @@ def confirm_booking(
     booking.confirmed_by = ctx.actor_id
     booking.confirmed_at = utc_now()
     ctx.with_action("confirm")
-    ctx.session.flush()
+    ctx.flush()
     return to_read(ctx, booking)
 
 
@@ -371,7 +371,7 @@ def cancel_booking(
 
     booking.status = BookingStatus.CANCELLED.value
     ctx.with_action("cancel")
-    ctx.session.flush()
+    ctx.flush()
     return to_read(ctx, booking)
 
 
@@ -394,5 +394,5 @@ def delete_booking(
             status=BookingStatus.LOCKED.value,
         )
     repository.soft_delete(booking)
-    ctx.session.flush()
+    ctx.flush()
     return to_read(ctx, booking)

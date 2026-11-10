@@ -92,4 +92,6 @@ branch = true
 
 [tool.coverage.report]
 show_missing = true
+# Abnahmekriterium: die Service-Schicht ist zu mindestens 80 % abgedeckt.
+fail_under = 80
 exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]

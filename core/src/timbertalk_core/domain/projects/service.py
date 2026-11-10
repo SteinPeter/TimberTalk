@@ -83,7 +83,7 @@ def create_project(ctx: ServiceContext, data: ProjectCreate) -> ProjectRead:
             number=values["number"],
         )
     project = repository.add(Project(**values))
-    ctx.session.flush()
+    ctx.flush()
     return ProjectRead.model_validate(project)
 
 
@@ -176,7 +176,7 @@ def update_project(
             "Das geplante Ende darf nicht vor dem geplanten Beginn liegen.",
             errors={"planned_end": "muss nach planned_start liegen"},
         )
-    ctx.session.flush()
+    ctx.flush()
     return ProjectRead.model_validate(project)
 
 
@@ -194,7 +194,7 @@ def delete_project(
     project = require_found(repository.get(project_id), PROJECT_DE, project_id)
     check_version(project, expected_version, PROJECT_DE)
     repository.soft_delete(project)
-    ctx.session.flush()
+    ctx.flush()
     return ProjectRead.model_validate(project)
 
 
@@ -212,7 +212,7 @@ def create_work_package(ctx: ServiceContext, data: WorkPackageCreate) -> WorkPac
     values = data.model_dump()
     values["attributes"] = validate_attributes(ctx, WorkPackage.__tablename__, values["attributes"])
     work_package = WorkPackageRepository(ctx.session).add(WorkPackage(**values))
-    ctx.session.flush()
+    ctx.flush()
     return WorkPackageRead.model_validate(work_package)
 
 
@@ -289,7 +289,7 @@ def update_work_package(
             "Das geplante Ende darf nicht vor dem geplanten Beginn liegen.",
             errors={"planned_end": "muss nach planned_start liegen"},
         )
-    ctx.session.flush()
+    ctx.flush()
     return WorkPackageRead.model_validate(work_package)
 
 
@@ -318,7 +318,7 @@ def delete_work_package(
         dependencies.soft_delete(dependency)
 
     repository.soft_delete(work_package)
-    ctx.session.flush()
+    ctx.flush()
     return WorkPackageRead.model_validate(work_package)
 
 
@@ -390,7 +390,7 @@ def create_dependency(ctx: ServiceContext, data: WorkPackageDependencyCreate) ->
         )
 
     dependency = repository.add(WorkPackageDependency(**data.model_dump()))
-    ctx.session.flush()
+    ctx.flush()
     return WorkPackageDependencyRead.model_validate(dependency)
 
 
@@ -440,5 +440,5 @@ def delete_dependency(
     dependency = require_found(repository.get(dependency_id), DEPENDENCY_DE, dependency_id)
     check_version(dependency, expected_version, DEPENDENCY_DE)
     repository.soft_delete(dependency)
-    ctx.session.flush()
+    ctx.flush()
     return WorkPackageDependencyRead.model_validate(dependency)

@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Self
+from typing import Any, Self
 
 from pydantic import Field, model_validator
 
 from timbertalk_core.domain.enums import MaterialCategory, PriceSource, PriceTargetType
-from timbertalk_core.schemas import Attributes, BaseSchema, MoneyValue
+from timbertalk_core.schemas import BaseSchema, MoneyValue
 
 
 class MaterialItemCreate(BaseSchema):
@@ -27,7 +27,7 @@ class MaterialItemCreate(BaseSchema):
     length_mm: int | None = Field(default=None, gt=0, description="Länge in Millimetern")
     notes: str | None = None
     active: bool = True
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
 
 class MaterialItemUpdate(BaseSchema):

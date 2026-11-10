@@ -4,12 +4,12 @@ from __future__ import annotations
 
 import uuid
 from datetime import date, datetime
-from typing import Self
+from typing import Any, Self
 
 from pydantic import Field, model_validator
 
 from timbertalk_core.domain.enums import DependencyType, ProjectStatus, WorkPackageStatus
-from timbertalk_core.schemas import Attributes, BaseSchema, QuantityValue
+from timbertalk_core.schemas import BaseSchema, QuantityValue
 
 
 class ProjectCreate(BaseSchema):
@@ -31,7 +31,7 @@ class ProjectCreate(BaseSchema):
     planned_start: date | None = None
     planned_end: date | None = None
     description: str | None = None
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check_period(self) -> Self:
@@ -96,7 +96,7 @@ class WorkPackageCreate(BaseSchema):
         default=None, max_length=200, description="Verweis in das CAD-Modul (Modul B)"
     )
     description: str | None = None
-    attributes: Attributes
+    attributes: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _check_period(self) -> Self:

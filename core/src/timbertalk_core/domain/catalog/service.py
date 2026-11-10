@@ -63,7 +63,7 @@ def create_material_item(ctx: ServiceContext, data: MaterialItemCreate) -> Mater
     values = data.model_dump()
     values["attributes"] = validate_attributes(ctx, MaterialItem.__tablename__, values["attributes"])
     item = repository.add(MaterialItem(**values))
-    ctx.session.flush()
+    ctx.flush()
     return MaterialItemRead.model_validate(item)
 
 
@@ -152,7 +152,7 @@ def update_material_item(
     changes = apply_updates(item, data, skip=["attributes"])
     if "attributes" in changes:
         item.attributes = validate_attributes(ctx, MaterialItem.__tablename__, changes["attributes"])
-    ctx.session.flush()
+    ctx.flush()
     return MaterialItemRead.model_validate(item)
 
 
@@ -170,7 +170,7 @@ def delete_material_item(
     item = require_found(repository.get(material_item_id), MATERIAL_DE, material_item_id)
     check_version(item, expected_version, MATERIAL_DE)
     repository.soft_delete(item)
-    ctx.session.flush()
+    ctx.flush()
     return MaterialItemRead.model_validate(item)
 
 
@@ -222,7 +222,7 @@ def create_price(ctx: ServiceContext, data: PriceCreate) -> PriceRead:
     _require_target(ctx, data.target_type, data.target_id)
     _check_overlap(repository, data.target_type.value, data.target_id, data.valid_from, data.valid_to)
     price = repository.add(Price(**data.model_dump()))
-    ctx.session.flush()
+    ctx.flush()
     return PriceRead.model_validate(price)
 
 
@@ -303,7 +303,7 @@ def update_price(
             exclude_id=price.id,
         )
     apply_updates(price, data)
-    ctx.session.flush()
+    ctx.flush()
     return PriceRead.model_validate(price)
 
 
@@ -319,7 +319,7 @@ def delete_price(ctx: ServiceContext, price_id: uuid.UUID, expected_version: int
     price = require_found(repository.get(price_id), PRICE_DE, price_id)
     check_version(price, expected_version, PRICE_DE)
     repository.soft_delete(price)
-    ctx.session.flush()
+    ctx.flush()
     return PriceRead.model_validate(price)
 
 

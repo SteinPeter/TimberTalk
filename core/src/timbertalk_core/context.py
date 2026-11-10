@@ -54,9 +54,27 @@ class ServiceContext:
     """Fachliche Aktion für das Audit-Log (z. B. `confirm`); wird zentral ausgewertet."""
 
     def __post_init__(self) -> None:
-        # Der Kontext hängt sich selbst an die Session, damit das Änderungsprotokoll
-        # ihn beim Flush findet.
+        self.bind()
+
+    def bind(self) -> ServiceContext:
+        """Macht diesen Kontext für die Session maßgeblich und liefert ihn zurück.
+
+        Das Änderungsprotokoll liest den Kontext beim Flush aus der Session. Teilen
+        sich mehrere Kontexte eine Session – etwa ein Import und ein bestätigender
+        Mensch –, muss der gerade handelnde Kontext gebunden sein, sonst landet die
+        Änderung unter dem falschen Akteur.
+        """
         self.session.info[CONTEXT_KEY] = self
+        return self
+
+    def flush(self) -> None:
+        """Bindet den Kontext und schreibt die offenen Änderungen in die Datenbank.
+
+        Services rufen immer diese Methode statt `session.flush()`, damit das
+        Änderungsprotokoll den tatsächlich handelnden Akteur festhält.
+        """
+        self.bind()
+        self.session.flush()
 
     def require_human(self, operation_de: str) -> None:
         """Stellt sicher, dass ein Mensch handelt; sonst `PermissionDenied`.
