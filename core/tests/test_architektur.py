@@ -111,6 +111,20 @@ def test_jede_domaene_hat_die_erwarteten_module() -> None:
             assert "repository.py" in dateien, f"{domaene.name}: repository.py fehlt"
 
 
+def test_sammelstelle_kennt_alle_services() -> None:
+    """Jedes Service-Modul muss in `services.py` eingetragen sein.
+
+    Fehlt ein Eintrag, kennt die Operation-Registry die Funktionen dieser Domäne nicht –
+    ein späterer MCP-Server würde sie nicht anbieten.
+    """
+    quelle = (SRC / "services.py").read_text(encoding="utf-8")
+    for datei in sorted((SRC / "domain").glob("*/service.py")):
+        domaene = datei.parent.name
+        assert f"domain.{domaene} import service" in quelle, (
+            f"services.py kennt die Domäne '{domaene}' nicht; ihre Operationen fehlen dann in der Registry."
+        )
+
+
 def test_kein_float_fuer_geld_oder_mengen() -> None:
     """Geld und Mengen dürfen nirgends als `float` modelliert sein."""
     for datei in _module_dateien(SRC):
@@ -132,7 +146,7 @@ def test_alle_operationen_sind_vollstaendig_beschrieben() -> None:
     """Abnahmekriterium: operations.py listet alle Operationen mit Schemas."""
     import_all_services()
     operationen = all_operations()
-    assert len(operationen) >= 80
+    assert len(operationen) >= 85
 
     for operation in operationen:
         assert operation.docstring.strip(), f"{operation.name}: Docstring fehlt"
