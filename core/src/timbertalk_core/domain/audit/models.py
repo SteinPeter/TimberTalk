@@ -10,12 +10,11 @@ from sqlalchemy import JSON, Index, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from timbertalk_core.clock import utc_now
-from timbertalk_core.db.base import Base
-from timbertalk_core.db.mixins import EntityMixin
+from timbertalk_core.db.mixins import Entity
 from timbertalk_core.db.types import GUID, UtcDateTime
 
 
-class AuditEvent(EntityMixin, Base):
+class AuditEvent(Entity):
     """Ein Protokolleintrag je geänderter Entität; wird nur angehängt, nie geändert."""
 
     __tablename__ = "audit_events"

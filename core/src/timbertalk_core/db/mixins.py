@@ -11,6 +11,7 @@ from sqlalchemy.ext.mutable import MutableDict
 from sqlalchemy.orm import Mapped, declared_attr, mapped_column
 
 from timbertalk_core.clock import utc_now
+from timbertalk_core.db.base import Base
 from timbertalk_core.db.types import GUID, UtcDateTime, new_id
 
 
@@ -66,3 +67,9 @@ class AttributesMixin:
 
 class EntityMixin(IdMixin, TimestampMixin, SoftDeleteMixin, VersionMixin):
     """Pflichtspalten jeder Tabelle: `id`, `created_at`, `updated_at`, `deleted_at`, `version`."""
+
+
+class Entity(EntityMixin, Base):
+    """Abstrakte Basis aller Tabellen des Backends; bringt die Pflichtspalten mit."""
+
+    __abstract__ = True
