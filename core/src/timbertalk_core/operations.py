@@ -15,6 +15,7 @@ from typing import Any, TypeVar, cast, get_type_hints
 from pydantic import BaseModel, TypeAdapter, create_model
 
 from timbertalk_core.context import ServiceContext
+from timbertalk_core.errors import NotFound
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -107,11 +108,15 @@ def all_operations() -> list[Operation]:
 
 
 def get_operation(name: str) -> Operation:
-    """Liefert eine Operation anhand ihres Namens."""
-    try:
-        return _REGISTRY[name]
-    except KeyError as exc:
-        raise KeyError(f"Operation '{name}' ist nicht registriert.") from exc
+    """Liefert eine Operation anhand ihres Namens.
+
+    Parameter:
+        name: Name der Operation in Punktschreibweise, z. B. `booking.create`.
+    """
+    operation_or_none = _REGISTRY.get(name)
+    if operation_or_none is None:
+        raise NotFound(f"Die Operation '{name}' ist nicht registriert.", operation=name)
+    return operation_or_none
 
 
 def describe_operations() -> list[dict[str, Any]]:

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from timbertalk_core.api.app import create_app
+from timbertalk_core.config import Settings
 from timbertalk_core.context import ActorType, ServiceContext, Source
 from timbertalk_core.db.metadata import get_metadata
 from timbertalk_core.db.session import create_session_factory
@@ -69,14 +70,47 @@ def agent_ctx(session: Session) -> ServiceContext:
     )
 
 
+TEST_API_KEY = "test-schluessel"
+"""Platzhalter-Schlüssel, den die Tests in der Kopfzeile X-API-Key senden."""
+
+
 @pytest.fixture
-def app() -> FastAPI:
-    """Frische FastAPI-Anwendung für einen Test."""
-    return create_app()
+def api_settings() -> Settings:
+    """Einstellungen für die API-Tests."""
+    return Settings(_env_file=None, api_key=TEST_API_KEY, environment="test")  # type: ignore[call-arg]
+
+
+@pytest.fixture
+def app(session_factory: sessionmaker[Session], api_settings: Settings) -> FastAPI:
+    """FastAPI-Anwendung auf der Testdatenbank."""
+    return create_app(settings=api_settings, session_factory=session_factory)
 
 
 @pytest.fixture
 def client(app: FastAPI) -> Iterator[TestClient]:
-    """HTTP-Client gegen die Anwendung."""
+    """HTTP-Client, der Schlüssel und Akteur mitsendet."""
     with TestClient(app) as test_client:
+        test_client.headers.update(
+            {
+                "X-API-Key": TEST_API_KEY,
+                "X-Actor": str(TEST_ACTOR_ID),
+                "X-Actor-Type": "user",
+                "X-Source": "manual",
+            }
+        )
+        yield test_client
+
+
+@pytest.fixture
+def agent_client(app: FastAPI) -> Iterator[TestClient]:
+    """HTTP-Client, der sich als KI-Agent ausgibt."""
+    with TestClient(app) as test_client:
+        test_client.headers.update(
+            {
+                "X-API-Key": TEST_API_KEY,
+                "X-Actor": str(TEST_ACTOR_ID),
+                "X-Actor-Type": "agent",
+                "X-Source": "agent",
+            }
+        )
         yield test_client

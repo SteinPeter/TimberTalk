@@ -9,6 +9,7 @@ from pydantic import BaseModel
 
 from timbertalk_core import operations as operations_module
 from timbertalk_core.context import ServiceContext
+from timbertalk_core.errors import NotFound
 from timbertalk_core.operations import (
     all_operations,
     describe_operations,
@@ -93,7 +94,7 @@ def test_doppelter_name_wird_abgelehnt(leere_registry: object) -> None:
 
 
 def test_unbekannte_operation_meldet_fehler(leere_registry: object) -> None:
-    with pytest.raises(KeyError, match="nicht registriert"):
+    with pytest.raises(NotFound, match="nicht registriert"):
         get_operation("gibt.es.nicht")
 
 
