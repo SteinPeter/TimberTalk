@@ -86,6 +86,42 @@ def test_werkbank_steht_nicht_in_der_openapi_beschreibung(lokal: TestClient) -> 
     assert not [pfad for pfad in schema["paths"] if pfad.startswith(DEV_UI_PREFIX)]
 
 
+DATEIEN = ("index.html", "app.css", "app.js", "api.js", "ui.js", "meta.js")
+"""Alle Bausteine der Werkbank; `app.js` lädt die übrigen Module selbst."""
+
+
+def test_werkbank_liefert_ihre_bausteine_aus(lokal: TestClient) -> None:
+    """Jeder Baustein kommt an, mit passendem Inhaltstyp."""
+    for datei in DATEIEN:
+        antwort = lokal.get(f"{DEV_UI_PREFIX}/{datei}")
+        assert antwort.status_code == 200, f"{datei} fehlt"
+        assert antwort.content, f"{datei} ist leer"
+
+    assert "javascript" in lokal.get(f"{DEV_UI_PREFIX}/app.js").headers["content-type"]
+    assert "css" in lokal.get(f"{DEV_UI_PREFIX}/app.css").headers["content-type"]
+
+    seite = lokal.get(f"{DEV_UI_PREFIX}/").text
+    assert 'src="app.js"' in seite
+    assert 'href="app.css"' in seite
+
+    einstieg = lokal.get(f"{DEV_UI_PREFIX}/app.js").text
+    for modul in ("./api.js", "./ui.js", "./meta.js"):
+        assert modul in einstieg, f"app.js lädt {modul} nicht"
+
+
+def test_werkbank_bringt_nichts_von_aussen_mit(lokal: TestClient) -> None:
+    """Kein CDN, keine fremde Quelle, kein Build-Schritt.
+
+    Das Backend läuft lokal im Betrieb, teils ohne Internet. Ein Script von
+    einem CDN wäre dort tot und die Seite leer.
+    """
+    for datei in DATEIEN:
+        inhalt = lokal.get(f"{DEV_UI_PREFIX}/{datei}").text
+        assert "http://" not in inhalt, f"{datei} verweist nach außen"
+        assert "https://" not in inhalt, f"{datei} verweist nach außen"
+        assert "//cdn" not in inhalt, f"{datei} verweist auf ein CDN"
+
+
 def test_dateien_der_werkbank_liegen_im_paket() -> None:
     """Die Dateien liegen im Paket, damit sie mit einer Installation mitkommen."""
     verzeichnis = dev_ui_dir()

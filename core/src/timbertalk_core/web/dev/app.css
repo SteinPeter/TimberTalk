@@ -1,0 +1,442 @@
+/* Minimales Stylesheet: die Werkbank soll lesbar sein, nicht schön. */
+
+:root {
+  --rand: #cbd2d9;
+  --flaeche: #ffffff;
+  --grund: #f4f6f8;
+  --text: #1f2933;
+  --gedaempft: #616e7c;
+  --betont: #1f6feb;
+  --fehler: #b3261e;
+  --fehler-flaeche: #fdecea;
+  --gut: #1b7f3b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--text);
+  background: var(--grund);
+}
+
+/* ------------------------------------------------------------- Kopfleiste */
+
+.kopf {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: 0.6rem 1rem;
+  background: var(--flaeche);
+  border-bottom: 1px solid var(--rand);
+}
+
+.kopf-titel {
+  display: flex;
+  gap: 0.75rem;
+  align-items: baseline;
+  flex-wrap: wrap;
+}
+
+.kopf-hinweis {
+  color: var(--gedaempft);
+}
+
+.zugang {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.9rem;
+  align-items: flex-end;
+  margin-top: 0.5rem;
+}
+
+.zugang label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--gedaempft);
+}
+
+.zugang-stand {
+  font-size: 12px;
+  padding: 0.2rem 0.45rem;
+  border: 1px solid var(--rand);
+  border-radius: 3px;
+  color: var(--gedaempft);
+}
+
+.zugang-stand.gut {
+  color: var(--gut);
+  border-color: var(--gut);
+}
+
+.zugang-stand.schlecht {
+  color: var(--fehler);
+  border-color: var(--fehler);
+}
+
+/* ---------------------------------------------------------------- Reiter */
+
+.reiter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.5rem 1rem 0;
+  background: var(--flaeche);
+  border-bottom: 1px solid var(--rand);
+}
+
+.reiter a {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid var(--rand);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--grund);
+}
+
+.reiter a.aktiv {
+  background: var(--flaeche);
+  font-weight: 600;
+  border-color: var(--betont);
+  color: var(--betont);
+}
+
+/* ---------------------------------------------------------------- Inhalt */
+
+main {
+  padding: 1rem;
+}
+
+section.bereich {
+  margin-bottom: 1.5rem;
+  padding: 0.85rem;
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 5px;
+}
+
+section.bereich > h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.05rem;
+}
+
+.hinweis {
+  color: var(--gedaempft);
+  font-size: 12px;
+}
+
+.werkzeugleiste {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: flex-end;
+  margin-bottom: 0.6rem;
+}
+
+.werkzeugleiste label {
+  display: flex;
+  flex-direction: column;
+  font-size: 12px;
+  color: var(--gedaempft);
+}
+
+button {
+  font: inherit;
+  padding: 0.25rem 0.6rem;
+  border: 1px solid var(--rand);
+  border-radius: 3px;
+  background: var(--grund);
+  cursor: pointer;
+}
+
+button:hover:enabled {
+  border-color: var(--betont);
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+button.haupt {
+  background: var(--betont);
+  border-color: var(--betont);
+  color: #fff;
+}
+
+input,
+select,
+textarea {
+  font: inherit;
+  padding: 0.2rem 0.3rem;
+  border: 1px solid var(--rand);
+  border-radius: 3px;
+  background: #fff;
+  color: var(--text);
+}
+
+textarea {
+  min-height: 3.5rem;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, monospace;
+  font-size: 12px;
+}
+
+/* --------------------------------------------------------------- Tabelle */
+
+table.liste {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+table.liste th,
+table.liste td {
+  padding: 0.3rem 0.45rem;
+  border-bottom: 1px solid var(--rand);
+  text-align: left;
+  vertical-align: top;
+}
+
+table.liste th {
+  background: var(--grund);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  color: var(--gedaempft);
+}
+
+table.liste tr.anklickbar {
+  cursor: pointer;
+}
+
+table.liste tr.anklickbar:hover > td {
+  background: #eef4fe;
+}
+
+table.liste tr.markiert > td {
+  background: #e4edfd;
+}
+
+td.zahl {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+td.kennung {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 11px;
+  color: var(--gedaempft);
+}
+
+td.leer {
+  color: var(--gedaempft);
+  font-style: italic;
+}
+
+td.aktionen {
+  white-space: nowrap;
+}
+
+td.aktionen button {
+  margin-right: 0.2rem;
+}
+
+pre.json {
+  margin: 0;
+  max-width: 28rem;
+  max-height: 8rem;
+  overflow: auto;
+  font-size: 11px;
+}
+
+.blaettern {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  margin-top: 0.5rem;
+  font-size: 12px;
+  color: var(--gedaempft);
+}
+
+/* --------------------------------------------- Status einer Buchung u. ä. */
+
+.status {
+  display: inline-block;
+  padding: 0.1rem 0.45rem;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+
+.status-draft {
+  background: #eceff1;
+  border-color: #9aa5b1;
+  color: #3e4c59;
+}
+
+.status-confirmed {
+  background: #e3f6e8;
+  border-color: #1b7f3b;
+  color: #11602b;
+}
+
+.status-locked {
+  background: #e4edfd;
+  border-color: #1f6feb;
+  color: #14509f;
+}
+
+.status-cancelled {
+  background: #fdecea;
+  border-color: #b3261e;
+  color: #8c1d18;
+}
+
+/* -------------------------------------------------------------- Formular */
+
+.formular {
+  border-top: 1px solid var(--rand);
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.formular .felder {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 0.6rem;
+}
+
+.feld {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.feld > label {
+  font-size: 12px;
+  color: var(--gedaempft);
+}
+
+.feld span.pflicht {
+  color: var(--fehler);
+  margin-left: 0.15rem;
+}
+
+.feld.fehlerhaft input,
+.feld.fehlerhaft select,
+.feld.fehlerhaft textarea {
+  border-color: var(--fehler);
+  background: var(--fehler-flaeche);
+}
+
+.feldfehler {
+  color: var(--fehler);
+  font-size: 11px;
+  min-height: 0;
+}
+
+.formular-knoepfe {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.formular-gruppe {
+  grid-column: 1 / -1;
+  margin-top: 0.4rem;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--betont);
+}
+
+/* ---------------------------------------------------------------- Fehler */
+
+.meldungen {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(34rem, 92vw);
+}
+
+.fehler {
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--fehler);
+  border-left-width: 5px;
+  border-radius: 4px;
+  background: var(--fehler-flaeche);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+}
+
+.fehler-kopf {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.fehler-kopf .marke {
+  font-size: 11px;
+  font-family: ui-monospace, Consolas, monospace;
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--fehler);
+  border-radius: 3px;
+}
+
+.fehler-kopf button {
+  margin-left: auto;
+  border: none;
+  background: none;
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.fehler-text {
+  margin: 0.35rem 0 0;
+}
+
+.fehler-felder {
+  margin: 0.4rem 0 0;
+  padding-left: 1.1rem;
+  font-size: 12px;
+}
+
+.fehler-felder code {
+  font-weight: 600;
+}
+
+.fehler pre {
+  margin: 0.3rem 0 0;
+  font-size: 11px;
+  max-height: 10rem;
+  overflow: auto;
+}
+
+.fehler-typ {
+  margin: 0.35rem 0 0;
+  font-size: 11px;
+  color: var(--gedaempft);
+  font-family: ui-monospace, Consolas, monospace;
+}
+
+.notiz {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--gut);
+  border-left-width: 5px;
+  border-radius: 4px;
+  background: #e3f6e8;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 15%);
+}
+
+.laedt {
+  color: var(--gedaempft);
+}
