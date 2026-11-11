@@ -9,6 +9,7 @@ from decimal import Decimal
 from timbertalk_core.clock import utc_now
 from timbertalk_core.context import ServiceContext
 from timbertalk_core.db.repository import MAX_LIMIT
+from timbertalk_core.db.types import MAX_INTEGER_DIGITS, quantize_money
 from timbertalk_core.domain.bookings.details import validate_details
 from timbertalk_core.domain.bookings.models import Booking
 from timbertalk_core.domain.bookings.repository import BookingRepository
@@ -36,9 +37,12 @@ BOOKING_DE = "Buchung"
 MUTABLE_STATES = frozenset({BookingStatus.DRAFT, BookingStatus.CONFIRMED})
 """Status, in denen eine Buchung noch geändert werden darf."""
 
+MAX_AMOUNT = Decimal(10) ** MAX_INTEGER_DIGITS
+"""Obergrenze des Betrags; darüber passt er nicht mehr in eine Geldspalte."""
+
 
 def _require_mutable(booking: Booking, vorgang_de: str) -> None:
-    """Weist Änderungen an gesperrten oder storniertenBuchungen ab."""
+    """Weist Änderungen an gesperrten oder stornierten Buchungen ab."""
     status = BookingStatus(booking.status)
     if status not in MUTABLE_STATES:
         raise InvalidState(
@@ -129,6 +133,28 @@ def _effective_price(ctx: ServiceContext, booking: Booking) -> tuple[Decimal | N
     return None, None
 
 
+def _amount(quantity: Decimal, unit_price: Decimal) -> Decimal:
+    """Rechnet Menge mal Preis und rundet auf die darstellbare Genauigkeit.
+
+    Menge und Preis dürfen beide sechs Nachkommastellen haben; ihr Produkt hätte
+    bis zu zwölf. Ohne Rundung ließe sich der Betrag weder speichern noch über die
+    API ausgeben – eine gewöhnliche Preispflege machte bestehende Buchungen unlesbar.
+
+    Parameter:
+        quantity: gebuchte Menge in der Einheit der Buchung.
+        unit_price: geltender Preis je Einheit.
+    """
+    betrag = quantity * unit_price
+    if betrag.copy_abs() >= MAX_AMOUNT:
+        raise ValidationFailed(
+            "Menge mal Preis ergibt einen Betrag, der zu groß für einen Geldbetrag ist.",
+            errors={"quantity": f"höchstens {MAX_INTEGER_DIGITS} Stellen vor dem Komma"},
+            quantity=format(quantity, "f"),
+            unit_price=format(unit_price, "f"),
+        )
+    return quantize_money(betrag)
+
+
 def to_read(ctx: ServiceContext, booking: Booking) -> BookingRead:
     """Baut das Lese-Schema einer Buchung samt Kostenart, geltendem Preis und Betrag.
 
@@ -142,7 +168,7 @@ def to_read(ctx: ServiceContext, booking: Booking) -> BookingRead:
         booking.cost_type_id,
     )
     preis, herkunft = _effective_price(ctx, booking)
-    betrag = booking.quantity * preis if preis is not None else None
+    betrag = _amount(booking.quantity, preis) if preis is not None else None
     return BookingRead.model_validate(
         {
             **{spalte.key: getattr(booking, spalte.key) for spalte in booking.__mapper__.column_attrs},
@@ -379,7 +405,7 @@ def cancel_booking(
 def delete_booking(
     ctx: ServiceContext, booking_id: uuid.UUID, expected_version: int | None = None
 ) -> BookingRead:
-    """Markiert eine Buchung als gelöscht; gesperrte Buchungen bleiben erhalten.
+    """Markiert eine Buchung als gelöscht; gesperrte und stornierte bleiben erhalten.
 
     Parameter:
         booking_id: Kennung der Buchung.
@@ -393,6 +419,9 @@ def delete_booking(
             "Eine gesperrte Buchung kann nicht gelöscht werden; sie gehört zu einer Rechnung.",
             status=BookingStatus.LOCKED.value,
         )
+    # Eine Stornierung soll nachvollziehbar bleiben: `cancelled` ist wie `locked`
+    # unveränderbar und darf deshalb auch nicht gelöscht werden.
+    _require_mutable(booking, "Löschen")
     repository.soft_delete(booking)
     ctx.flush()
     return to_read(ctx, booking)

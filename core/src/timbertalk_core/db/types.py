@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import uuid
 from datetime import UTC, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any, ClassVar
 
 import uuid_utils
@@ -23,6 +23,12 @@ MAX_PRECISION = 18
 
 MAX_SCALE = 6
 """Zulässige Nachkommastellen für Geld- und Mengenwerte."""
+
+MONEY_SCALE = Decimal(1).scaleb(-MAX_SCALE)
+"""Kleinste Einheit, die eine Geld- oder Mengenspalte darstellen kann (0.000001)."""
+
+MAX_INTEGER_DIGITS = MAX_PRECISION - MAX_SCALE
+"""Zulässige Stellen vor dem Komma bei Geld- und Mengenwerten."""
 
 
 def uuid7() -> uuid.UUID:
@@ -122,6 +128,19 @@ def to_decimal(value: Any, *, field: str = "Wert") -> Decimal:
     if not decimal_value.is_finite():
         raise ValueError(f"{field}: Unendliche Werte oder NaN sind nicht erlaubt.")
     return decimal_value
+
+
+def quantize_money(value: Decimal) -> Decimal:
+    """Rundet einen gerechneten Geldbetrag kaufmännisch auf `MAX_SCALE` Nachkommastellen.
+
+    Eine Multiplikation addiert die Nachkommastellen beider Werte: Menge mal Preis
+    hat also leicht mehr Stellen, als eine Geldspalte und die Schemas zulassen.
+    Gerechnete Beträge laufen darum immer über diese Funktion.
+
+    Parameter:
+        value: der gerechnete Betrag.
+    """
+    return value.quantize(MONEY_SCALE, rounding=ROUND_HALF_UP)
 
 
 class _DecimalAsText(TypeDecorator[Decimal]):

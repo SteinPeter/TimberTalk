@@ -14,3 +14,4 @@ Protokoll der mit KI-Unterstützung erzeugten Code-Anteile (für den Abschlussbe
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 8: Anhänge (nur Metadaten), Modellpreise und KI-Verbrauch mit `record_usage` und `usage_summary`; Fehlerbehebung am Audit-Listener |
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 9: REST-API mit einem Router je Domäne, Problem-JSON nach RFC 9457, Platzhalter-Authentifizierung und Architekturtests |
 | 2026-11-10 | Claude Opus 5 (Claude Code) | Block 1, Schritt 10: Seed mit Beispiel-Zimmerei, `docs/datenmodell.md` mit ER-Diagramm und Erweiterungswegen, Abdeckungsschwelle; Fehlerbehebung an der Transaktionsgrenze der API |
+| 2026-11-11 | Claude Opus 5 (Claude Code) | Fehlerbehebung aus der Abnahmeprüfung: Rundung des Buchungsbetrags, `system` als Vorgabe für `X-Actor-Type`, Löschschutz für stornierte Buchungen samt Tests |

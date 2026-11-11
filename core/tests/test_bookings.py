@@ -241,6 +241,51 @@ def test_materialbuchung_nutzt_artikelpreis(ctx: ServiceContext, welt: Welt) -> 
     assert booking.details["delivery_note_ref"] == "LS-2026-0815"
 
 
+def test_betrag_wird_gerundet_und_bleibt_lesbar(ctx: ServiceContext, welt: Welt) -> None:
+    """Menge mal Preis hat mehr Nachkommastellen als ein Geldbetrag zulässt.
+
+    Ohne Rundung entstünde ein Betrag mit bis zu zwölf Nachkommastellen; das Lese-Schema
+    erlaubt sechs. Die Buchung wäre damit nach einer gewöhnlichen Preispflege nicht mehr
+    lesbar – auch nicht in der Liste des Projekts.
+    """
+    booking = create_booking(ctx, _stunden(welt, quantity=Decimal("8.33"), unit_price=Decimal("1.123456")))
+    ctx.session.commit()
+
+    # 8.33 × 1.123456 = 9.35838848
+    assert booking.amount == Decimal("9.358388")
+    assert get_booking(ctx, booking.id).amount == Decimal("9.358388")
+    assert list_bookings(ctx, project_id=welt.project_id).items[0].amount == Decimal("9.358388")
+
+
+def test_spaeterer_preis_macht_buchung_nicht_unlesbar(ctx: ServiceContext, welt: Welt) -> None:
+    """Ein neuer Preis mit sechs Nachkommastellen darf bestehende Buchungen nicht sprengen."""
+    booking = create_booking(ctx, _stunden(welt, quantity=Decimal("8.33")))
+    ctx.session.commit()
+
+    create_price(
+        ctx,
+        PriceCreate(
+            target_type=PriceTargetType.COST_TYPE,
+            target_id=welt.labor_id,
+            unit_price=Decimal("70.123456"),
+            valid_from=date(2026, 1, 1),
+        ),
+    )
+    ctx.session.commit()
+
+    gelesen = get_booking(ctx, booking.id)
+    assert gelesen.price_origin == "price_cost_type"
+    # 8.33 × 70.123456 = 584.12838848
+    assert gelesen.amount == Decimal("584.128388")
+    assert list_bookings(ctx, project_id=welt.project_id).total == 1
+
+
+def test_zu_grosser_betrag_wird_abgelehnt(ctx: ServiceContext, welt: Welt) -> None:
+    """Passt Menge mal Preis in keinen Geldbetrag, kommt ein fachlicher Fehler statt 500."""
+    with pytest.raises(ValidationFailed, match="zu groß"):
+        create_booking(ctx, _stunden(welt, quantity=Decimal("100000000000"), unit_price=Decimal("1000")))
+
+
 def test_abweichender_preis_hat_vorrang(ctx: ServiceContext, welt: Welt) -> None:
     booking = create_booking(ctx, _stunden(welt, unit_price=Decimal("75.0000")))
     ctx.session.commit()
@@ -376,6 +421,18 @@ def test_stornieren(ctx: ServiceContext, welt: Welt) -> None:
 
     with pytest.raises(InvalidState, match="unveränderbar"):
         update_booking(ctx, booking.id, BookingUpdate(quantity=Decimal("1.00")))
+
+
+def test_stornierte_buchung_kann_nicht_geloescht_werden(ctx: ServiceContext, welt: Welt) -> None:
+    """`cancelled` ist unveränderbar: die Stornierung muss nachvollziehbar bleiben."""
+    booking = create_booking(ctx, _stunden(welt))
+    ctx.session.commit()
+    cancel_booking(ctx, booking.id)
+    ctx.session.commit()
+
+    with pytest.raises(InvalidState, match="unveränderbar"):
+        delete_booking(ctx, booking.id)
+    assert get_booking(ctx, booking.id).deleted_at is None
 
 
 def test_gesperrte_buchung_ist_unveraenderbar(ctx: ServiceContext, welt: Welt) -> None:

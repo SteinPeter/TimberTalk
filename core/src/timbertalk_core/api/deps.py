@@ -97,12 +97,16 @@ def get_context(
     Parameter:
         session: offene Session der Anfrage.
         x_actor: Kennung des Akteurs (UUID) aus `X-Actor`.
-        x_actor_type: Art des Akteurs (`user`, `agent`, `system`) aus `X-Actor-Type`.
+        x_actor_type: Art des Akteurs (`user`, `agent`, `system`) aus `X-Actor-Type`;
+            ohne Angabe gilt `system`.
         x_source: Herkunft des Aufrufs aus `X-Source`.
         x_correlation_id: Korrelations-Kennung aus `X-Correlation-Id`.
     """
+    # Fehlt die Kopfzeile, gilt bewusst `system` und nicht `user`: eine fehlende
+    # Angabe darf keine menschlichen Rechte verleihen. Sonst könnte ein Aufruf
+    # ohne `X-Actor-Type` eine Buchung bestätigen, obwohl das nur ein Mensch darf.
     try:
-        actor_type = ActorType(x_actor_type) if x_actor_type else ActorType.USER
+        actor_type = ActorType(x_actor_type) if x_actor_type else ActorType.SYSTEM
     except ValueError as exc:
         raise ValidationFailed(
             f"Unbekannte Akteur-Art '{x_actor_type}'; erlaubt sind user, agent oder system.",

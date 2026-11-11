@@ -283,7 +283,8 @@ draft ──(nur ein Mensch bestätigt)──▶ confirmed ──▶ cancelled
 - `confirm` ist nur mit Akteur-Typ `user` erlaubt. Ein Agent erhält `403`.
 - `locked` setzt erst die Rechnung (Block 3). `locked`-Buchungen lassen sich weder ändern
   noch stornieren noch löschen.
-- `cancelled` ist unveränderbar.
+- `cancelled` ist unveränderbar und lässt sich auch nicht löschen; die Stornierung bleibt
+  nachvollziehbar.
 
 ## 4. Preisermittlung
 

@@ -76,7 +76,10 @@ class BookingRead(BaseSchema):
         default=None,
         description="Tatsächlich geltender Preis je Einheit; leer, wenn keiner hinterlegt ist",
     )
-    amount: MoneyValue | None = Field(default=None, description="Menge mal geltender Preis; leer ohne Preis")
+    amount: MoneyValue | None = Field(
+        default=None,
+        description="Menge mal geltender Preis, auf sechs Nachkommastellen gerundet; leer ohne Preis",
+    )
     price_origin: str | None = Field(
         default=None, description="Herkunft des Preises, z. B. `booking` oder `price_cost_type`"
     )

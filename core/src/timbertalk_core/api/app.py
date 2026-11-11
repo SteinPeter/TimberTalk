@@ -40,7 +40,8 @@ Backend für Zimmereien: Stammdaten, Projekte, Arbeitspakete, Buchungen und KI-V
 
 Die Geschäftslogik liegt vollständig in der Service-Schicht; diese API ist nur ein Adapter.
 Jede Anfrage braucht den Platzhalter-Schlüssel in der Kopfzeile `X-API-Key`. Der Akteur
-kommt aus `X-Actor` (UUID), seine Art aus `X-Actor-Type` (`user`, `agent`, `system`),
+kommt aus `X-Actor` (UUID), seine Art aus `X-Actor-Type` (`user`, `agent`, `system`;
+ohne Angabe gilt `system`, denn nur ein Mensch darf Buchungen bestätigen),
 die Herkunft aus `X-Source` und die Korrelations-Kennung aus `X-Correlation-Id`.
 Fehler werden als Problem-JSON nach RFC 9457 beantwortet.
 """

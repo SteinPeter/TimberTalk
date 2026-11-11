@@ -374,6 +374,33 @@ def test_agent_darf_nicht_bestaetigen(
     assert _ok(client.post(f"/bookings/{buchung['id']}/confirm"))["status"] == "confirmed"
 
 
+def test_ohne_akteur_art_darf_nicht_bestaetigt_werden(
+    app: Any, client: TestClient, stammdaten: dict[str, Any]
+) -> None:
+    """Fehlt `X-Actor-Type`, gilt `system`: Bestätigen bleibt dem Menschen vorbehalten."""
+    buchung = _ok(
+        client.post(
+            "/bookings",
+            json={
+                "project_id": stammdaten["project_id"],
+                "cost_type_id": stammdaten["labor_id"],
+                "booking_date": "2026-05-04",
+                "quantity": "4.00",
+                "employee_id": stammdaten["employee_id"],
+            },
+        ),
+        201,
+    )
+
+    with TestClient(app) as roher_client:
+        abgelehnt = roher_client.post(
+            f"/bookings/{buchung['id']}/confirm", headers={"X-API-Key": TEST_API_KEY}
+        )
+    assert abgelehnt.status_code == 403
+    assert abgelehnt.json()["code"] == "permission_denied"
+    assert _ok(client.get(f"/bookings/{buchung['id']}"))["status"] == "draft"
+
+
 def test_anhaenge_und_verbrauch(client: TestClient, stammdaten: dict[str, Any]) -> None:
     anhang = _ok(
         client.post(

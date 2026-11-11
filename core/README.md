@@ -45,7 +45,7 @@ Jede Anfrage außer `/health` braucht den Platzhalter-Schlüssel und einen Akteu
 | --- | --- |
 | `X-API-Key` | Schlüssel aus `.env` (`TIMBERTALK_API_KEY`) |
 | `X-Actor` | UUID des Akteurs |
-| `X-Actor-Type` | `user`, `agent` oder `system`; nur `user` darf Buchungen bestätigen |
+| `X-Actor-Type` | `user`, `agent` oder `system`; nur `user` darf Buchungen bestätigen. Ohne Angabe gilt `system` |
 | `X-Source` | `manual`, `agent`, `voice`, `import`, `cad`, `system` |
 | `X-Correlation-Id` | verbindet zusammengehörige Vorgänge im Änderungsprotokoll |
 
