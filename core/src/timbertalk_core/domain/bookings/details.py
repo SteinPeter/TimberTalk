@@ -41,8 +41,10 @@ class TravelDetails(BookingDetails):
 
     from_label: str | None = Field(default=None, max_length=200, description="Startpunkt")
     to_label: str | None = Field(default=None, max_length=200, description="Ziel")
-    distance_method: DistanceMethod = Field(default=DistanceMethod.MANUAL, description="manual oder route")
-    round_trip: bool = Field(default=False, description="Wahr bei Hin- und Rückfahrt")
+    distance_method: DistanceMethod = Field(
+        default=DistanceMethod.MANUAL, description="Art der Streckenermittlung (manual oder route)"
+    )
+    round_trip: bool = Field(default=False, description="Hin- und Rückfahrt")
     vehicle: str | None = Field(default=None, max_length=100, description="Fahrzeug")
 
 
