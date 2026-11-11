@@ -322,7 +322,7 @@ function leseWert(feld, steuerung) {
   }
   const roh = String(steuerung.value ?? "").trim();
   if (roh === "") {
-    // Leer heißt „nicht senden": die Schemas verbieten unbekannte Felder und
+    // Leer heißt „nicht senden“: die Schemas verbieten unbekannte Felder und
     // die meisten Felder sind nicht nullbar.
     return undefined;
   }

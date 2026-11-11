@@ -1,4 +1,4 @@
-"""Auslieferung der Entwickler-Oberfläche („Werkbank") unter `/dev`.
+"""Auslieferung der Entwickler-Oberfläche („Werkbank“) unter `/dev`.
 
 Die Werkbank ist ein Client wie jeder andere: statische Dateien, die ausschließlich
 über die REST-API sprechen. Sie kennt weder Datenbank noch Service-Schicht.

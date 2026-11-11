@@ -1,4 +1,4 @@
-"""Prüft die Auslieferung der Entwickler-Oberfläche („Werkbank").
+"""Prüft die Auslieferung der Entwickler-Oberfläche („Werkbank“).
 
 Die Werkbank gehört nur in die lokale Installation. In jeder anderen Umgebung darf
 `/dev` nichts preisgeben – auch nicht, dass es den Pfad gäbe.

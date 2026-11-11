@@ -134,6 +134,9 @@ async function bereiteSpalten(spalten) {
 function vorgabewerte(felder) {
   const werte = {};
   for (const feld of felder) {
+    if (!feld.name) {
+      continue;
+    }
     if (feld.vorgabe !== undefined) {
       werte[feld.name] = typeof feld.vorgabe === "function" ? feld.vorgabe() : feld.vorgabe;
     }
@@ -145,6 +148,10 @@ function vorgabewerte(felder) {
 function verflache(datensatz, felder) {
   const werte = {};
   for (const feld of felder) {
+    // Eine Gruppen-Überschrift hat keinen Namen und keinen Wert.
+    if (!feld.name) {
+      continue;
+    }
     const punkt = feld.name.indexOf(".");
     if (punkt === -1) {
       werte[feld.name] = datensatz[feld.name];
@@ -237,13 +244,14 @@ function liste(meta, optionen = {}) {
   }
 
   async function speichere(daten, griff) {
-    const koerper = verschachtle({ ...daten, ...festeFelder });
     try {
       if (lz.form.modus === "anlegen") {
-        await api.sende(meta.pfad, koerper);
+        await api.sende(meta.pfad, verschachtle({ ...daten, ...festeFelder }));
         ui.melde(`${meta.einzahl} angelegt.`);
       } else {
-        await api.aendere(`${meta.pfad}/${lz.form.datensatz.id}`, koerper, {
+        // Feste Werte (etwa das Projekt eines Arbeitspakets) nur beim Anlegen:
+        // die Update-Schemas kennen sie nicht und weisen Unbekanntes ab.
+        await api.aendere(`${meta.pfad}/${lz.form.datensatz.id}`, verschachtle(daten), {
           expected_version: lz.form.datensatz.version,
         });
         ui.melde(`${meta.einzahl} geändert.`);
@@ -263,7 +271,7 @@ function liste(meta, optionen = {}) {
   }
 
   async function loesche(datensatz) {
-    const frage = `${meta.einzahl} „${bezeichnung(datensatz)}" löschen (Soft Delete)?`;
+    const frage = `${meta.einzahl} „${bezeichnung(datensatz)}“ löschen (Soft Delete)?`;
     if (!window.confirm(frage)) {
       return;
     }
@@ -372,6 +380,9 @@ function liste(meta, optionen = {}) {
         : null,
     });
 
+    if (!lz.form) {
+      leere(formBereich);
+    }
     leere(wurzel);
     ui.anhaengen(wurzel, [
       werkzeuge,
@@ -885,6 +896,15 @@ function neueUuid() {
   return "00000000-0000-4000-8000-" + String(Date.now()).padStart(12, "0").slice(-12);
 }
 
+async function ladeDetailSchemas() {
+  try {
+    zustand.detailSchemas = await api.hole("/bookings/detail-schemas");
+  } catch (fehler) {
+    // Ohne gültigen Schlüssel nicht zu holen; nach seiner Eingabe wird es nachgeholt.
+    console.warn("Detailfelder der Buchungsarten noch nicht geladen:", fehler);
+  }
+}
+
 async function pruefeZugang() {
   const anzeige = document.getElementById("z-stand");
   anzeige.className = "zugang-stand";
@@ -892,6 +912,9 @@ async function pruefeZugang() {
   try {
     const gesundheit = await api.hole("/health");
     await api.hole("/customers", { limit: 1 });
+    if (!Object.keys(zustand.detailSchemas).length) {
+      await ladeDetailSchemas();
+    }
     anzeige.classList.add("gut");
     anzeige.textContent = `verbunden · Backend ${gesundheit.version} · ${api.holeZugang().actorType}`;
   } catch (fehler) {
@@ -950,12 +973,7 @@ async function start() {
   } catch (fehler) {
     ui.meldeFehler(problemVon(fehler));
   }
-  try {
-    zustand.detailSchemas = await api.hole("/bookings/detail-schemas");
-  } catch (fehler) {
-    // Ohne Schlüssel schlägt das fehl; nach Eingabe des Schlüssels klappt es.
-    console.warn("Detailfelder der Buchungsarten noch nicht geladen:", fehler);
-  }
+  await ladeDetailSchemas();
 
   kopfleisteAufbauen();
   window.addEventListener("hashchange", zeichneSeite);

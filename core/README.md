@@ -51,3 +51,31 @@ Jede Anfrage außer `/health` braucht den Platzhalter-Schlüssel und einen Akteu
 
 Interaktive Beschreibung: <http://localhost:8000/docs>, Katalog aller Operationen:
 <http://localhost:8000/operations>
+
+## Entwickler-Oberfläche („Werkbank“)
+
+<http://localhost:8000/dev/> – eine schlichte Oberfläche, um das Backend von Hand
+durchzuspielen: Kunden, Projekte mit Arbeitspaketen, Buchungen, Kostenarten, Material und
+Preise, KI-Verbrauch, Änderungsprotokoll und Stammdaten.
+
+Sie ist **ein Client wie jeder andere**: statische Dateien unter
+`src/timbertalk_core/web/dev/`, die ausschließlich über die REST-API sprechen – kein Zugriff
+auf Datenbank oder Services, kein Framework, kein Build-Schritt und keine Bibliothek von
+außen. Wertelisten holt sie aus `/openapi.json`, die Detailfelder je Buchungsart aus
+`/bookings/detail-schemas`, Auswahllisten aus der jeweiligen Ressource; eine UUID muss man
+nirgends eintippen. Fehler zeigt sie als Problem-JSON im Klartext an, mit Statuscode,
+Fehlercode und Feldfehlern.
+
+In der Kopfleiste stehen API-Schlüssel, Akteur-ID, Akteur-Typ, Quelle und eine optionale
+Korrelations-ID. Die Werte liegen im `localStorage` des Browsers und gehen bei jedem Aufruf
+als Kopfzeilen mit. Der Akteur-Typ ist dabei kein Beiwerk: mit `agent` antwortet
+„Bestätigen“ mit `403`, nur `user` darf eine Buchung bestätigen.
+
+Zwei Dinge sind bewusst so:
+
+- **Nur lokal.** Ausgeliefert wird nur, wenn `TIMBERTALK_ENVIRONMENT=local` gilt.
+  `TIMBERTALK_DEV_UI` übersteuert das in beide Richtungen (`true` erzwingt, `false` schaltet
+  sie auch lokal ab). Sonst antwortet `/dev` mit `404`.
+- **Ein leeres Feld heißt „nicht senden“.** Dadurch greifen beim Anlegen die Vorgaben
+  des Services, und beim Ändern bleibt das Feld unverändert. Einen Wert gezielt auf leer zu
+  setzen, geht über die Oberfläche deshalb nicht.
