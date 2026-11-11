@@ -35,10 +35,24 @@ class Settings(BaseSettings):
     sql_echo: bool = False
     """Wenn wahr, werden SQL-Anweisungen protokolliert (nur zur Fehlersuche)."""
 
+    dev_ui: bool | None = None
+    """Entwickler-Oberfläche erzwingen (wahr) oder abschalten (falsch); ohne Angabe nur in `local`."""
+
     @property
     def attachments_dir(self) -> Path:
         """Verzeichnis für Belege und Fotos, immer unterhalb des Datenverzeichnisses."""
         return self.data_dir / "attachments"
+
+    @property
+    def dev_ui_enabled(self) -> bool:
+        """Sagt, ob die Entwickler-Oberfläche unter `/dev` ausgeliefert wird.
+
+        Vorgabe ist die Betriebsart: nur die lokale Installation zeigt sie. `dev_ui`
+        übersteuert das in beide Richtungen, damit sie sich auch lokal abschalten lässt.
+        """
+        if self.dev_ui is not None:
+            return self.dev_ui
+        return self.environment == "local"
 
 
 @lru_cache(maxsize=1)

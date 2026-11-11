@@ -15,6 +15,7 @@ from sqlalchemy import Engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from timbertalk_core import __version__
+from timbertalk_core.api.dev_ui import mount_dev_ui
 from timbertalk_core.api.errors import register_error_handlers
 from timbertalk_core.api.middleware import TransactionMiddleware
 from timbertalk_core.api.routers import (
@@ -117,6 +118,10 @@ def create_app(
 
     for router in _all_routers():
         application.include_router(router)
+
+    # Die Werkbank ist nur ein weiterer Client der API; sie wird als statische
+    # Dateien eingehängt und nur in der lokalen Installation ausgeliefert.
+    mount_dev_ui(application, effektive_settings)
 
     return application
 

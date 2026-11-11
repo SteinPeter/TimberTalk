@@ -38,3 +38,28 @@ def test_umgebungsvariable_hat_vorrang(monkeypatch: pytest.MonkeyPatch) -> None:
 
 def test_get_settings_ist_zwischengespeichert() -> None:
     assert get_settings() is get_settings()
+
+
+@pytest.mark.parametrize(
+    ("environment", "dev_ui", "erwartet"),
+    [
+        ("local", None, True),
+        ("test", None, False),
+        ("production", None, False),
+        ("local", False, False),
+        ("test", True, True),
+        ("production", True, True),
+    ],
+)
+def test_dev_ui_folgt_der_betriebsart(environment: str, dev_ui: bool | None, erwartet: bool) -> None:
+    """Ohne Angabe zeigt nur `local` die Werkbank; `dev_ui` übersteuert beidseitig."""
+    settings = Settings(_env_file=None, environment=environment, dev_ui=dev_ui)  # type: ignore[call-arg,arg-type]
+    assert settings.dev_ui_enabled is erwartet
+
+
+def test_dev_ui_kommt_aus_der_umgebung(monkeypatch: pytest.MonkeyPatch) -> None:
+    """`TIMBERTALK_DEV_UI=false` schaltet die Werkbank auch lokal ab."""
+    monkeypatch.setenv("TIMBERTALK_DEV_UI", "false")
+    settings = Settings(_env_file=None)  # type: ignore[call-arg]
+    assert settings.environment == "local"
+    assert settings.dev_ui_enabled is False
