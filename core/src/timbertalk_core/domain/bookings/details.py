@@ -113,6 +113,16 @@ def registered_kinds() -> dict[str, str]:
     return {kind.value: schema.__name__ for kind, schema in sorted(_REGISTRY.items())}
 
 
+def detail_schemas() -> dict[str, dict[str, Any]]:
+    """Liefert je Buchungsart das JSON-Schema ihrer Detailfelder.
+
+    Ein Client kann daraus seine Eingabefelder bauen, ohne die Schemas zu kennen.
+    Damit gilt die Zusage der Registry auch für Clients: eine neue Buchungsart
+    braucht ein Schema und eine Registrierung, sonst nichts.
+    """
+    return {kind.value: schema.model_json_schema() for kind, schema in sorted(_REGISTRY.items())}
+
+
 def validate_details(kind: CostTypeKind, details: dict[str, Any] | None) -> dict[str, Any]:
     """Prüft die Detailfelder einer Buchung gegen das Schema ihrer Art.
 

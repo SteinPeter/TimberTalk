@@ -112,6 +112,7 @@ def test_openapi_ist_vollstaendig(client: TestClient) -> None:
         "/material-items",
         "/prices",
         "/bookings",
+        "/bookings/detail-schemas",
         "/bookings/{booking_id}/confirm",
         "/bookings/{booking_id}/cancel",
         "/attachments",
@@ -342,6 +343,11 @@ def test_buchung_lebenszyklus(client: TestClient, stammdaten: dict[str, Any]) ->
 
     assert _ok(client.get("/bookings", params={"status": "cancelled"}))["total"] == 1
     assert _ok(client.get("/bookings/kinds"))["labor"] == "LaborDetails"
+
+    schemas = _ok(client.get("/bookings/detail-schemas"))
+    assert set(schemas) == set(_ok(client.get("/bookings/kinds")))
+    assert set(schemas["labor"]["properties"]) == {"start_time", "end_time", "break_minutes"}
+    assert schemas["equipment"]["required"] == ["equipment_name"]
 
 
 def test_agent_darf_nicht_bestaetigen(

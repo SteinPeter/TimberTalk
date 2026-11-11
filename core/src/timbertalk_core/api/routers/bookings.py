@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import uuid
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
 from fastapi import APIRouter, Query, status
 
 from timbertalk_core.api.deps import ApiKey, Context
 from timbertalk_core.domain.bookings import service
-from timbertalk_core.domain.bookings.details import registered_kinds
+from timbertalk_core.domain.bookings.details import detail_schemas, registered_kinds
 from timbertalk_core.domain.bookings.schemas import BookingCreate, BookingRead, BookingUpdate
 from timbertalk_core.domain.enums import BookingStatus
 from timbertalk_core.schemas import Page
@@ -57,6 +57,15 @@ def create_booking(ctx: Context, _key: ApiKey, data: BookingCreate) -> BookingRe
 def list_kinds(_key: ApiKey) -> dict[str, str]:
     """Liefert die registrierten Buchungsarten mit dem Namen ihres Detail-Schemas."""
     return registered_kinds()
+
+
+@router.get("/detail-schemas", summary="Detailfelder je Buchungsart beschreiben")
+def list_detail_schemas(_key: ApiKey) -> dict[str, dict[str, Any]]:
+    """Liefert je Buchungsart das JSON-Schema ihrer Detailfelder.
+
+    Ein Client baut daraus seine Eingabefelder, ohne die Detail-Schemas zu kennen.
+    """
+    return detail_schemas()
 
 
 @router.get("/{booking_id}", summary="Buchung lesen")

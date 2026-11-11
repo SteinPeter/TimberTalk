@@ -12,7 +12,11 @@ from sqlalchemy import select
 
 from timbertalk_core.context import ActorType, ServiceContext, Source
 from timbertalk_core.domain.audit.models import AuditEvent
-from timbertalk_core.domain.bookings.details import registered_kinds, validate_details
+from timbertalk_core.domain.bookings.details import (
+    detail_schemas,
+    registered_kinds,
+    validate_details,
+)
 from timbertalk_core.domain.bookings.schemas import BookingCreate, BookingUpdate
 from timbertalk_core.domain.bookings.service import (
     cancel_booking,
@@ -383,6 +387,20 @@ def test_arbeitszeit_ende_vor_beginn(ctx: ServiceContext, welt: Welt) -> None:
 def test_details_registry_kennt_alle_arten() -> None:
     assert set(registered_kinds()) == {"labor", "travel", "material", "equipment", "other"}
     assert validate_details(CostTypeKind.OTHER, None) == {}
+
+
+def test_detail_schemas_beschreiben_jede_art() -> None:
+    """Jede registrierte Art liefert ihre Felder, nicht nur den Namen ihres Schemas.
+
+    Ein Client baut daraus seine Eingabefelder. Fehlte eine Art, blieben ihre
+    Detailfelder in jeder Oberfläche unsichtbar.
+    """
+    schemas = detail_schemas()
+    assert set(schemas) == set(registered_kinds())
+
+    assert set(schemas["labor"]["properties"]) == {"start_time", "end_time", "break_minutes"}
+    assert schemas["equipment"]["required"] == ["equipment_name"]
+    assert schemas["other"].get("properties", {}) == {}
 
 
 # --------------------------------------------------------------------------- Status
