@@ -1,0 +1,42 @@
+# Beschreibung des Backend-Pakets: Abhängigkeiten, Startbefehl und Werkzeuge.
+
+[project]
+name = "timbertalk"
+version = "0.1.0"
+description = "TimberTalk – Betriebssoftware für Zimmereien"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.32",
+    "sqlmodel>=0.0.22",
+    "pydantic-settings>=2.6",
+]
+
+# Startbefehl: uv run timbertalk
+[project.scripts]
+timbertalk = "timbertalk.main:run"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "httpx>=0.28",
+    "ruff>=0.8",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["timbertalk"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "W", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
