@@ -13,6 +13,7 @@ durchgesehen, deshalb zählt Verständlichkeit mehr als Eleganz.
 backend/timbertalk/     Backend: main.py (App), settings.py, db.py, features/
 backend/tests/          Tests
 frontend/               HTML, CSS, JavaScript – ohne Bauschritt und ohne Framework
+docs/handbuch.md        Code-Handbuch: erklärt die gesamte Codebasis
 docs/features/          Ein Steckbrief je Feature, dazu _vorlage.md
 docs/archiv/            Unterlagen aus Block 1
 ```
@@ -56,5 +57,15 @@ uv run ruff format .           # Format
 
 Vor jedem Commit müssen `ruff check`, `ruff format --check` und `pytest` grün sein.
 Ergänze nach einer Änderung eine Zeile in `docs/ki-nutzung.md`: Datum, Modell, Aufgabe.
+
+## Code-Handbuch
+
+`docs/handbuch.md` erklärt die gesamte Codebasis so, dass jemand ohne Vorwissen das Programm
+versteht. Lies es zu Beginn einer Aufgabe, um dich zu orientieren.
+
+**Jede Änderung am Code aktualisiert das Handbuch im selben Commit** – neue Dateien, Features,
+Endpunkte, Tabellen, Einstellungen, Werkzeuge und Begriffe. Was nicht mehr stimmt, wird
+korrigiert oder gelöscht. Es beschreibt nur, was im Code wirklich existiert. Die Checkliste
+dafür steht im Handbuch selbst in Abschnitt 12.
 
 **Baue nur, was im Steckbrief steht. Keine Vorarbeit für spätere Features.**

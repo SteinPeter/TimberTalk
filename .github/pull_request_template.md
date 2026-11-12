@@ -31,4 +31,5 @@ uv run timbertalk
 - [ ] `uv run ruff check .` und `uv run ruff format --check .` sind grün
 - [ ] `uv run pytest` ist grün
 - [ ] Steckbrief vorhanden und die Abnahmepunkte stimmen
+- [ ] `docs/handbuch.md` beschreibt den neuen Stand
 - [ ] Zeile in `docs/ki-nutzung.md` ergänzt
