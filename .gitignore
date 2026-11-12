@@ -220,7 +220,11 @@ __marimo__/
 .streamlit/secrets.toml
 
 # TimberTalk
-core/data/
+# Die Datenbank und alles andere im Datenordner gehören nicht ins Repo.
+backend/data/
 *.db
 *.db-wal
 *.db-shm
+# Eigene Einstellungen (Vorlage: backend/.env.example) und die virtuelle Umgebung.
+# .env, .venv und die Caches von ruff, pytest und Python sind oben schon erfasst.
+backend/.env

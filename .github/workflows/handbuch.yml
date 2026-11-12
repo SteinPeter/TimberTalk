@@ -1,0 +1,46 @@
+# Prüft bei jedem Pull Request, ob das Code-Handbuch mitgepflegt wurde:
+# Ändert sich etwas unter backend/ oder frontend/, muss sich auch docs/handbuch.md ändern.
+# Ausnahme: Der Pull Request trägt das Label "handbuch-unveraendert" – zum Beispiel,
+# wenn nur ein Test umbenannt wurde und das Handbuch wirklich nichts Neues zu sagen hat.
+
+name: Handbuch
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+# Mehr Rechte braucht die Prüfung nicht.
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.pull_request.labels.*.name, 'handbuch-unveraendert') }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Den ganzen Verlauf holen, damit wir mit dem Zielzweig vergleichen können.
+          fetch-depth: 0
+
+      - name: Geänderte Dateien mit dem Handbuch abgleichen
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          changed=$(git diff --name-only "$BASE...$HEAD")
+          echo "Geänderte Dateien:"
+          echo "$changed"
+
+          if ! echo "$changed" | grep -qE '^(backend|frontend)/'; then
+            echo "Kein Code geändert – das Handbuch muss nicht angepasst werden."
+            exit 0
+          fi
+
+          if echo "$changed" | grep -qx 'docs/handbuch.md'; then
+            echo "Code und Handbuch wurden beide geändert."
+            exit 0
+          fi
+
+          echo "::error file=docs/handbuch.md::Code unter backend/ oder frontend/ wurde geändert, docs/handbuch.md aber nicht. Bitte das Handbuch nachziehen (Checkliste in Abschnitt 12) oder das Label 'handbuch-unveraendert' setzen."
+          exit 1

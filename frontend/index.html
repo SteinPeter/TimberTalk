@@ -1,0 +1,25 @@
+<!doctype html>
+<!-- Die Startseite. Sie zeigt, dass TimberTalk läuft, und holt den Status bei der API. -->
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>TimberTalk</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <main>
+      <h1>TimberTalk läuft</h1>
+      <p class="hint">Betriebssoftware für Zimmereien – Feature F0 „Skelett“.</p>
+
+      <dl class="status">
+        <dt>Backend</dt>
+        <dd id="backend-status">wird geprüft …</dd>
+        <dt>Datenbank</dt>
+        <dd id="database-status">wird geprüft …</dd>
+      </dl>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
