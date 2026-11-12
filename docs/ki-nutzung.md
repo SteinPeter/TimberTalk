@@ -1,6 +1,9 @@
-# KI-Nutzung im Projekt TimberTalk Core
+# KI-Nutzung im Projekt TimberTalk
 
 Protokoll der mit KI-Unterstützung erzeugten Code-Anteile (für den Abschlussbericht).
+
+Die Zeilen bis einschließlich 2026-11-11 gehören zu Block 1. Dieser Code liegt nicht mehr im
+Arbeitsstand; er ist im Branch `archiv/block1` und im Tag `archiv-block1-2026-11` aufbewahrt.
 
 | Datum | Modell | Aufgabe |
 | --- | --- | --- |
