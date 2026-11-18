@@ -32,4 +32,5 @@ uv run timbertalk
 - [ ] `uv run pytest` ist grün
 - [ ] Steckbrief vorhanden und die Abnahmepunkte stimmen
 - [ ] `docs/handbuch.md` beschreibt den neuen Stand
+- [ ] Oberfläche geändert? Mit dem Skill `apple-design` durchgesehen, Seiten unter „Was ist neu zu verstehen?“ genannt
 - [ ] Zeile in `docs/ki-nutzung.md` ergänzt
