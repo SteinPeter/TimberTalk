@@ -5,7 +5,7 @@ Projekt versteht, wie das Programm aufgebaut ist und was jede Datei tut. Es wäc
 Feature mit und beschreibt immer den **aktuellen** Stand des Arbeitszweigs – nicht Pläne und nicht
 den alten Code aus Block 1.
 
-> **Stand:** Feature F0 „Skelett“ · zuletzt aktualisiert am 2026-11-12
+> **Stand:** Feature F0b „Reiter für die Funktionsbereiche“ · zuletzt aktualisiert am 2026-11-18
 
 Wer nur wissen will, *was* ein Feature können soll, liest den Steckbrief in `docs/features/`.
 Wer wissen will, *wie* der Code das umsetzt, liest hier.
@@ -45,13 +45,14 @@ Befehl im Ordner `backend/`: `uv run timbertalk`
 4. `run()` startet den Webserver `uvicorn` mit der FastAPI-App `app` aus `main.py`.
 5. Beim Hochfahren der App läuft `lifespan()` in `main.py` und ruft `create_tables()` aus `db.py`.
    Dabei wird die Datenbankdatei angelegt (falls nötig) und fehlende Tabellen entstehen.
-6. Der Browser lädt `/`. Das Backend liefert `frontend/index.html` aus.
+6. Der Browser lädt `/`. Das Backend liefert `frontend/index.html` aus; `app.js` zeigt den
+   Reiter „Start“ (Abschnitt 7).
 
 ---
 
 ## 3. Was bei einer Anfrage passiert
 
-Beispiel: die Startseite zeigt den Zustand von Backend und Datenbank.
+Beispiel: der Reiter „Start“ zeigt den Zustand von Backend und Datenbank.
 
 1. Der Browser lädt `index.html`, darin wird `app.js` als Modul geladen.
 2. `app.js` holt die API-Adresse aus `config.js` (leer = dieselbe Adresse wie die Seite) und ruft
@@ -96,16 +97,16 @@ in `.gitignore`.
 | `timbertalk/settings.py` | Einstellungen (Datenbankadresse, Host, Port) aus Umgebung oder `.env`. |
 | `timbertalk/db.py` | Verbindung zur Datenbank, Anlegen der Tabellen, Gesundheitsprüfung. |
 | `timbertalk/features/` | Hier entsteht je Feature ein eigener Ordner. Noch leer. |
-| `tests/test_health.py` | Tests für `/api/health` und die Startseite. |
+| `tests/test_health.py` | Tests für `/api/health`, die Startseite und ihre Reiter. |
 
 ### `frontend/`
 
 | Datei | Wofür |
 | --- | --- |
-| `index.html` | Die Startseite „TimberTalk läuft“ mit zwei Statusfeldern. |
-| `app.js` | Holt `/api/health` und schreibt das Ergebnis in die Seite. |
+| `index.html` | Die einzige Seite: Reiterleiste und ein `<section>` je Bereich. Der Reiter „Start“ heißt in der Überschrift „Übersicht“ und zeigt „TimberTalk läuft“ mit dem Status von Backend und Datenbank. |
+| `app.js` | Schaltet die Reiter um und holt `/api/health` für den Reiter „Start“. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
-| `style.css` | Ein paar Zeilen Gestaltung, damit die Seite lesbar ist. |
+| `style.css` | Gestaltung: Farben als Variablen für hell, dunkel und erhöhten Kontrast, Reiterleiste, Bereiche, Statuskasten. |
 
 ### `docs/`
 
@@ -114,6 +115,7 @@ in `.gitignore`.
 | `handbuch.md` | Dieses Handbuch. |
 | `features/_vorlage.md` | Vorlage für einen neuen Steckbrief. |
 | `features/F00-skelett.md` | Steckbrief von F0. |
+| `features/F00b-reiter.md` | Steckbrief von F0b. |
 | `ki-nutzung.md` | Protokoll, welche Teile mit KI-Hilfe entstanden sind. |
 | `archiv/` | Unterlagen aus Block 1, nur zum Nachschlagen. |
 
@@ -200,6 +202,49 @@ ihren Endpunkten und Tabellen ergänzt (Abschnitt 10).*
   `import` einbinden kann. Es nutzt nur `fetch` und `textContent`.
 - Kommt keine Antwort, zeigt die Seite „nicht erreichbar“ mit dem Grund statt einer leeren Seite.
 
+### Reiter
+
+Die Oberfläche ist **eine** Seite (`index.html`). Oben steht die Reiterleiste
+(`<nav class="tabs">`), darunter je Bereich ein `<section class="panel">`:
+
+| Reiter | Adresse | Inhalt |
+| --- | --- | --- |
+| Start | `/#start` (auch `/`) | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
+| Kalender | `/#kalender` | noch leer – ein Satz sagt, was hier hinkommt |
+| Projekte | `/#projekte` | noch leer – ein Satz sagt, was hier hinkommt |
+| Kunden | `/#kunden` | noch leer – ein Satz sagt, was hier hinkommt |
+| Buchungen | `/#buchungen` | noch leer – ein Satz sagt, was hier hinkommt |
+| Einstellungen | `/#einstellungen` | noch leer – ein Satz sagt, was hier hinkommt |
+
+So funktioniert das Umschalten:
+
+1. Jeder Reiter ist ein normaler Link auf `#<id>`. Ein Klick ändert nur den Teil hinter `#` in
+   der Adresse; die Seite wird nicht neu geladen und der Server wird nicht gefragt.
+2. Der Browser meldet die Änderung mit dem Ereignis `hashchange` – auch bei Zurück und Vor.
+3. `showTabFromAddress()` in `app.js` liest den Namen hinter `#`, blendet den `<section>` mit
+   dieser `id` ein und alle anderen aus (Attribut `hidden`). Den passenden Link markiert es mit
+   `aria-current="page"`; `style.css` hebt ihn darüber hervor.
+4. Ist der Name leer oder unbekannt, wird der Reiter `start` gezeigt.
+
+Weil der Reiter in der Adresse steht, öffnen Neu laden und Lesezeichen denselben Bereich.
+
+**Einen Reiter ergänzen:** einen Link `<a href="#<id>">` in die Leiste und ein
+`<section id="<id>" class="panel" hidden>` in `<main>` setzen. `app.js` muss dafür nicht
+geändert werden; den Test in `tests/test_health.py` um die neue `id` ergänzen.
+
+### Farben, hell und dunkel
+
+Alle Farben stehen als CSS-Variablen (`--text`, `--muted`, `--page`, `--card`, `--line`,
+`--accent`) oben in `style.css`. Der Rest der Datei benutzt nur diese Variablen, nie feste Werte.
+
+- **Hell oder dunkel** richtet sich nach der Einstellung des Betriebssystems. Der Block
+  `@media (prefers-color-scheme: dark)` belegt die Variablen dafür neu. Einen eigenen Schalter in
+  TimberTalk gibt es bewusst nicht (Vorgabe aus dem Skill `apple-design`, `dark-mode.md`).
+- **Erhöhter Kontrast** (`@media (prefers-contrast: more)`) macht Grautöne und Rahmen kräftiger,
+  für hell und dunkel getrennt.
+- Hinter jeder Textfarbe steht im Kommentar ihr Kontrast zum Hintergrund. Untergrenze ist 4,5:1.
+  Wer eine Farbe ändert, rechnet den Wert neu aus und trägt ihn ein.
+
 ---
 
 ## 8. Tests, Prüfungen und CI
@@ -238,6 +283,7 @@ Alle Befehle laufen im Ordner `backend/`.
 | pydantic-settings | Liest Einstellungen aus Umgebung und `.env`. |
 | pytest, httpx | Tests; httpx braucht der `TestClient`. |
 | ruff | Lint und Formatierung. |
+| Skill `apple-design` | Gestaltungsmaßstab für alle Oberflächen (Apple Human Interface Guidelines) für Claude Code. Nicht im Repository; Installation und festgelegter Commit stehen in `CLAUDE.md` unter „Gestaltung der Oberflächen“. |
 
 ---
 
@@ -246,6 +292,7 @@ Alle Befehle laufen im Ordner `backend/`.
 | Nr. | Name | Steckbrief | Neue Endpunkte | Neue Tabellen |
 | --- | --- | --- | --- | --- |
 | F0 | Skelett | `docs/features/F00-skelett.md` | `GET /api/health` | – |
+| F0b | Reiter für die Funktionsbereiche | `docs/features/F00b-reiter.md` | – | – |
 
 ---
 
@@ -260,6 +307,8 @@ Alle Befehle laufen im Ordner `backend/`.
 | Lifespan | Code, der beim Start und beim Beenden der App einmal läuft. |
 | Migration | Schrittweise Änderung bestehender Tabellen. Kommt mit F3. |
 | CI | Automatische Prüfung auf GitHub bei jedem Pull Request. |
+| Dunkelmodus | Dunkle Darstellung, die das Betriebssystem einschaltet. Die Seite folgt ihr über `prefers-color-scheme`. |
+| Reiter | Ein Bereich der Oberfläche (Start, Kalender …), erreichbar über die Leiste oben und die Adresse `/#<id>`. |
 
 Fachbegriffe und ihre Namen im Code (Kunde → `customer` usw.) stehen im Glossar der `README.md`.
 

@@ -1,5 +1,6 @@
 <!doctype html>
-<!-- Die Startseite. Sie zeigt, dass TimberTalk läuft, und holt den Status bei der API. -->
+<!-- Die einzige Seite von TimberTalk. Oben die Reiterleiste, darunter ein Bereich je Reiter.
+     app.js blendet immer nur den Bereich ein, dessen id hinter dem # in der Adresse steht. -->
 <html lang="de">
   <head>
     <meta charset="utf-8" />
@@ -8,16 +9,58 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main>
-      <h1>TimberTalk läuft</h1>
-      <p class="hint">Betriebssoftware für Zimmereien – Feature F0 „Skelett“.</p>
+    <header class="topbar">
+      <span class="brand">TimberTalk</span>
+      <!-- Ein neuer Reiter: hier ein Link mit href="#<id>" und unten ein <section id="<id>">. -->
+      <nav class="tabs" aria-label="Bereiche">
+        <a href="#start">Start</a>
+        <a href="#kalender">Kalender</a>
+        <a href="#projekte">Projekte</a>
+        <a href="#kunden">Kunden</a>
+        <a href="#buchungen">Buchungen</a>
+        <a href="#einstellungen">Einstellungen</a>
+      </nav>
+    </header>
 
-      <dl class="status">
-        <dt>Backend</dt>
-        <dd id="backend-status">wird geprüft …</dd>
-        <dt>Datenbank</dt>
-        <dd id="database-status">wird geprüft …</dd>
-      </dl>
+    <main>
+      <section id="start" class="panel">
+        <h1>Übersicht</h1>
+        <p class="hint">Betriebssoftware für Zimmereien.</p>
+
+        <dl class="status">
+          <dt>Programm</dt>
+          <dd>TimberTalk läuft</dd>
+          <dt>Backend</dt>
+          <dd id="backend-status">wird geprüft …</dd>
+          <dt>Datenbank</dt>
+          <dd id="database-status">wird geprüft …</dd>
+        </dl>
+      </section>
+
+      <section id="kalender" class="panel" hidden>
+        <h1>Kalender</h1>
+        <p class="empty">Hier erscheinen bald Termine und Einsätze auf den Baustellen. Dieser Bereich ist noch im Aufbau.</p>
+      </section>
+
+      <section id="projekte" class="panel" hidden>
+        <h1>Projekte</h1>
+        <p class="empty">Hier erscheinen bald Ihre Projekte mit Stand und Kosten. Dieser Bereich ist noch im Aufbau.</p>
+      </section>
+
+      <section id="kunden" class="panel" hidden>
+        <h1>Kunden</h1>
+        <p class="empty">Hier erscheinen bald Ihre Kunden mit Adressen und Projekten. Dieser Bereich ist noch im Aufbau.</p>
+      </section>
+
+      <section id="buchungen" class="panel" hidden>
+        <h1>Buchungen</h1>
+        <p class="empty">Hier erscheinen bald die gebuchten Stunden, Materialien und Fahrten. Dieser Bereich ist noch im Aufbau.</p>
+      </section>
+
+      <section id="einstellungen" class="panel" hidden>
+        <h1>Einstellungen</h1>
+        <p class="empty">Hier stellen Sie bald Ihren Betrieb ein, etwa Name, Adresse und Preise. Dieser Bereich ist noch im Aufbau.</p>
+      </section>
     </main>
 
     <script type="module" src="app.js"></script>

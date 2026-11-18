@@ -22,3 +22,12 @@ def test_startseite_zeigt_dass_timbertalk_laeuft() -> None:
         response = client.get("/")
     assert response.status_code == 200
     assert "TimberTalk läuft" in response.text
+
+
+def test_startseite_hat_einen_reiter_je_bereich() -> None:
+    # Zu jedem Reiter gehören ein Link "#<id>" in der Leiste und ein Bereich mit dieser id.
+    with TestClient(app) as client:
+        html = client.get("/").text
+    for tab in ["start", "kalender", "projekte", "kunden", "buchungen", "einstellungen"]:
+        assert f'href="#{tab}"' in html
+        assert f'<section id="{tab}"' in html
