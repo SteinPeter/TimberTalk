@@ -1,5 +1,6 @@
 # Prüft bei jedem Pull Request, ob das Code-Handbuch mitgepflegt wurde:
-# Ändert sich etwas unter backend/ oder frontend/, muss sich auch docs/handbuch.md ändern.
+# Ändert sich etwas unter backend/ oder frontend/, muss sich auch das Handbuch ändern –
+# entweder docs/handbuch.md (Grundgerüst) oder ein Kapitel unter docs/handbuch/ (ein Feature).
 # Ausnahme: Der Pull Request trägt das Label "handbuch-unveraendert" – zum Beispiel,
 # wenn nur ein Test umbenannt wurde und das Handbuch wirklich nichts Neues zu sagen hat.
 
@@ -37,10 +38,10 @@ jobs:
             exit 0
           fi
 
-          if echo "$changed" | grep -qx 'docs/handbuch.md'; then
+          if echo "$changed" | grep -qE '^docs/handbuch(\.md|/)'; then
             echo "Code und Handbuch wurden beide geändert."
             exit 0
           fi
 
-          echo "::error file=docs/handbuch.md::Code unter backend/ oder frontend/ wurde geändert, docs/handbuch.md aber nicht. Bitte das Handbuch nachziehen (Checkliste in Abschnitt 12) oder das Label 'handbuch-unveraendert' setzen."
+          echo "::error file=docs/handbuch.md::Code unter backend/ oder frontend/ wurde geändert, das Handbuch aber nicht. Bitte docs/handbuch.md oder das Kapitel des Features unter docs/handbuch/ nachziehen (Checkliste in Abschnitt 12) oder das Label 'handbuch-unveraendert' setzen."
           exit 1

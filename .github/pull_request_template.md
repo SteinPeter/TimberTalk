@@ -31,6 +31,6 @@ uv run timbertalk
 - [ ] `uv run ruff check .` und `uv run ruff format --check .` sind grün
 - [ ] `uv run pytest` ist grün
 - [ ] Steckbrief vorhanden und die Abnahmepunkte stimmen
-- [ ] `docs/handbuch.md` beschreibt den neuen Stand
+- [ ] Handbuch beschreibt den neuen Stand: Kapitel `docs/handbuch/<feature>.md` (Feature) oder `docs/handbuch.md` (Grundgerüst)
 - [ ] Oberfläche geändert? Mit dem Skill `apple-design` durchgesehen, Seiten unter „Was ist neu zu verstehen?“ genannt
-- [ ] Zeile in `docs/ki-nutzung.md` ergänzt
+- [ ] KI-Nutzung als eigene Datei `docs/ki-nutzung/<datum>-<thema>.md` eingetragen
