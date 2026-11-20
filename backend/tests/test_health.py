@@ -1,4 +1,5 @@
-# Prüft, dass die Startseite erscheint und /api/health Backend und Datenbank meldet.
+# Prüft, dass /api/health Backend und Datenbank meldet und das Frontend mit allen Reitern
+# ausgeliefert wird.
 
 import os
 
@@ -17,17 +18,33 @@ def test_health_meldet_backend_und_datenbank() -> None:
     assert response.json() == {"status": "ok", "database": "ok"}
 
 
-def test_startseite_zeigt_dass_timbertalk_laeuft() -> None:
+# Die Reiter in der Reihenfolge der Leiste. Ein neuer Reiter wird hier ergänzt.
+TABS = ["start", "kalender", "projekte", "kunden", "buchungen", "einstellungen"]
+
+
+def test_startseite_laedt_das_geruest() -> None:
+    # index.html ist nur das Gerüst; Reiter und Inhalte kommen aus app.js und reiter.js.
     with TestClient(app) as client:
         response = client.get("/")
+    assert response.status_code == 200
+    assert '<nav class="tabs"' in response.text
+    assert '<script type="module" src="app.js">' in response.text
+
+
+def test_reiter_start_zeigt_dass_timbertalk_laeuft() -> None:
+    with TestClient(app) as client:
+        response = client.get("/features/start/start.js")
     assert response.status_code == 200
     assert "TimberTalk läuft" in response.text
 
 
-def test_startseite_hat_einen_reiter_je_bereich() -> None:
-    # Zu jedem Reiter gehören ein Link "#<id>" in der Leiste und ein Bereich mit dieser id.
+def test_jeder_reiter_hat_ein_eigenes_modul() -> None:
+    # Zu jedem Reiter gehören eine Zeile in reiter.js und eine Datei features/<id>/<id>.js,
+    # die genau diese id exportiert.
     with TestClient(app) as client:
-        html = client.get("/").text
-    for tab in ["start", "kalender", "projekte", "kunden", "buchungen", "einstellungen"]:
-        assert f'href="#{tab}"' in html
-        assert f'<section id="{tab}"' in html
+        liste = client.get("/reiter.js").text
+        for tab in TABS:
+            assert f'"./features/{tab}/{tab}.js"' in liste
+            modul = client.get(f"/features/{tab}/{tab}.js")
+            assert modul.status_code == 200
+            assert f'export const id = "{tab}";' in modul.text

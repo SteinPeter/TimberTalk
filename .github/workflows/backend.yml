@@ -1,5 +1,6 @@
 # Prüft das Backend bei jedem Pull Request und bei jedem Push auf main:
-# Lint, Format und Tests. Läuft nur, wenn sich im Backend etwas geändert hat.
+# Lint, Format und Tests. Läuft nur, wenn sich im Backend oder Frontend etwas geändert hat –
+# die Tests prüfen auch, dass jeder Reiter im Frontend seine Datei hat.
 
 name: Backend
 
@@ -7,11 +8,13 @@ on:
   pull_request:
     paths:
       - "backend/**"
+      - "frontend/**"
       - ".github/workflows/backend.yml"
   push:
     branches: [main]
     paths:
       - "backend/**"
+      - "frontend/**"
       - ".github/workflows/backend.yml"
 
 # Mehr Rechte braucht die Prüfung nicht.

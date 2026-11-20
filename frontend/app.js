@@ -1,25 +1,71 @@
-// Schaltet zwischen den Reitern um und holt den Status bei der API.
-// Nur fetch und DOM, kein Framework, kein Bauschritt.
+// Baut die Reiterleiste aus reiter.js und schaltet zwischen den Reitern um.
+// Was ein Reiter zeigt, steht nicht hier, sondern in seiner Datei unter features/.
+// Nur DOM, kein Framework, kein Bauschritt.
 
-import { API_BASE } from "./config.js";
-
-// --- Reiter -----------------------------------------------------------------
+import { REITER } from "./reiter.js";
 
 const DEFAULT_TAB = "start";
-const tabLinks = document.querySelectorAll(".tabs a");
-const panels = document.querySelectorAll(".panel");
+const nav = document.querySelector(".tabs");
+const main = document.querySelector("main");
+
+// --- Gerüst aufbauen ----------------------------------------------------------
+
+// Für jeden Reiter ein Link in der Leiste und ein leerer Bereich in <main>.
+for (const reiter of REITER) {
+  const link = document.createElement("a");
+  link.href = `#${reiter.id}`;
+  link.textContent = reiter.title;
+  nav.append(link);
+
+  const panel = document.createElement("section");
+  panel.id = reiter.id;
+  panel.className = "panel";
+  panel.hidden = true;
+  main.append(panel);
+}
+
+// --- Bereich füllen -------------------------------------------------------------
+
+// Reiter, deren render() schon aufgerufen wurde. Jeder Bereich wird nur einmal aufgebaut.
+const rendered = new Set();
+
+// Ruft render() des Reiters beim ersten Öffnen auf. Geht dabei etwas schief, zeigt nur
+// dieser Bereich eine Meldung – die anderen Reiter funktionieren weiter.
+async function renderOnce(reiter, panel) {
+  if (rendered.has(reiter.id)) {
+    return;
+  }
+  rendered.add(reiter.id);
+  try {
+    await reiter.render(panel);
+  } catch (error) {
+    console.error(`Reiter "${reiter.id}" konnte nicht aufgebaut werden:`, error);
+    const heading = document.createElement("h1");
+    heading.textContent = reiter.title;
+    const message = document.createElement("p");
+    message.className = "empty";
+    message.textContent = `Dieser Bereich konnte nicht geladen werden (${error.message}).`;
+    panel.replaceChildren(heading, message);
+  }
+}
+
+// --- Umschalten -----------------------------------------------------------------
 
 // Zeigt den Bereich, dessen Name hinter dem # in der Adresse steht (z. B. #kalender).
 // Fehlt der Name oder gibt es ihn nicht, wird "start" gezeigt.
 function showTabFromAddress() {
   const wanted = window.location.hash.slice(1);
-  const known = [...panels].some((panel) => panel.id === wanted);
+  const known = REITER.some((reiter) => reiter.id === wanted);
   const current = known ? wanted : DEFAULT_TAB;
 
-  for (const panel of panels) {
-    panel.hidden = panel.id !== current;
+  for (const reiter of REITER) {
+    const panel = document.getElementById(reiter.id);
+    panel.hidden = reiter.id !== current;
+    if (reiter.id === current) {
+      renderOnce(reiter, panel);
+    }
   }
-  for (const link of tabLinks) {
+  for (const link of nav.querySelectorAll("a")) {
     if (link.getAttribute("href") === `#${current}`) {
       link.setAttribute("aria-current", "page");
     } else {
@@ -32,25 +78,3 @@ function showTabFromAddress() {
 // mit "hashchange". Dasselbe passiert bei Zurück und Vor.
 window.addEventListener("hashchange", showTabFromAddress);
 showTabFromAddress();
-
-// --- Status auf dem Reiter "Start" -------------------------------------------
-
-const backendStatus = document.getElementById("backend-status");
-const databaseStatus = document.getElementById("database-status");
-
-async function showHealth() {
-  try {
-    const response = await fetch(`${API_BASE}/api/health`);
-    if (!response.ok) {
-      throw new Error(`Antwort ${response.status}`);
-    }
-    const health = await response.json();
-    backendStatus.textContent = health.status === "ok" ? "antwortet" : health.status;
-    databaseStatus.textContent = health.database === "ok" ? "antwortet" : "antwortet nicht";
-  } catch (error) {
-    backendStatus.textContent = `nicht erreichbar (${error.message})`;
-    databaseStatus.textContent = "unbekannt";
-  }
-}
-
-showHealth();
