@@ -1,12 +1,16 @@
 // Der Reiter "Buchungen": gebuchte Stunden, Materialien und Fahrten.
-// Noch leer – das Feature, das diesen Bereich füllt, arbeitet nur in dieser Datei.
+// Jedes Feature, das hier etwas zeigt, baut seinen Abschnitt in einer eigenen Datei in diesem
+// Ordner und wird unten mit einer Zeile aufgerufen.
+
+import { renderMaterialBooking } from "./materials-booking.js";
 
 export const id = "bookings";
 export const title = "Buchungen";
 
-export function render(panel) {
+export async function render(panel) {
   panel.innerHTML = `
     <h1>Buchungen</h1>
-    <p class="empty">Hier erscheinen bald die gebuchten Stunden, Materialien und Fahrten. Dieser Bereich ist noch im Aufbau.</p>
+    <p class="hint">Material und Fahrten auf ein Projekt buchen und die Kosten ansehen.</p>
   `;
+  await renderMaterialBooking(panel);
 }

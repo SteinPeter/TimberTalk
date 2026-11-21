@@ -1,12 +1,18 @@
 // Der Reiter "Einstellungen": Name, Adresse und Preise des Betriebs.
-// Noch leer – das Feature, das diesen Bereich füllt, arbeitet nur in dieser Datei.
+// Jedes Feature, das hier etwas einstellen lässt, baut seinen Abschnitt in einer eigenen Datei in
+// diesem Ordner und wird unten mit einer Zeile aufgerufen.
+
+import { renderCompany } from "./materials-company.js";
+import { renderMaterialMaster } from "./materials-master.js";
 
 export const id = "settings";
 export const title = "Einstellungen";
 
-export function render(panel) {
+export async function render(panel) {
   panel.innerHTML = `
     <h1>Einstellungen</h1>
-    <p class="empty">Hier stellen Sie bald Ihren Betrieb ein, etwa Name, Adresse und Preise. Dieser Bereich ist noch im Aufbau.</p>
+    <p class="hint">Stammdaten der Abrechnung und Materialstamm mit Preisen.</p>
   `;
+  await renderCompany(panel);
+  await renderMaterialMaster(panel);
 }
