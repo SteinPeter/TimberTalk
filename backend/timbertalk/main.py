@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 
 from timbertalk.db import create_tables, database_ok
+from timbertalk.features import load_features
 from timbertalk.settings import BACKEND_DIR, get_settings
 
 # Der Ordner frontend/ liegt neben backend/ im Hauptordner des Projekts.
@@ -30,6 +31,13 @@ app = FastAPI(title="TimberTalk", lifespan=lifespan)
 def health() -> dict[str, str]:
     """Meldet, ob das Backend erreichbar ist und ob die Datenbank antwortet."""
     return {"status": "ok", "database": "ok" if database_ok() else "fehler"}
+
+
+# Jedes Feature unter features/ bringt in seiner api.py einen Router mit. load_features()
+# findet sie selbst und lädt dabei auch die Tabellen aus models.py. Ein neues Feature
+# ändert main.py deshalb nicht.
+for router in load_features():
+    app.include_router(router)
 
 
 # Das Frontend sind einfache Dateien. Diese Zeile steht hinter der API,

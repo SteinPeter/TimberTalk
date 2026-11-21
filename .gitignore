@@ -228,3 +228,6 @@ backend/data/
 # Eigene Einstellungen (Vorlage: backend/.env.example) und die virtuelle Umgebung.
 # .env, .venv und die Caches von ruff, pytest und Python sind oben schon erfasst.
 backend/.env
+
+# Ordner-Infos von macOS
+.DS_Store

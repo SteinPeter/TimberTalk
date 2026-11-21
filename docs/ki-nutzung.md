@@ -2,6 +2,11 @@
 
 Protokoll der mit KI-Unterstützung erzeugten Code-Anteile (für den Abschlussbericht).
 
+**Neue Einträge kommen nicht mehr in diese Datei**, sondern als eigene kleine Datei nach
+`docs/ki-nutzung/<datum>-<thema>.md` (eine Tabelle wie unten). So hängen nicht mehrere Pull
+Requests gleichzeitig eine Zeile an dasselbe Dateiende. Für den Abschlussbericht werden diese Datei
+und der Ordner zusammen gelesen. Diese Tabelle hier ist der Stand bis 2026-11-20.
+
 Die Zeilen bis einschließlich 2026-11-11 gehören zu Block 1. Dieser Code liegt nicht mehr im
 Arbeitsstand; er ist im Branch `archiv/block1` und im Tag `archiv-block1-2026-11` aufbewahrt.
 
@@ -21,3 +26,7 @@ Arbeitsstand; er ist im Branch `archiv/block1` und im Tag `archiv-block1-2026-11
 | 2026-11-11 | Claude Opus 5 (Claude Code) | Entwickler-Oberfläche „Werkbank“ unter `/dev`: statische Dateien als REST-Client, nur in der lokalen Installation; dazu `GET /bookings/detail-schemas`, damit Clients die Detailfelder je Buchungsart kennen |
 | 2026-11-12 | Claude Opus 5 (Claude Code) | Block 1 nach `archiv/block1` ausgelagert; Neustart mit Feature F0 „Skelett“: Backend (`main.py`, `settings.py`, `db.py`, `/api/health`), Frontend aus HTML/JS ohne Bauschritt, Test, CI-Workflow, `CLAUDE.md`, `README.md` und Steckbrief-Vorlage |
 | 2026-11-12 | Claude Opus 5.5 (Claude Code) | Code-Handbuch `docs/handbuch.md` für die gesamte Codebasis; Pflegeregel in `CLAUDE.md`, Hinweis in `README.md` und Punkt in der PR-Vorlage; CI-Prüfung `handbuch.yml`, die bei Code-Änderungen ohne Handbuch-Änderung fehlschlägt |
+| 2026-11-18 | Claude Opus 5.5 (Claude Code) | F0b „Reiter für die Funktionsbereiche“: Reiterleiste mit Start, Kalender, Projekte, Kunden, Buchungen, Einstellungen über `#` in der Adresse; Steckbrief, Test, Handbuch |
+| 2026-11-18 | Claude Opus 5.5 (Claude Code) | Skill `apple-design` (Commit `91e1566`) als Gestaltungsmaßstab in `CLAUDE.md`, Handbuch und PR-Vorlage verankert |
+| 2026-11-18 | Claude Opus 5.5 (Claude Code) | Durchsicht der Reiter-Oberfläche mit `apple-design` und Befunde behoben: Dunkelmodus, erhöhter Kontrast, Texte der leeren Bereiche, Überschrift „Übersicht“ |
+| 2026-11-20 | Claude Opus 5.5 (Claude Code) | F0c „Ein Modul je Reiter“: Frontend aufgeteilt in `reiter.js`, `shared/api.js` und `features/<id>/<id>.js` je Reiter, damit Backend und Reiter eines Features parallel von einer Person gebaut werden; Steckbrief, Tests, `CLAUDE.md`, Steckbrief-Vorlage, CI-Pfade, Handbuch |

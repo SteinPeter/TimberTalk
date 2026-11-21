@@ -1,5 +1,7 @@
 <!doctype html>
-<!-- Die Startseite. Sie zeigt, dass TimberTalk läuft, und holt den Status bei der API. -->
+<!-- Die einzige Seite von TimberTalk – nur das Gerüst: oben die Reiterleiste, darunter <main>.
+     Reiter und Bereiche trägt app.js aus der Liste in reiter.js ein. Was ein Reiter zeigt,
+     steht in seiner eigenen Datei unter features/<id>/<id>.js. -->
 <html lang="de">
   <head>
     <meta charset="utf-8" />
@@ -8,17 +10,12 @@
     <link rel="stylesheet" href="style.css" />
   </head>
   <body>
-    <main>
-      <h1>TimberTalk läuft</h1>
-      <p class="hint">Betriebssoftware für Zimmereien – Feature F0 „Skelett“.</p>
+    <header class="topbar">
+      <span class="brand">TimberTalk</span>
+      <nav class="tabs" aria-label="Bereiche"></nav>
+    </header>
 
-      <dl class="status">
-        <dt>Backend</dt>
-        <dd id="backend-status">wird geprüft …</dd>
-        <dt>Datenbank</dt>
-        <dd id="database-status">wird geprüft …</dd>
-      </dl>
-    </main>
+    <main></main>
 
     <script type="module" src="app.js"></script>
   </body>

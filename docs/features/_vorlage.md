@@ -25,6 +25,11 @@ Im Meeting wird genau das vorgeführt:
 <Was in diesem Feature zum ersten Mal vorkommt und erklärt werden muss –
 eine Technik, ein Begriff, eine Regel. Sonst: „nichts Neues“.>
 
+## Reiter
+
+<Welcher Reiter das Feature zeigt: `frontend/features/<id>/<id>.js` – oder „keiner“.
+Ein neuer Reiter wird zusätzlich in `frontend/reiter.js` eingetragen.>
+
 ## Pate
 
 <Name: wer das Feature im Meeting vorführt und Fragen dazu beantwortet.>

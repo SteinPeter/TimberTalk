@@ -26,7 +26,8 @@ docs/        Steckbriefe der Features, Archivunterlagen, KI-Nutzung.
 
 Wir bauen Feature für Feature. Was ein Feature enthält, steht in seinem Steckbrief unter
 `docs/features/`; die Regeln für den Code stehen in `CLAUDE.md`. Wie der Code aufgebaut ist und
-was jede Datei tut, erklärt das Code-Handbuch `docs/handbuch.md`.
+was jede Datei tut, erklärt das Code-Handbuch `docs/handbuch.md`; jedes fachliche Feature hat
+dazu ein eigenes Kapitel unter `docs/handbuch/`.
 
 ## Glossar
 

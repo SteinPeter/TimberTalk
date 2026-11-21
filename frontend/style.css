@@ -1,17 +1,101 @@
-/* Ein paar Zeilen, damit die Seite lesbar ist. Mehr braucht F0 nicht. */
+/* Gestaltung der Seite: Reiterleiste oben, darunter der gewählte Bereich.
+   Alle Farben stehen als Variablen hier oben – je einmal für hell, dunkel und erhöhten Kontrast.
+   Hell oder dunkel folgt der Einstellung des Betriebssystems; einen eigenen Schalter gibt es nicht.
+   Kontrast von Text zu Hintergrund steht jeweils dahinter (mindestens 4,5:1, Ziel 7:1). */
+
+:root {
+  color-scheme: light dark;
+  --text: #22201d; /* 15,3:1 auf --page */
+  --muted: #6b6560; /* 5,4:1 auf --page */
+  --page: #faf8f5;
+  --card: #ffffff;
+  --line: #e3ded7;
+  --accent: #8a5a2b; /* 5,9:1 auf --card */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --text: #f2eee9; /* 15,0:1 auf --page */
+    --muted: #b5ada4; /* 7,8:1 auf --page */
+    --page: #1c1a18;
+    --card: #272421;
+    --line: #3d3833;
+    --accent: #d6a06a; /* 6,7:1 auf --card */
+  }
+}
+
+/* Erhöhter Kontrast (Einstellung im Betriebssystem): kräftigere Grautöne und Rahmen. */
+@media (prefers-contrast: more) {
+  :root {
+    --muted: #4f4a45; /* 8,3:1 auf --page */
+    --line: #8f877e; /* 3,3:1 auf --page */
+  }
+}
+
+@media (prefers-contrast: more) and (prefers-color-scheme: dark) {
+  :root {
+    --muted: #d4cdc5; /* 11,0:1 auf --page */
+    --line: #8a8279; /* 4,6:1 auf --page */
+  }
+}
 
 body {
   margin: 0;
-  padding: 2.5rem 1rem;
   font-family: system-ui, sans-serif;
   line-height: 1.5;
-  color: #22201d;
-  background: #faf8f5;
+  color: var(--text);
+  background: var(--page);
 }
 
+/* --- Reiterleiste --- */
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 2rem;
+  padding: 0 1rem;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  font-weight: 700;
+  padding: 0.75rem 0;
+}
+
+/* Auf schmalen Bildschirmen brechen die Reiter in eine zweite Zeile um. */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 0.25rem;
+}
+
+.tabs a {
+  padding: 0.75rem 0.75rem;
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+  border-bottom: 3px solid transparent;
+}
+
+.tabs a:hover {
+  color: var(--text);
+}
+
+/* Der gewählte Reiter: app.js setzt aria-current="page". */
+.tabs a[aria-current="page"] {
+  color: var(--text);
+  font-weight: 600;
+  border-bottom-color: var(--accent);
+}
+
+/* --- Bereiche --- */
+
 main {
-  max-width: 32rem;
+  max-width: 48rem;
   margin: 0 auto;
+  padding: 2rem 1rem;
 }
 
 h1 {
@@ -21,17 +105,27 @@ h1 {
 
 .hint {
   margin: 0 0 2rem;
-  color: #6b6560;
+  color: var(--muted);
+}
+
+.empty {
+  margin: 1rem 0 0;
+  padding: 2rem 1.25rem;
+  color: var(--muted);
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 0.5rem;
 }
 
 .status {
   display: grid;
   grid-template-columns: auto 1fr;
   gap: 0.5rem 1.5rem;
+  max-width: 32rem;
   margin: 0;
   padding: 1rem 1.25rem;
-  background: #ffffff;
-  border: 1px solid #e3ded7;
+  background: var(--card);
+  border: 1px solid var(--line);
   border-radius: 0.5rem;
 }
 

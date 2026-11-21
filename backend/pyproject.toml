@@ -38,5 +38,6 @@ target-version = "py312"
 select = ["E", "W", "F", "I", "UP", "B", "SIM"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+# Tests liegen in tests/ (Grundlagen) und neben jedem Feature in timbertalk/features/<name>/.
+testpaths = ["tests", "timbertalk/features"]
 addopts = "-q"
