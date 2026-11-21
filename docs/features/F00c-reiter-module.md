@@ -9,7 +9,7 @@ derselben Person parallel zu den anderen Features gebaut werden können.
 
 Für ihn ändert sich nichts: Er sieht dieselbe Reiterleiste mit denselben Bereichen wie nach F0b.
 Der Umbau betrifft nur das Team. Wer ein Feature wie „Kunden“ baut, arbeitet im Frontend nur noch
-in seinem eigenen Ordner `frontend/features/kunden/` und kommt den anderen nicht in die Quere.
+in seinem eigenen Ordner `frontend/features/customers/` und kommt den anderen nicht in die Quere.
 
 ## Abnahme
 
@@ -33,7 +33,7 @@ Kein eigenes CSS je Reiter – das kommt mit dem ersten Feature, das es braucht.
 ## Neues Konzept fürs Team
 
 - **Ein Feature = Backend-Ordner + Reiter-Ordner, gebaut von derselben Person.** Der
-  Reiter-Ordner heißt wie der Reiter in der Adresse (`#kunden` → `frontend/features/kunden/`).
+  Reiter-Ordner heißt wie der Reiter in der Adresse (`#customers` → `frontend/features/customers/`).
   Welcher Reiter zu einem Feature gehört, steht in dessen Steckbrief unter „Reiter“.
 - **Ein Reiter-Modul exportiert drei Dinge:** `id` (Name hinter `#`), `title` (Text in der Leiste)
   und `render(panel)` (füllt den Bereich, wenn er zum ersten Mal geöffnet wird).

@@ -59,7 +59,7 @@ geändert:
   `api.py`. So kann jede Person ihr Feature intern umbauen, ohne andere zu brechen.
 
 Backend und Reiter eines Features baut **dieselbe Person** – parallel zu den anderen Features.
-Der Reiter-Ordner heißt wie der Reiter in der Adresse (`#kunden` → `frontend/features/kunden/`);
+Der Reiter-Ordner heißt wie der Reiter in der Adresse (`#customers` → `frontend/features/customers/`);
 welcher Reiter zu einem Feature gehört, steht im Steckbrief unter „Reiter“.
 
 Im Frontend arbeitet ein Feature nur in seinem eigenen Ordner. Gemeinsame Dateien werden nur
@@ -68,7 +68,7 @@ dafür angefasst:
 - `frontend/reiter.js` – eine Zeile, wenn ein ganz neuer Reiter dazukommt.
 - `frontend/shared/api.js` – alle Abfragen an die API laufen über `getJson()`.
 - `frontend/style.css` – das gemeinsame Aussehen. Eigene CSS-Klassen eines Reiters beginnen mit
-  `<id>-`, z. B. `kunden-liste`, damit sie sich nicht mit anderen Reitern überschneiden.
+  `<id>-`, z. B. `customers-list`, damit sie sich nicht mit anderen Reitern überschneiden.
 
 Daten aus der API kommen mit `textContent` in die Seite, nie über `innerHTML` – sonst könnte ein
 Kundenname wie `<b>` die Seite verändern. `innerHTML` nur für festen Text aus der eigenen Datei.

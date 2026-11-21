@@ -1,6 +1,6 @@
 # F<nr> – <Name des Features> (Handbuch-Kapitel)
 
-<!-- Kopieren nach docs/handbuch/F<nr>-<name>.md, z. B. F03-kunden.md.
+<!-- Kopieren nach docs/handbuch/F<nr>-<name>.md, z. B. F03-customers.md.
      Jedes fachliche Feature hat genau ein solches Kapitel. Es beschreibt, WIE der Code das
      Feature umsetzt – was es können soll, steht im Steckbrief unter docs/features/.
      Das allgemeine Handbuch docs/handbuch.md wird dafür nicht geändert. -->

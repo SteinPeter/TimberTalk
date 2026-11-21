@@ -1,7 +1,7 @@
 // Der Reiter "Kunden": Kunden mit Adressen und Projekten.
 // Noch leer – das Feature, das diesen Bereich füllt, arbeitet nur in dieser Datei.
 
-export const id = "kunden";
+export const id = "customers";
 export const title = "Kunden";
 
 export function render(panel) {

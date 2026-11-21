@@ -1,7 +1,7 @@
 // Der Reiter "Einstellungen": Name, Adresse und Preise des Betriebs.
 // Noch leer – das Feature, das diesen Bereich füllt, arbeitet nur in dieser Datei.
 
-export const id = "einstellungen";
+export const id = "settings";
 export const title = "Einstellungen";
 
 export function render(panel) {

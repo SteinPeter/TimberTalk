@@ -20,7 +20,7 @@ Im Meeting wird genau das vorgeführt:
 1. `uv run timbertalk` öffnet die Seite; der Reiter „Start“ ist gewählt und zeigt
    „TimberTalk läuft“ mit Backend und Datenbank auf „antwortet“.
 2. Ein Klick auf jeden der sechs Reiter zeigt den passenden Bereich und hebt den Reiter hervor.
-3. Die Adresse ändert sich mit, z. B. `http://127.0.0.1:8000/#kalender`. Neu laden oder die
+3. Die Adresse ändert sich mit, z. B. `http://127.0.0.1:8000/#planning`. Neu laden oder die
    Adresse direkt aufrufen öffnet denselben Reiter; Zurück im Browser springt zum vorigen Reiter.
 4. Eine unbekannte Adresse wie `/#gibtsnicht` zeigt den Reiter „Start“.
 5. Mit eingeschaltetem Dunkelmodus im Betriebssystem erscheint die Seite dunkel und gut lesbar.
