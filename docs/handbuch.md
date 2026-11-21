@@ -5,7 +5,7 @@ Projekt versteht, wie das Programm aufgebaut ist und was jede Datei tut. Es wäc
 Feature mit und beschreibt immer den **aktuellen** Stand des Arbeitszweigs – nicht Pläne und nicht
 den alten Code aus Block 1.
 
-> **Stand:** Feature F0d „Grundlagen für parallele Features“ · zuletzt aktualisiert am 2026-11-20
+> **Stand:** Feature F0d „Grundlagen für parallele Features“, Feature-Ordner angelegt · zuletzt aktualisiert am 2026-11-21
 
 Wer nur wissen will, *was* ein Feature können soll, liest den Steckbrief in `docs/features/`.
 Wer wissen will, *wie* der Code das umsetzt, liest hier – und für jedes fachliche Feature dessen
@@ -103,7 +103,7 @@ in `.gitignore`.
 | `timbertalk/settings.py` | Einstellungen (Datenbankadresse, Host, Port) aus Umgebung oder `.env`. |
 | `timbertalk/db.py` | Verbindung zur Datenbank, Sitzung je Anfrage (`get_session`), Anlegen der Tabellen, Gesundheitsprüfung. |
 | `timbertalk/features/__init__.py` | Findet die Feature-Ordner selbst und lädt ihre Tabellen und Router (`load_features()`). |
-| `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Noch keiner vorhanden. |
+| `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Zehn Ordner sind angelegt, aber noch ohne Inhalt (Tabelle in Abschnitt 6). |
 | `conftest.py` | Gemeinsame Test-Hilfen (Fixtures) `engine`, `session` und `client` für alle Tests. |
 | `tests/test_health.py` | Tests für `/api/health`, das Gerüst der Startseite und dass jeder Reiter-Ordner in `reiter.js` steht. |
 | `tests/test_grundlagen.py` | Tests für die Datenbank im Arbeitsspeicher und für `load_features()`. |
@@ -118,11 +118,11 @@ in `.gitignore`.
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
 | `shared/api.js` | `getJson(path)`: der gemeinsame Weg aller Reiter zur API. |
 | `features/start/start.js` | Reiter „Start“: Überschrift „Übersicht“, „TimberTalk läuft“ und der Status von Backend und Datenbank. |
-| `features/kalender/kalender.js` | Reiter „Kalender“, noch leer. |
-| `features/projekte/projekte.js` | Reiter „Projekte“, noch leer. |
-| `features/kunden/kunden.js` | Reiter „Kunden“, noch leer. |
-| `features/buchungen/buchungen.js` | Reiter „Buchungen“, noch leer. |
-| `features/einstellungen/einstellungen.js` | Reiter „Einstellungen“, noch leer. |
+| `features/planning/planning.js` | Reiter „Kalender“, noch leer. |
+| `features/projects/projects.js` | Reiter „Projekte“, noch leer. |
+| `features/customers/customers.js` | Reiter „Kunden“, noch leer. |
+| `features/bookings/bookings.js` | Reiter „Buchungen“, noch leer. |
+| `features/settings/settings.js` | Reiter „Einstellungen“, noch leer. |
 | `style.css` | Gestaltung: Farben als Variablen für hell, dunkel und erhöhten Kontrast, Reiterleiste, Bereiche, Statuskasten. |
 
 ### `docs/`
@@ -208,7 +208,29 @@ Alle Features teilen sich **eine** Datenbank. Jedes Feature bringt eigene Tabell
 
 ## 6. Wie ein Feature aufgebaut ist
 
-Noch gibt es kein fachliches Feature. Sobald es eins gibt, sieht es so aus:
+Für jedes geplante Feature ist der Ordner schon angelegt – mit den fünf Dateien, aber noch
+ohne Inhalt. `api.py` enthält nur den leeren `router`, die anderen Dateien nur einen Kommentar.
+Wer ein Feature baut, findet so sofort seinen Platz. `__init__.py` nennt jeweils den Reiter, der
+das Feature im Frontend zeigt.
+
+| Ordner | Feature | Reiter | Adresse |
+| --- | --- | --- | --- |
+| `customers/` | Kunden | `customers` | `/api/customers` |
+| `employees/` | Mitarbeitende (nur Stammdaten; Anmeldung und Rechte in `accounts/`) | – | `/api/employees` |
+| `projects/` | Projekte | `projects` | `/api/projects` |
+| `hours/` | Stunden buchen | `bookings` | `/api/hours` |
+| `materials/` | Material, Fahrten und Preise | `bookings` | `/api/materials` |
+| `drafts/` | Entwurf, Bestätigung und Werkzeugkatalog | – | `/api/drafts` |
+| `invoices/` | Rechnung als PDF, später E-Rechnung | – | `/api/invoices` |
+| `planning/` | Planung: Kalender und Gantt | `planning` | `/api/planning` |
+| `accounts/` | Benutzerkonten, Rollen und gleichzeitiges Arbeiten | `settings` | `/api/accounts` |
+| `backup/` | Datensicherung, Wiederherstellung und Export | `settings` | `/api/backup` |
+
+Ordnernamen sind englisch (Regel: Bezeichner auf Englisch) – im Backend wie im Frontend. Nur die
+Titel, die man auf der Webseite liest, sind deutsch. Ein Ordner ohne Inhalt schadet nicht: `load_features()`
+lädt ihn, hängt den leeren `router` an und `pytest` findet in der Testdatei einfach keine Tests.
+
+So sieht ein Feature-Ordner aus:
 
 ```
 backend/timbertalk/features/<name>/
@@ -232,7 +254,7 @@ wenn es einen ganz neuen Reiter braucht.
 So sieht `api.py` im Kern aus:
 
 ```python
-router = APIRouter(prefix="/api/kunden", tags=["kunden"])
+router = APIRouter(prefix="/api/customers", tags=["Kunden"])
 
 
 @router.get("")
@@ -287,17 +309,17 @@ ihres Features bauen, ohne die Dateien der anderen anzufassen.
 | Reiter | Adresse | Datei | Inhalt |
 | --- | --- | --- | --- |
 | Start | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
-| Kalender | `/#kalender` | `features/kalender/kalender.js` | noch leer – ein Satz sagt, was hier hinkommt |
-| Projekte | `/#projekte` | `features/projekte/projekte.js` | noch leer – ein Satz sagt, was hier hinkommt |
-| Kunden | `/#kunden` | `features/kunden/kunden.js` | noch leer – ein Satz sagt, was hier hinkommt |
-| Buchungen | `/#buchungen` | `features/buchungen/buchungen.js` | noch leer – ein Satz sagt, was hier hinkommt |
-| Einstellungen | `/#einstellungen` | `features/einstellungen/einstellungen.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Kalender | `/#planning` | `features/planning/planning.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Projekte | `/#projects` | `features/projects/projects.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Kunden | `/#customers` | `features/customers/customers.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Buchungen | `/#bookings` | `features/bookings/bookings.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Einstellungen | `/#settings` | `features/settings/settings.js` | noch leer – ein Satz sagt, was hier hinkommt |
 
 Ein Reiter-Modul exportiert drei Dinge:
 
 | Export | Bedeutung |
 | --- | --- |
-| `id` | Name hinter `#` in der Adresse und `id` des Bereichs, z. B. `"kunden"`. |
+| `id` | Name hinter `#` in der Adresse und `id` des Bereichs, z. B. `"customers"`. Englisch wie der Ordner im Backend; der sichtbare Titel ist deutsch. |
 | `title` | Text in der Reiterleiste, z. B. `"Kunden"`. |
 | `render(panel)` | Füllt den Bereich `panel` (ein `<section>`). Darf `async` sein. |
 
@@ -329,13 +351,13 @@ Weil der Reiter in der Adresse steht, öffnen Neu laden und Lesezeichen denselbe
 **Einen neuen Reiter ergänzen:**
 
 1. Ordner `features/<id>/` mit der Datei `<id>.js` anlegen – am einfachsten eine leere Datei wie
-   `kunden.js` kopieren und `id`, `title` und Text anpassen.
+   `customers.js` kopieren und `id`, `title` und Text anpassen.
 2. In `reiter.js` eine `import`-Zeile und einen Eintrag in `REITER` ergänzen. Die Reihenfolge in
    `REITER` ist die Reihenfolge in der Leiste.
 `index.html`, `app.js` und die Tests werden dafür nicht geändert – der Test liest die Reiter
 selbst aus den Ordnern unter `frontend/features/` und prüft, dass jeder in `reiter.js` steht.
 
-**Eigene CSS-Klassen** eines Reiters beginnen mit `<id>-` (z. B. `kunden-liste`) und stehen in
+**Eigene CSS-Klassen** eines Reiters beginnen mit `<id>-` (z. B. `customers-list`) und stehen in
 `style.css`. Eine eigene CSS-Datei je Reiter gibt es noch nicht.
 
 ### Farben, hell und dunkel

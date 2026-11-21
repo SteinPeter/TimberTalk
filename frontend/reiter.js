@@ -3,17 +3,17 @@
 // Einen Reiter ergänzen: eine import-Zeile und einen Eintrag in REITER.
 
 import * as start from "./features/start/start.js";
-import * as kalender from "./features/kalender/kalender.js";
-import * as projekte from "./features/projekte/projekte.js";
-import * as kunden from "./features/kunden/kunden.js";
-import * as buchungen from "./features/buchungen/buchungen.js";
-import * as einstellungen from "./features/einstellungen/einstellungen.js";
+import * as planning from "./features/planning/planning.js";
+import * as projects from "./features/projects/projects.js";
+import * as customers from "./features/customers/customers.js";
+import * as bookings from "./features/bookings/bookings.js";
+import * as settings from "./features/settings/settings.js";
 
 export const REITER = [
   start,
-  kalender,
-  projekte,
-  kunden,
-  buchungen,
-  einstellungen,
+  planning,
+  projects,
+  customers,
+  bookings,
+  settings,
 ];

@@ -51,7 +51,7 @@ async function renderOnce(reiter, panel) {
 
 // --- Umschalten -----------------------------------------------------------------
 
-// Zeigt den Bereich, dessen Name hinter dem # in der Adresse steht (z. B. #kalender).
+// Zeigt den Bereich, dessen Name hinter dem # in der Adresse steht (z. B. #planning).
 // Fehlt der Name oder gibt es ihn nicht, wird "start" gezeigt.
 function showTabFromAddress() {
   const wanted = window.location.hash.slice(1);

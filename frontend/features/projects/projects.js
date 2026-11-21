@@ -1,7 +1,7 @@
 // Der Reiter "Projekte": Projekte mit Stand und Kosten.
 // Noch leer – das Feature, das diesen Bereich füllt, arbeitet nur in dieser Datei.
 
-export const id = "projekte";
+export const id = "projects";
 export const title = "Projekte";
 
 export function render(panel) {

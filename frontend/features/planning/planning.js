@@ -1,7 +1,7 @@
 // Der Reiter "Kalender": Termine und Einsätze auf den Baustellen.
 // Noch leer – das Feature, das diesen Bereich füllt, arbeitet nur in dieser Datei.
 
-export const id = "kalender";
+export const id = "planning";
 export const title = "Kalender";
 
 export function render(panel) {
