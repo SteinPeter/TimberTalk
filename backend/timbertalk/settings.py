@@ -33,3 +33,5 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Liest die Einstellungen einmal und merkt sie sich."""
     return Settings()
+
+# Test von Tobi
