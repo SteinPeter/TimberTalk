@@ -1,5 +1,4 @@
 # Die Web-Anwendung: die API liegt unter /api, das Frontend unter /.
-# Kommentar Test
 
 import threading
 import webbrowser
