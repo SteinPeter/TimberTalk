@@ -1,8 +1,8 @@
 // Der Abschnitt „Materialstamm“ im Reiter „Einstellungen“ (Feature F5):
 // Materialien anlegen und ihnen Preise mit Gültigkeitsdatum geben.
-// Der Reiter selbst (settings.js) ruft nur renderMaterialMaster() auf.
+// Eingetragen ist der Abschnitt in settings/sections.js.
 
-import { getJson } from "../../shared/api.js";
+import { getJson } from "../../../shared/api.js";
 import {
   el,
   field,
@@ -12,13 +12,16 @@ import {
   sendJson,
   today,
   toDecimalText,
-} from "../bookings/materials-helpers.js";
+} from "../../bookings/materials-helpers.js";
 
 // Vorschläge für die Einheit – man darf auch etwas anderes eintippen.
 const UNITS = ["m³", "m²", "m", "Stk", "kg", "l", "Pack"];
 
+export const id = "materials-master";
+export const title = "Materialstamm";
+
 // Baut den Abschnitt in `container` auf.
-export function renderMaterialMaster(container) {
+export function render(container) {
   let materials = [];
 
   const message = messageBox(); // gehört zum Formular „Material anlegen“
@@ -69,7 +72,7 @@ export function renderMaterialMaster(container) {
   const createForm = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h3", {}, "Material anlegen"),
+    el("h2", {}, "Material anlegen"),
     field("Name", nameInput),
     el(
       "div",
@@ -101,7 +104,7 @@ export function renderMaterialMaster(container) {
   const priceForm = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h3", {}, "Preis eintragen"),
+    el("h2", {}, "Preis eintragen"),
     field("Material", priceMaterial),
     el(
       "div",
@@ -117,7 +120,6 @@ export function renderMaterialMaster(container) {
     el(
       "section",
       { class: "materials-section" },
-      el("h2", {}, "Materialstamm"),
       empty,
       tableWrap,
       createForm,

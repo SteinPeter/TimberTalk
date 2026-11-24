@@ -1,18 +1,23 @@
-// Der Reiter "Einstellungen": Name, Adresse und Preise des Betriebs.
-// Jedes Feature, das hier etwas einstellen lässt, baut seinen Abschnitt in einer eigenen Datei in
-// diesem Ordner und wird unten mit einer Zeile aufgerufen.
+// Der Reiter "Einstellungen": Stammdaten und Preise des Betriebs.
+// Jedes Feature bringt hier seinen Abschnitt als eigene Datei unter sections/ mit und trägt ihn
+// in sections.js ein. Diese Datei wird dafür nicht geändert (F0e).
 
-import { renderCompany } from "./materials-company.js";
-import { renderMaterialMaster } from "./materials-master.js";
+import { renderSections } from "../../shared/sections.js";
+import { SECTIONS } from "./sections.js";
 
 export const id = "settings";
 export const title = "Einstellungen";
 
-export async function render(panel) {
+export function render(panel) {
   panel.innerHTML = `
     <h1>Einstellungen</h1>
-    <p class="hint">Stammdaten der Abrechnung und Materialstamm mit Preisen.</p>
+    <p class="hint">Stammdaten und Preise des Betriebs.</p>
   `;
-  await renderCompany(panel);
-  await renderMaterialMaster(panel);
+  renderSections(panel, {
+    tabId: id,
+    sections: SECTIONS,
+    layout: "sidebar",
+    emptyText:
+      "Hier stellen Sie bald Ihren Betrieb ein, etwa Name, Adresse und Preise. Dieser Bereich ist noch im Aufbau.",
+  });
 }

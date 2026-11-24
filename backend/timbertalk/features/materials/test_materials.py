@@ -160,6 +160,38 @@ def test_menge_muss_positiv_sein(session: Session, holz, quantity: str) -> None:
         service.book_material(session, 12, holz.id, Decimal(quantity), DAY)
 
 
+HUGE_NUMBERS = ["Infinity", "-Infinity", "NaN", "1e1000", "1000000.01"]
+
+
+@pytest.mark.parametrize("value", HUGE_NUMBERS)
+def test_unendliche_und_riesige_zahlen_werden_ueberall_abgelehnt(
+    session: Session, holz, value: str
+) -> None:
+    number = Decimal(value)
+    with pytest.raises(ValueError, match="Zahl zwischen 0 und"):
+        service.book_material(session, 12, holz.id, number, DAY)
+    with pytest.raises(ValueError, match="Zahl zwischen 0 und"):
+        service.add_price(session, holz.id, number, date(2027, 1, 1))
+    with pytest.raises(ValueError, match="Zahl zwischen 0 und"):
+        service.save_hourly_rate(session, "Geselle", number)
+    with pytest.raises(ValueError):
+        service.save_company(session, CompanyIn(travel_rate_per_km=number))
+    with pytest.raises(ValueError):
+        service.save_company(session, CompanyIn(vat_rate=number))
+    set_travel_rate(session)
+    with pytest.raises(ValueError, match="Zahl zwischen 0 und"):
+        service.book_travel(session, 12, number, DAY)
+    # Es wurde nichts gespeichert, die Kosten des Projekts lassen sich weiter berechnen.
+    assert service.list_bookings(session, 12) == []
+    assert service.project_costs(session, 12).total_net == Decimal("0")
+
+
+def test_die_obergrenze_selbst_ist_erlaubt(session: Session) -> None:
+    set_travel_rate(session)
+    service.book_travel(session, 12, service.MAX_AMOUNT, DAY)
+    assert service.project_costs(session, 12).travel == Decimal("500000.00")
+
+
 def test_fahrt_braucht_den_satz_aus_den_stammdaten(session: Session) -> None:
     with pytest.raises(ValueError, match="Einstellungen"):
         service.book_travel(session, 12, Decimal("40"), DAY)
@@ -284,7 +316,7 @@ def test_api_material_anlegen_preis_eintragen_und_listen(client: TestClient) -> 
     )
     assert price.status_code == 201
 
-    items = client.get("/api/materials/items", params={"kategorie": "Bauholz"}).json()
+    items = client.get("/api/materials/items", params={"category": "Bauholz"}).json()
     assert items == [
         {
             "id": material_id,
@@ -364,6 +396,20 @@ def test_api_buchen_und_gesamtkosten(client: TestClient) -> None:
         "travel": "20.00",
         "total_net": "70.00",
     }
+
+
+@pytest.mark.parametrize("km", ["Infinity", "1e1000"])
+def test_api_riesige_strecke_wird_abgelehnt_und_das_projekt_bleibt_benutzbar(
+    client: TestClient, km: str
+) -> None:
+    client.put("/api/materials/company", json={"travel_rate_per_km": "0.50"})
+    response = client.post(
+        "/api/materials/bookings/travel",
+        json={"project_id": 12, "km": km, "booking_date": "2026-12-03"},
+    )
+    assert response.status_code == 422
+    assert client.get("/api/materials/bookings", params={"project_id": 12}).status_code == 200
+    assert client.get("/api/materials/projects/12/costs").status_code == 200
 
 
 def test_api_buchung_ohne_preis_wird_abgelehnt(client: TestClient) -> None:
@@ -486,6 +532,30 @@ def test_werkzeug_meldet_fehler_mit_code(session: Session) -> None:
     assert kein_datum["status"] == "fehler"
     assert kein_datum["fehler"]["code"] == "ungueltig"
     assert "JJJJ-MM-TT" in kein_datum["fehler"]["meldung"]
+
+
+@pytest.mark.parametrize(
+    ("name", "args"),
+    [
+        ("fahrt_buchen", {"projekt_id": 12, "datum": "2026-12-03", "km": "NaN"}),
+        ("fahrt_buchen", {"projekt_id": 12, "datum": "2026-12-03", "km": "Infinity"}),
+        ("fahrt_buchen", {"projekt_id": 12, "datum": "2026-12-03", "km": "1e1000"}),
+        ("fahrt_buchen", {"projekt_id": "12", "datum": "2026-12-03", "km": "40"}),
+        ("fahrt_buchen", {"projekt_id": 12, "datum": "2026-12-03", "km": "40", "notiz": "x"}),
+        ("material_buchen", {"projekt_id": 12, "datum": "2026-12-03", "positionen": ["x"]}),
+        ("projekt_kosten", {"projekt_id": "zwölf"}),
+    ],
+)
+def test_werkzeug_antwortet_auf_falsche_eingaben_statt_abzustuerzen(
+    session: Session, name: str, args: dict
+) -> None:
+    seed_example_data(session)
+    result = tools.call_tool(session, name, args)
+    assert result["status"] == "fehler", result
+    assert result["fehler"]["code"] == "ungueltig"
+    # Nichts Halbes ist liegen geblieben: Buchungsliste und Kosten funktionieren weiter.
+    service.list_bookings(session, 12)
+    assert tools.call_tool(session, "projekt_kosten", {"projekt_id": 12})["status"] == "ok"
 
 
 def test_doppelter_werkzeugname_bricht_ab() -> None:

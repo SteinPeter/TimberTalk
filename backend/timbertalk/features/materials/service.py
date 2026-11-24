@@ -33,6 +33,7 @@ from timbertalk.features.materials.models import (
 CENT = Decimal("0.01")
 MAX_LOGO_LENGTH = 500_000  # Zeichen, reicht für ein Logo von rund 350 KB
 MAX_SEARCH_RESULTS = 10
+MAX_AMOUNT = Decimal("1000000")  # größte erlaubte Zahl für Mengen, km, Preise und Sätze
 
 
 def to_cents(value: Decimal) -> Decimal:
@@ -47,20 +48,31 @@ def _require_text(value: str, label: str) -> str:
     return text
 
 
+def _require_amount(value: Decimal, label: str) -> Decimal:
+    """Prüft, dass eine Zahl endlich ist und zwischen 0 und MAX_AMOUNT liegt.
+
+    Ohne diese Prüfung kämen `Infinity`, `NaN` oder `1e1000` in die Datenbank, und die Kosten
+    des Projekts ließen sich danach nicht mehr berechnen.
+    """
+    if not value.is_finite() or not 0 <= value <= MAX_AMOUNT:
+        raise ValueError(f"{label} muss eine Zahl zwischen 0 und {MAX_AMOUNT} sein.")
+    return value
+
+
 def _require_project(project_id: int) -> None:
-    if project_id < 1:
+    if not isinstance(project_id, int) or isinstance(project_id, bool) or project_id < 1:
         raise ValueError("Die Projektnummer muss eine positive Zahl sein.")
 
 
 # --- Materialstamm --------------------------------------------------------------
 
 
-def create_material(session: Session, name: str, kategorie: str, einheit: str) -> MaterialItem:
+def create_material(session: Session, name: str, category: str, unit: str) -> MaterialItem:
     """Legt ein Material im Materialstamm an. Der Preis kommt mit add_price()."""
     material = MaterialItem(
         name=_require_text(name, "Der Name"),
-        category=kategorie.strip(),
-        unit=_require_text(einheit, "Die Einheit"),
+        category=category.strip(),
+        unit=_require_text(unit, "Die Einheit"),
     )
     session.add(material)
     session.commit()
@@ -81,8 +93,7 @@ def add_price(
 ) -> MaterialPrice:
     """Trägt einen Preis ein, der ab `valid_from` gilt – bis ein neuerer beginnt."""
     get_material(session, material_id)
-    if unit_price < 0:
-        raise ValueError("Der Preis darf nicht negativ sein.")
+    _require_amount(unit_price, "Der Preis")
     same_day = session.exec(
         select(MaterialPrice).where(
             MaterialPrice.material_id == material_id, MaterialPrice.valid_from == valid_from
@@ -131,27 +142,27 @@ def _info(session: Session, material: MaterialItem, on_date: date) -> MaterialIn
 
 
 def list_materials(
-    session: Session, kategorie: str | None = None, on_date: date | None = None
+    session: Session, category: str | None = None, on_date: date | None = None
 ) -> list[MaterialInfo]:
     """Die Materialliste mit dem Preis von heute (S-04). Ohne Treffer: eine leere Liste.
 
-    Mit `kategorie` nur diese Kategorie. Mit `on_date` der Preis von einem anderen Tag.
+    Mit `category` nur diese Kategorie. Mit `on_date` der Preis von einem anderen Tag.
     """
     statement = select(MaterialItem).order_by(MaterialItem.name)
-    if kategorie:
-        statement = statement.where(MaterialItem.category == kategorie)
-    stichtag = on_date or date.today()
-    return [_info(session, material, stichtag) for material in session.exec(statement)]
+    if category:
+        statement = statement.where(MaterialItem.category == category)
+    reference_date = on_date or date.today()
+    return [_info(session, material, reference_date) for material in session.exec(statement)]
 
 
 def search_materials(session: Session, text: str) -> list[MaterialInfo]:
     """Sucht im Namen und in der Kategorie, ohne auf Groß und Klein zu achten. Höchstens 10."""
     needle = _require_text(text, "Der Suchtext").lower()
-    stichtag = date.today()
+    reference_date = date.today()
     found = []
     for material in session.exec(select(MaterialItem).order_by(MaterialItem.name)):
         if needle in material.name.lower() or needle in material.category.lower():
-            found.append(_info(session, material, stichtag))
+            found.append(_info(session, material, reference_date))
         if len(found) == MAX_SEARCH_RESULTS:
             break
     return found
@@ -167,9 +178,8 @@ def get_company(session: Session) -> Company:
 
 def save_company(session: Session, data: CompanyIn) -> Company:
     """Speichert die Stammdaten der Abrechnung (Firma, Logo, Bank, Fahrtkosten, USt)."""
-    if data.travel_rate_per_km < 0:
-        raise ValueError("Der Satz für Fahrten darf nicht negativ sein.")
-    if not Decimal(0) <= data.vat_rate <= Decimal(100):
+    _require_amount(data.travel_rate_per_km, "Der Satz für Fahrten")
+    if not data.vat_rate.is_finite() or not Decimal(0) <= data.vat_rate <= Decimal(100):
         raise ValueError("Die Umsatzsteuer muss zwischen 0 und 100 Prozent liegen.")
     if data.logo:
         if not data.logo.startswith("data:image/"):
@@ -199,8 +209,7 @@ def list_hourly_rates(session: Session) -> list[HourlyRate]:
 def save_hourly_rate(session: Session, name: str, rate: Decimal) -> HourlyRate:
     """Legt einen Stundensatz an. Gibt es den Namen schon, wird sein Satz geändert."""
     name = _require_text(name, "Der Name")
-    if rate < 0:
-        raise ValueError("Der Stundensatz darf nicht negativ sein.")
+    _require_amount(rate, "Der Stundensatz")
     hourly_rate = session.exec(select(HourlyRate).where(HourlyRate.name == name)).first()
     if hourly_rate is None:
         hourly_rate = HourlyRate(name=name, rate=rate)
@@ -237,7 +246,8 @@ def _new_material_booking(
     """Baut eine Materialbuchung und legt sie in die Sitzung – ohne zu speichern."""
     _require_project(project_id)
     material = get_material(session, material_id)
-    if quantity <= 0:
+    _require_amount(quantity, "Die Menge")
+    if quantity == 0:
         raise ValueError("Die Menge muss größer als 0 sein.")
     if unit is not None and unit.strip().lower() != material.unit.lower():
         raise ValueError(f"{material.name} wird in {material.unit} gebucht, nicht in {unit}.")
@@ -270,7 +280,8 @@ def _new_travel_booking(
 ) -> Booking:
     """Baut eine Fahrtbuchung und legt sie in die Sitzung – ohne zu speichern."""
     _require_project(project_id)
-    if km <= 0:
+    _require_amount(km, "Die Strecke")
+    if km == 0:
         raise ValueError("Die Strecke muss größer als 0 km sein.")
     rate = get_company(session).travel_rate_per_km
     if rate <= 0:
@@ -349,7 +360,7 @@ def _draft_position(
 
 
 def book_material_draft(
-    session: Session, project_id: int, positions: list[dict], datum: date | None = None
+    session: Session, project_id: int, positions: list[dict], booking_date: date | None = None
 ) -> int:
     """Bucht Materialpositionen als Entwurf (S-05) und gibt die Nummer des Entwurfs zurück.
 
@@ -360,7 +371,7 @@ def book_material_draft(
     if not positions:
         raise ValueError("Es fehlen die Positionen.")
     draft_id = _next_draft_id(session)
-    booking_date = datum or date.today()
+    booking_date = booking_date or date.today()
     bookings = []
     try:
         for position in positions:
@@ -415,6 +426,7 @@ def _booking_info(session: Session, booking: Booking) -> BookingInfo:
 
 def list_bookings(session: Session, project_id: int) -> list[BookingInfo]:
     """Alle Buchungen eines Projekts, nach Datum sortiert. Entwürfe sind dabei."""
+    _require_project(project_id)
     statement = (
         select(Booking)
         .where(Booking.project_id == project_id)
@@ -428,6 +440,7 @@ def project_costs(session: Session, project_id: int) -> ProjectCosts:
 
     Die Stunden kommen aus F4 (hours). Solange es dessen Service nicht gibt, sind sie 0.
     """
+    _require_project(project_id)
     material = Decimal(0)
     travel = Decimal(0)
     statement = select(Booking).where(

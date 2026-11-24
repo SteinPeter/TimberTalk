@@ -66,6 +66,9 @@ Im Frontend arbeitet ein Feature nur in seinem eigenen Ordner. Gemeinsame Dateie
 dafür angefasst:
 
 - `frontend/reiter.js` – eine Zeile, wenn ein ganz neuer Reiter dazukommt.
+- `frontend/features/settings/` und `frontend/features/bookings/` – gemeinsame Reiter: Ein Feature
+  legt dort nur eine eigene Datei `sections/<feature>.js` (oder `<feature>-<thema>.js`) an und
+  trägt sie mit einer Zeile in `sections.js` ein (F0e).
 - `frontend/shared/api.js` – alle Abfragen an die API laufen über `getJson()`.
 - `frontend/style.css` – das gemeinsame Aussehen. Eigene CSS-Klassen eines Reiters beginnen mit
   `<id>-`, z. B. `customers-list`, damit sie sich nicht mit anderen Reitern überschneiden.

@@ -11,17 +11,17 @@
 | `backend/timbertalk/features/materials/api.py` | Die Endpunkte unter `/api/materials`. |
 | `backend/timbertalk/features/materials/tools.py` | Die vier Werkzeuge nach S-09/S-14 mit einem kleinen eigenen Katalog (`TOOLS`) und `call_tool()`. |
 | `backend/timbertalk/features/materials/test_materials.py` | Tests für Service, Endpunkte und Werkzeuge. |
-| `frontend/features/bookings/materials-booking.js` | Abschnitt „Material und Fahrten“ im Reiter „Buchungen“. |
-| `frontend/features/bookings/materials-helpers.js` | Kleine Helfer: Elemente bauen, Daten senden (`sendJson`), Zahlen und Daten anzeigen. Auch der Reiter „Einstellungen“ benutzt sie. |
-| `frontend/features/settings/materials-master.js` | Abschnitt „Materialstamm“ im Reiter „Einstellungen“. |
-| `frontend/features/settings/materials-company.js` | Abschnitt „Stammdaten der Abrechnung“ im Reiter „Einstellungen“. |
+| `frontend/features/bookings/sections/materials.js` | Abschnitt „Material und Fahrten“ im Reiter „Buchungen“ (`id` `materials`). |
+| `frontend/features/bookings/materials-helpers.js` | Kleine Helfer: Elemente bauen, Daten senden (`sendJson`), Zahlen und Daten anzeigen. Auch die Abschnitte in „Einstellungen“ benutzen sie. Sie liegt bewusst nicht in `sections/`, dort dürfen nur Abschnitte liegen. |
+| `frontend/features/settings/sections/materials-master.js` | Abschnitt „Materialstamm“ im Reiter „Einstellungen“. |
+| `frontend/features/settings/sections/materials-company.js` | Abschnitt „Firma und Bank“ im Reiter „Einstellungen“: Firma, Logo, Bank, Fahrtkosten, Umsatzsteuer und Stundensätze. |
 
 In gemeinsamen Dateien geändert (mit Peter oder Anton abzustimmen):
 
 | Datei | Änderung |
 | --- | --- |
-| `frontend/features/bookings/bookings.js` | Ruft `renderMaterialBooking()` auf; der Platzhaltertext ist ersetzt. Dieser Reiter gehört auch dem Feature Stunden (`hours`). |
-| `frontend/features/settings/settings.js` | Ruft `renderCompany()` und `renderMaterialMaster()` auf; der Platzhaltertext ist ersetzt. Dieser Reiter gehört auch den Features `accounts` und `backup`. |
+| `frontend/features/bookings/sections.js` | Eine `import`-Zeile und ein Eintrag in `SECTIONS` für den Abschnitt `materials`. `bookings.js` bleibt unverändert (F0e). |
+| `frontend/features/settings/sections.js` | Zwei `import`-Zeilen und zwei Einträge in `SECTIONS` für `materials-company` und `materials-master`. `settings.js` bleibt unverändert (F0e). |
 | `frontend/style.css` | Ein Block am Ende mit Klassen `materials-…` (Formulare, Tabellen, Kostenkasten). Keine neuen Farben. |
 
 ## Endpunkte
@@ -67,13 +67,18 @@ Alle Namen beginnen mit `materials_`. Geld und Mengen sind `DecimalText` (Text i
 - Bei einer Fahrt ist `quantity` die Strecke in km, `unit` ist `km` und `unit_price` der Satz je km.
 - `unit_price` der Buchung ist der Preis vom Buchungstag, in der Buchung festgehalten.
 - Das Logo steht als `data:image/…`-Text in `materials_company.logo` (höchstens 500 000 Zeichen).
+- Alle Zahlen, die in die Tabellen kommen (Menge, km, Preis, Stundensatz, Fahrtsatz), prüft
+  `_require_amount()` in `service.py`: Sie müssen endlich sein (kein `Infinity`, kein `NaN`) und
+  zwischen 0 und `MAX_AMOUNT` (1 000 000) liegen. Sonst ließen sich die Kosten eines Projekts
+  nicht mehr berechnen. Menge und km müssen zusätzlich größer als 0 sein. Die Projektnummer prüft
+  `_require_project()` bei jedem Zugriff auf ein Projekt: eine ganze Zahl ab 1.
 
 ## Weg einer typischen Anfrage
 
 Material buchen im Reiter „Buchungen“:
 
 1. Der Zimmerer gibt die Projektnummer ein, wählt ein Material, ein Datum und eine Menge und
-   klickt „Material buchen“. `materials-booking.js` macht aus „2,5“ den Text „2.5“.
+   klickt „Material buchen“. `sections/materials.js` macht aus „2,5“ den Text „2.5“.
 2. `sendJson()` in `materials-helpers.js` schickt `POST /api/materials/bookings/material`.
 3. `book_material()` in `api.py` ruft `service.book_material()` auf (über `_run()`).
 4. Der Service prüft Projektnummer, Menge und Material, holt mit `current_price()` den Preis, der am
@@ -102,7 +107,10 @@ Ergebnis).
 
 `call_tool(session, name, args)` ist die kleine Fassung des `call_tool` aus S-09: unbekanntes
 Werkzeug → `fehler` „unbekannt“, fehlende Pflichtangabe → `rueckfrage`, unpassende Angabe →
-`fehler` „ungueltig“. Geld wird als Dezimal-Text („450.00“), Datum als `JJJJ-MM-TT` übergeben.
+`fehler` „ungueltig“. Das gilt auch für einen falschen Typ (z. B. `projekt_id` als Text), ein
+unbekanntes Argument und eine Zahl, mit der man nicht rechnen kann: `call_tool` fängt neben
+`ValueError` und `LookupError` auch `TypeError` und `ArithmeticError` ab und verwirft dabei, was
+halb geschrieben war (`session.rollback()`). Es stürzt nie ab. Geld wird als Dezimal-Text („450.00“), Datum als `JJJJ-MM-TT` übergeben.
 
 Der Test ruft jedes Werkzeug mit seinem `beispiel` auf einer Datenbank mit festen Beispieldaten
 (`seed_example_data()` in `test_materials.py`: Material 1 „Konstruktionsvollholz C24“ zu 450 Euro

@@ -5,7 +5,7 @@ Projekt versteht, wie das Programm aufgebaut ist und was jede Datei tut. Es wäc
 Feature mit und beschreibt immer den **aktuellen** Stand des Arbeitszweigs – nicht Pläne und nicht
 den alten Code aus Block 1.
 
-> **Stand:** Feature F0d „Grundlagen für parallele Features“, Feature-Ordner angelegt · zuletzt aktualisiert am 2026-11-21
+> **Stand:** Feature F0e „Abschnitte in gemeinsamen Reitern“ · zuletzt aktualisiert am 2026-11-24
 
 Wer nur wissen will, *was* ein Feature können soll, liest den Steckbrief in `docs/features/`.
 Wer wissen will, *wie* der Code das umsetzt, liest hier – und für jedes fachliche Feature dessen
@@ -105,7 +105,7 @@ in `.gitignore`.
 | `timbertalk/features/__init__.py` | Findet die Feature-Ordner selbst und lädt ihre Tabellen und Router (`load_features()`). |
 | `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Zehn Ordner sind angelegt, aber noch ohne Inhalt (Tabelle in Abschnitt 6). |
 | `conftest.py` | Gemeinsame Test-Hilfen (Fixtures) `engine`, `session` und `client` für alle Tests. |
-| `tests/test_health.py` | Tests für `/api/health`, das Gerüst der Startseite und dass jeder Reiter-Ordner in `reiter.js` steht. |
+| `tests/test_health.py` | Tests für `/api/health`, das Gerüst der Startseite, dass jeder Reiter-Ordner in `reiter.js` steht und jeder Abschnitt in der `sections.js` seines Reiters. |
 | `tests/test_grundlagen.py` | Tests für die Datenbank im Arbeitsspeicher und für `load_features()`. |
 
 ### `frontend/`
@@ -117,13 +117,17 @@ in `.gitignore`.
 | `reiter.js` | Liste aller Reiter in der Reihenfolge der Leiste. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
 | `shared/api.js` | `getJson(path)`: der gemeinsame Weg aller Reiter zur API. |
+| `shared/sections.js` | `renderSections()`: baut in einem gemeinsamen Reiter die Auswahl der Abschnitte und zeigt immer einen davon (Abschnitt 7). |
 | `features/start/start.js` | Reiter „Start“: Überschrift „Übersicht“, „TimberTalk läuft“ und der Status von Backend und Datenbank. |
 | `features/planning/planning.js` | Reiter „Kalender“, noch leer. |
 | `features/projects/projects.js` | Reiter „Projekte“, noch leer. |
 | `features/customers/customers.js` | Reiter „Kunden“, noch leer. |
-| `features/bookings/bookings.js` | Reiter „Buchungen“, noch leer. |
-| `features/settings/settings.js` | Reiter „Einstellungen“, noch leer. |
-| `style.css` | Gestaltung: Farben als Variablen für hell, dunkel und erhöhten Kontrast, Reiterleiste, Bereiche, Statuskasten. |
+| `features/bookings/bookings.js` | Reiter „Buchungen“: zeigt seine Abschnitte als Reiter über dem Inhalt. Noch ohne Abschnitt. |
+| `features/bookings/sections.js` | Liste der Abschnitte im Reiter „Buchungen“. Noch leer. |
+| `features/settings/settings.js` | Reiter „Einstellungen“: zeigt seine Abschnitte in einer Seitenleiste. Noch ohne Abschnitt. |
+| `features/settings/sections.js` | Liste der Abschnitte im Reiter „Einstellungen“. Noch leer. |
+| `features/<id>/sections/<name>.js` | Ein Abschnitt eines gemeinsamen Reiters. Den Ordner legt der erste Abschnitt an. |
+| `style.css` | Gestaltung: Farben als Variablen für hell, dunkel und erhöhten Kontrast, Reiterleiste, Bereiche, Statuskasten, Abschnitte. |
 
 ### `docs/`
 
@@ -137,6 +141,7 @@ in `.gitignore`.
 | `features/F00b-reiter.md` | Steckbrief von F0b. |
 | `features/F00c-reiter-module.md` | Steckbrief von F0c. |
 | `features/F00d-parallele-features.md` | Steckbrief von F0d. |
+| `features/F00e-abschnitte.md` | Steckbrief von F0e. |
 | `ki-nutzung.md` | Protokoll, welche Teile mit KI-Hilfe entstanden sind – Stand bis 2026-11-20, wird nicht mehr ergänzt. |
 | `ki-nutzung/<datum>-<thema>.md` | Neue Einträge im KI-Protokoll, eine Datei je Änderung. |
 | `archiv/` | Unterlagen aus Block 1, nur zum Nachschlagen. |
@@ -312,8 +317,8 @@ ihres Features bauen, ohne die Dateien der anderen anzufassen.
 | Kalender | `/#planning` | `features/planning/planning.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Projekte | `/#projects` | `features/projects/projects.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Kunden | `/#customers` | `features/customers/customers.js` | noch leer – ein Satz sagt, was hier hinkommt |
-| Buchungen | `/#bookings` | `features/bookings/bookings.js` | noch leer – ein Satz sagt, was hier hinkommt |
-| Einstellungen | `/#settings` | `features/settings/settings.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Buchungen | `/#bookings` | `features/bookings/bookings.js` | Abschnitte als Reiter über dem Inhalt; noch keiner – ein Satz sagt, was hier hinkommt |
+| Einstellungen | `/#settings` | `features/settings/settings.js` | Abschnitte in einer Seitenleiste; noch keiner – ein Satz sagt, was hier hinkommt |
 
 Ein Reiter-Modul exportiert drei Dinge:
 
@@ -360,6 +365,41 @@ selbst aus den Ordnern unter `frontend/features/` und prüft, dass jeder in `rei
 **Eigene CSS-Klassen** eines Reiters beginnen mit `<id>-` (z. B. `customers-list`) und stehen in
 `style.css`. Eine eigene CSS-Datei je Reiter gibt es noch nicht.
 
+### Abschnitte in gemeinsamen Reitern
+
+„Einstellungen“ und „Buchungen“ werden von mehreren Features gefüllt. Damit niemand die Datei
+eines anderen ändern muss, bringt jedes Feature dort einen **Abschnitt** als eigene Datei mit.
+
+- Ein Abschnitt liegt in `features/<id>/sections/<feature>.js` – oder `<feature>-<thema>.js`, wenn
+  ein Feature mehrere Abschnitte hat. Er exportiert wie ein Reiter `id` (gleich dem Dateinamen),
+  `title` und `render(container)`.
+- Die Reihenfolge steht in der Liste `SECTIONS` in `features/<id>/sections.js`.
+- `settings.js` und `bookings.js` rufen nur `renderSections()` aus `shared/sections.js` auf und
+  werden für einen neuen Abschnitt nicht geändert.
+
+So funktioniert `renderSections(panel, { tabId, sections, layout, emptyText })`:
+
+1. Ist die Liste leer, zeigt der Reiter nur `emptyText`.
+2. Sonst legt es je Abschnitt einen Knopf in der Auswahl und einen leeren Bereich an. `layout`
+   bestimmt das Aussehen: `"sidebar"` (Liste links, für die Einstellungen) oder `"tabs"` (Reiter
+   über dem Inhalt, für die Buchungen). Auf schmalen Bildschirmen steht auch die Seitenleiste als
+   Zeile über dem Inhalt.
+3. Ein Abschnitt wird erst aufgebaut, wenn man ihn zum ersten Mal öffnet. Wirft sein `render()`
+   einen Fehler, zeigt nur dieser Abschnitt eine Meldung; der Fehler steht in der Konsole.
+4. Der gewählte Abschnitt wird im Browser gemerkt (`localStorage`, Schlüssel
+   `timbertalk.<tabId>.section`) und beim nächsten Öffnen wieder gewählt.
+5. Für Bildschirmleser ist die Auswahl eine Reiterliste (`role="tablist"`, `role="tab"`,
+   `aria-selected`). Mit den Pfeiltasten, Pos1 und Ende wechselt man den Abschnitt.
+
+**Einen Abschnitt ergänzen:** Datei unter `sections/` anlegen und in `sections.js` eine
+`import`-Zeile und einen Eintrag in `SECTIONS` ergänzen. Ein Test prüft, dass jede Datei unter
+`sections/` dort steht.
+
+Gestaltung nach dem Skill `apple-design`: `settings.md › Platform considerations` (Bereiche zum
+Umschalten, zuletzt benutzten wieder öffnen), `sidebars.md › Best practices` (höchstens zwei
+Ebenen, nichts Wichtiges unten) und `segmented-controls.md › Platform considerations` (zum
+Umschalten von Ansichten im Hauptbereich eine Tab-Ansicht statt eines Umschalters).
+
 ### Farben, hell und dunkel
 
 Alle Farben stehen als CSS-Variablen (`--text`, `--muted`, `--page`, `--card`, `--line`,
@@ -404,7 +444,9 @@ Alle Befehle laufen im Ordner `backend/`.
 - **Frontend in den Tests**: Die Tests holen `index.html`, `reiter.js` und jede Reiter-Datei
   über den `TestClient`. Die Reiter werden nicht aufgezählt, sondern aus den Ordnern unter
   `frontend/features/` gelesen: Jeder Ordner muss in `reiter.js` stehen und eine Datei
-  `<id>.js` haben, die genau diese `id` exportiert. Das Verhalten im Browser selbst wird im Meeting
+  `<id>.js` haben, die genau diese `id` exportiert. Ebenso muss jede Datei unter
+  `settings/sections/` und `bookings/sections/` in der `sections.js` ihres Reiters stehen und ihren
+  Dateinamen als `id` exportieren. Das Verhalten im Browser selbst wird im Meeting
   vorgeführt (Abnahme im Steckbrief).
 - **CI** (`.github/workflows/backend.yml`): Bei jedem Pull Request und jedem Push auf `main`,
   der etwas unter `backend/` oder `frontend/` ändert, laufen auf GitHub dieselben drei Prüfungen.
@@ -443,6 +485,7 @@ Alle Befehle laufen im Ordner `backend/`.
 | F0b | Reiter für die Funktionsbereiche | `docs/features/F00b-reiter.md` | – | – |
 | F0c | Ein Modul je Reiter | `docs/features/F00c-reiter-module.md` | – | – |
 | F0d | Grundlagen für parallele Features | `docs/features/F00d-parallele-features.md` | – | – |
+| F0e | Abschnitte in gemeinsamen Reitern | `docs/features/F00e-abschnitte.md` | – | – |
 
 **Fachliche Features** – jedes hat sein eigenes Kapitel `docs/handbuch/F<nr>-<name>.md` mit
 Dateien, Endpunkten, Tabellen und Abhängigkeiten. Sie werden hier bewusst **nicht** aufgezählt,
@@ -470,6 +513,7 @@ Noch gibt es keines.
 | Reiter | Ein Bereich der Oberfläche (Start, Kalender …), erreichbar über die Leiste oben und die Adresse `/#<id>`. |
 | Reiter-Modul | Die Datei `frontend/features/<id>/<id>.js` eines Reiters. Exportiert `id`, `title` und `render(panel)`. |
 | ES-Modul | JavaScript-Datei, die andere Dateien mit `import` einbindet. Der Browser lädt sie ohne Bauschritt. |
+| Abschnitt | Ein Teil eines gemeinsamen Reiters („Einstellungen“, „Buchungen“), der einem Feature gehört: `features/<id>/sections/<name>.js`, eingetragen in `sections.js`. |
 
 Fachbegriffe und ihre Namen im Code (Kunde → `customer` usw.) stehen im Glossar der `README.md`.
 

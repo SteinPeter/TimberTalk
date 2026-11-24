@@ -291,7 +291,8 @@ def call_tool(session: Session, name: str, args: dict) -> dict:
     """Ruft ein Werkzeug mit seinen Eingaben auf und gibt immer eine Antwort mit `status` zurück.
 
     Das ist die kleine Fassung des `call_tool` aus S-09: unbekanntes Werkzeug → fehler
-    „unbekannt“, fehlende Pflichtangabe → rueckfrage, unpassende Angabe → fehler „ungueltig“.
+    „unbekannt“, fehlende Pflichtangabe → rueckfrage, unpassende Angabe (auch falscher Typ oder
+    unbekanntes Argument) → fehler „ungueltig“.
     """
     tool = TOOLS.get(name)
     if tool is None:
@@ -303,3 +304,8 @@ def call_tool(session: Session, name: str, args: dict) -> dict:
         return tool.function(session, **args)
     except (ValueError, LookupError) as error:
         return _fehler("ungueltig", str(error))
+    except (TypeError, ArithmeticError):
+        # Falscher Typ (z. B. projekt_id als Text), unbekanntes Argument oder eine Zahl, mit der
+        # man nicht rechnen kann. Was halb geschrieben war, wird verworfen.
+        session.rollback()
+        return _fehler("ungueltig", "Die Angaben passen nicht zu diesem Werkzeug.")

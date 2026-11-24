@@ -1,8 +1,8 @@
 // Der Abschnitt „Material und Fahrten“ im Reiter „Buchungen“ (Feature F5):
 // Man wählt ein Projekt, bucht Material und Fahrten darauf und sieht die Gesamtkosten.
-// Der Reiter selbst (bookings.js) ruft nur renderMaterialBooking() auf.
+// Eingetragen ist der Abschnitt in bookings/sections.js.
 
-import { getJson } from "../../shared/api.js";
+import { getJson } from "../../../shared/api.js";
 import {
   el,
   field,
@@ -13,13 +13,16 @@ import {
   sendJson,
   today,
   toDecimalText,
-} from "./materials-helpers.js";
+} from "../materials-helpers.js";
 
 const KIND_LABEL = { material: "Material", travel: "Fahrt" };
 const STATUS_LABEL = { confirmed: "Gebucht", draft: "Entwurf" };
 
+export const id = "materials";
+export const title = "Material und Fahrten";
+
 // Baut den Abschnitt in `container` auf.
-export function renderMaterialBooking(container) {
+export function render(container) {
   let projectId = null;
   let materials = [];
 
@@ -57,7 +60,7 @@ export function renderMaterialBooking(container) {
   const materialForm = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h3", {}, "Material buchen"),
+    el("h2", {}, "Material buchen"),
     field("Material", materialSelect),
     el(
       "div",
@@ -87,7 +90,7 @@ export function renderMaterialBooking(container) {
   const travelForm = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h3", {}, "Fahrt buchen"),
+    el("h2", {}, "Fahrt buchen"),
     el(
       "div",
       { class: "materials-row" },
@@ -122,11 +125,11 @@ export function renderMaterialBooking(container) {
   const work = el(
     "div",
     { hidden: true },
-    el("h3", {}, "Gesamtkosten"),
+    el("h2", {}, "Gesamtkosten"),
     costs,
     materialForm,
     travelForm,
-    el("h3", {}, "Buchungen auf dieses Projekt"),
+    el("h2", {}, "Buchungen auf dieses Projekt"),
     bookingsEmpty,
     bookingsWrap,
   );
@@ -135,7 +138,6 @@ export function renderMaterialBooking(container) {
     el(
       "section",
       { class: "materials-section" },
-      el("h2", {}, "Material und Fahrten"),
       projectField,
       message,
       work,

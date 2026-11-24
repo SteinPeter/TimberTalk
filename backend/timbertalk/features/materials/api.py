@@ -52,11 +52,11 @@ def _run(function: Callable, *args):
 
 @router.get("/items")
 def list_materials(
-    kategorie: str | None = None,
+    category: str | None = None,
     on_date: date | None = None,
     session: Session = Depends(get_session),
 ) -> list[MaterialInfo]:
-    return service.list_materials(session, kategorie, on_date)
+    return service.list_materials(session, category, on_date)
 
 
 @router.post("/items", status_code=201)
@@ -109,7 +109,7 @@ def delete_hourly_rate(hourly_rate_id: int, session: Session = Depends(get_sessi
 
 @router.get("/bookings")
 def list_bookings(project_id: int, session: Session = Depends(get_session)) -> list[BookingInfo]:
-    return service.list_bookings(session, project_id)
+    return _run(service.list_bookings, session, project_id)
 
 
 @router.post("/bookings/material", status_code=201)
@@ -131,4 +131,4 @@ def book_travel(data: TravelBookingIn, session: Session = Depends(get_session)) 
 
 @router.get("/projects/{project_id}/costs")
 def project_costs(project_id: int, session: Session = Depends(get_session)) -> ProjectCosts:
-    return service.project_costs(session, project_id)
+    return _run(service.project_costs, session, project_id)

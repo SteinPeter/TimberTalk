@@ -61,12 +61,13 @@ Im Meeting wird genau das vorgeführt:
 
 ## Reiter
 
-Zwei bestehende Reiter, in beiden kommt eine eigene Datei dazu:
+Zwei bestehende Reiter, in beiden kommt ein Abschnitt als eigene Datei dazu (F0e):
 
-- `bookings` („Buchungen“): `frontend/features/bookings/materials-booking.js` – Material und Fahrten
-  buchen, Gesamtkosten, Buchungsliste.
-- `settings` („Einstellungen“): `frontend/features/settings/materials-master.js` (Materialstamm und
-  Preise) und `frontend/features/settings/materials-company.js` (Stammdaten der Abrechnung).
+- `bookings` („Buchungen“): `frontend/features/bookings/sections/materials.js` – Material und
+  Fahrten buchen, Gesamtkosten, Buchungsliste.
+- `settings` („Einstellungen“): `frontend/features/settings/sections/materials-master.js`
+  (Materialstamm und Preise) und `frontend/features/settings/sections/materials-company.js`
+  (Firma und Bank, Fahrtkosten, Umsatzsteuer, Stundensätze).
 
 Kein neuer Reiter, also keine Änderung an `frontend/reiter.js`.
 

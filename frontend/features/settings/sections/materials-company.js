@@ -1,9 +1,9 @@
 // Der Abschnitt „Stammdaten der Abrechnung“ im Reiter „Einstellungen“ (Feature F5):
 // Firma, Logo, Bankverbindung, Fahrtkosten je km, Umsatzsteuer und die Stundensätze.
 // Diese Angaben werden einmal eingetragen und später für Kosten und Rechnungen benutzt.
-// Der Reiter selbst (settings.js) ruft nur renderCompany() auf.
+// Eingetragen ist der Abschnitt in settings/sections.js.
 
-import { getJson } from "../../shared/api.js";
+import { getJson } from "../../../shared/api.js";
 import {
   el,
   field,
@@ -11,7 +11,7 @@ import {
   messageBox,
   sendJson,
   toDecimalText,
-} from "../bookings/materials-helpers.js";
+} from "../../bookings/materials-helpers.js";
 
 const MAX_LOGO_BYTES = 350 * 1024;
 
@@ -22,8 +22,11 @@ function toInputText(value) {
   return trimmed.replace(".", ",");
 }
 
+export const id = "materials-company";
+export const title = "Firma und Bank";
+
 // Baut den Abschnitt in `container` auf.
-export function renderCompany(container) {
+export function render(container) {
   let logo = null;
 
   const message = messageBox(); // gehört zum Formular „Firma und Bank“
@@ -47,13 +50,13 @@ export function renderCompany(container) {
   const form = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h3", {}, "Firma und Bank"),
+    el("h2", {}, "Firma und Bank"),
     field("Firma", companyName),
     field("Adresse", address),
     el("div", { class: "materials-field" }, el("span", {}, "Logo"), logoPreview, logoInput, logoRemove),
     field("Name der Bank", bankName),
     el("div", { class: "materials-row" }, field("IBAN", iban), field("BIC", bic)),
-    el("h3", {}, "Preise und Steuer"),
+    el("h2", {}, "Preise und Steuer"),
     el(
       "div",
       { class: "materials-row" },
@@ -99,7 +102,7 @@ export function renderCompany(container) {
   const rateForm = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h3", {}, "Stundensätze"),
+    el("h2", {}, "Stundensätze"),
     rateEmpty,
     rateWrap,
     el(
@@ -116,7 +119,6 @@ export function renderCompany(container) {
     el(
       "section",
       { class: "materials-section" },
-      el("h2", {}, "Stammdaten der Abrechnung"),
       form,
       rateForm,
     ),
