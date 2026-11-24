@@ -50,7 +50,7 @@ export function render(container) {
   const form = el(
     "form",
     { class: "materials-form", novalidate: "" },
-    el("h2", {}, "Firma und Bank"),
+    el("h2", {}, "Anschrift und Bankverbindung"),
     field("Firma", companyName),
     field("Adresse", address),
     el("div", { class: "materials-field" }, el("span", {}, "Logo"), logoPreview, logoInput, logoRemove),

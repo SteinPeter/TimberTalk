@@ -55,7 +55,8 @@ def _require_amount(value: Decimal, label: str) -> Decimal:
     des Projekts ließen sich danach nicht mehr berechnen.
     """
     if not value.is_finite() or not 0 <= value <= MAX_AMOUNT:
-        raise ValueError(f"{label} muss eine Zahl zwischen 0 und {MAX_AMOUNT} sein.")
+        limit = f"{MAX_AMOUNT:,.0f}".replace(",", ".")  # deutsch: 1.000.000
+        raise ValueError(f"{label} muss eine Zahl zwischen 0 und {limit} sein.")
     return value
 
 
