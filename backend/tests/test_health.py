@@ -3,6 +3,7 @@
 
 import re
 
+import pytest
 from fastapi.testclient import TestClient
 
 from timbertalk.main import FRONTEND_DIR
@@ -43,3 +44,19 @@ def test_jeder_reiter_ordner_steht_in_reiter_js(client: TestClient) -> None:
         modul = client.get(f"/features/{tab}/{tab}.js")
         assert modul.status_code == 200
         assert f'export const id = "{tab}";' in modul.text
+
+
+@pytest.mark.parametrize("tab", ["settings", "bookings"])
+def test_jeder_abschnitt_steht_in_sections_js(client: TestClient, tab: str) -> None:
+    # Wie bei den Reitern: Die Abschnitte werden aus den Dateien unter sections/ gelesen. Jede
+    # Datei braucht eine Zeile in sections.js und exportiert als id ihren Dateinamen.
+    folder = FRONTEND_DIR / "features" / tab / "sections"
+    files = sorted(p.stem for p in folder.glob("*.js")) if folder.is_dir() else []
+    liste = client.get(f"/features/{tab}/sections.js")
+    assert liste.status_code == 200
+    listed = sorted(re.findall(r'"\./sections/([a-z0-9-]+)\.js"', liste.text))
+
+    assert listed == files, f"Jede Datei unter {tab}/sections/ braucht eine Zeile in sections.js"
+    for section in files:
+        modul = client.get(f"/features/{tab}/sections/{section}.js").text
+        assert f'export const id = "{section}";' in modul
