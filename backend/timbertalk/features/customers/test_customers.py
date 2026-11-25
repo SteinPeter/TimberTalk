@@ -6,6 +6,7 @@
 
 import csv
 import io
+import re
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from sqlmodel import Session, SQLModel
 from timbertalk.db import IN_MEMORY_URL, make_engine
 from timbertalk.features.customers import demo, service, tools
 from timbertalk.features.customers.models import CustomerInput, CustomerUpdate
+from timbertalk.main import FRONTEND_DIR
 
 # --- Erfundene Testdaten --------------------------------------------------------------
 
@@ -720,3 +722,74 @@ def test_check_customer_update_speichert_nichts(session: Session) -> None:
     assert preview.city == "Neu"
     session.expire_all()
     assert service.get_customer(session, created.id).city == "Musterstadt"
+
+
+# === Regeln für den Reiter (frontend/features/customers/customers.js) ===================
+# Ohne Node.js im Projekt prüfen diese Tests den Quelltext des Reiters gegen CLAUDE.md und
+# gegen die Regeln im Backend. Das Verhalten im Browser wird zusätzlich von Hand geprüft.
+
+CUSTOMERS_JS = FRONTEND_DIR / "features" / "customers" / "customers.js"
+SHARED_API_JS = FRONTEND_DIR / "shared" / "api.js"
+
+
+def reiter_code() -> str:
+    return CUSTOMERS_JS.read_text(encoding="utf-8")
+
+
+def test_reiter_fragt_die_api_nur_ueber_getjson() -> None:
+    code = reiter_code()
+    assert 'import { getJson } from "../../shared/api.js";' in code
+    assert "fetch(" not in code
+    assert "XMLHttpRequest" not in code
+    # Genau zwei Aufrufe: die Liste laden und sendChange() für alle Schreibaktionen.
+    assert code.count("await getJson(") == 2
+    assert "async function sendChange(" in code
+
+
+def test_reiter_setzt_innerhtml_nur_mit_festem_text() -> None:
+    code = reiter_code()
+    templates = re.findall(r"innerHTML = `(.*?)`", code, re.S)
+    assert len(templates) == code.count("innerHTML") == 1
+    assert "${" not in templates[0]  # keine Daten im HTML, die kommen mit textContent
+
+
+def test_schreiben_bleibt_aus_solange_getjson_nur_get_kann() -> None:
+    # getJson(path) ohne zweiten Parameter ignoriert Methode und Inhalt: Ein „Speichern“ liefe
+    # still als GET. Erst wenn shared/api.js erweitert ist, darf WRITE_ENABLED true werden.
+    api = SHARED_API_JS.read_text(encoding="utf-8")
+    getjson_kann_nur_get = re.search(r"function getJson\(\s*path\s*\)", api) is not None
+    if getjson_kann_nur_get:
+        assert "const WRITE_ENABLED = false;" in reiter_code()
+
+
+def test_reiter_prueft_antworten_bevor_er_erfolg_meldet() -> None:
+    code = reiter_code()
+    send = code[code.index("async function sendChange(") :]
+    send = send[: send.index("\n}\n")]
+    assert "if (!WRITE_ENABLED)" in send
+    assert "confirmsChange(action" in send
+    # Erfolgsmeldungen („gespeichert“, „archiviert“ …) stehen nur in Aufrufen nach sendChange().
+    assert code.count("done(") == code.count("await sendChange(") + 1  # +1: Aufruf in openAction
+
+
+def test_reiter_hoechstlaengen_wie_im_backend() -> None:
+    fields = re.findall(r'\{ key: "(\w+)".*?max: (\d+)', reiter_code())
+    assert {key for key, _ in fields} == set(CustomerInput.model_fields) - {"customer_type"}
+    for key, maximum in fields:
+        metadata = CustomerInput.model_fields[key].metadata
+        limits = [m.max_length for m in metadata if getattr(m, "max_length", None) is not None]
+        assert limits == [int(maximum)], key
+
+
+def test_reiter_pflichtfelder_wie_im_backend() -> None:
+    code = reiter_code()
+    assert re.search(r'key: "company_name".*?required: \["business"\]', code)
+    assert re.search(r'key: "last_name".*?required: \["private"\]', code)
+    assert len(re.findall(r"required: \[", code)) == 2
+
+
+def test_reiter_nutzt_noch_keine_eigenen_css_klassen() -> None:
+    # Eigene Klassen customers-* kommen erst mit der Freigabe für style.css (Lösung A).
+    code = reiter_code()
+    assert 'class="customers-' not in code
+    assert 'className = "customers-' not in code

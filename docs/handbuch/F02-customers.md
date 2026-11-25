@@ -1,8 +1,8 @@
 # F2 – Kunden (Handbuch-Kapitel)
 
 > **Steckbrief:** `docs/features/F02-customers.md` · **Pate:** noch mit Peter/Anton zu klären · **Stand:** 2026-11-25
-> (Tabelle, Service, Endpunkte, Demo-Datensatz und S-11-Vorbereitung mit Tests; Reiter nur
-> lesend; Schreiben im Reiter und Registrierung der KI-Werkzeuge folgen)
+> (Tabelle, Service, Endpunkte, Demo-Datensatz und S-11-Vorbereitung mit Tests; Reiter mit
+> Formularen und Dialogen, Speichern ausgeschaltet; Registrierung der KI-Werkzeuge folgt)
 
 ## Dateien
 
@@ -13,26 +13,45 @@
 | `backend/timbertalk/features/customers/api.py` | Endpunkte unter `/api/customers`; übersetzt `CustomerError` in HTTP-Statuscodes |
 | `backend/timbertalk/features/customers/demo.py` | Demo-Datensatz (LD-09): zehn erfundene Kunden, `load_demo_customers()` und Befehl zum Laden in eine eigene Datei |
 | `backend/timbertalk/features/customers/tools.py` | S-11-Vorbereitung: übersetzt Werkzeug-Eingaben auf den Service, prüft ohne Speichern; kein Katalog, keine Registrierung |
-| `backend/timbertalk/features/customers/test_customers.py` | Tests für Service, Endpunkte, Demo-Datensatz, Export und `tools.py` mit erfundenen Daten |
-| `frontend/features/customers/customers.js` | Reiter „Kunden“: Liste mit Suche beim Tippen, Schalter „Archivierte zeigen“, aufklappbare Kundendaten, Link zum CSV-Export; Knöpfe zum Schreiben gesperrt |
+| `backend/timbertalk/features/customers/test_customers.py` | Tests für Service, Endpunkte, Demo-Datensatz, Export und `tools.py` mit erfundenen Daten; Regelprüfungen am Quelltext von `customers.js` (nur `getJson`, `innerHTML` nur fest, Schreiben aus, Längen und Pflicht wie im Backend) |
+| `frontend/features/customers/customers.js` | Reiter „Kunden“: Liste mit Suche, Schalter „Archivierte zeigen“, Kundendaten, CSV-Link; Formular Anlegen/Bearbeiten, Dialoge Archivieren/Wiederherstellen/Löschen; Speichern über `sendChange()`, ausgeschaltet |
 
 ## Der Reiter
 
-Nur lesend, weil `getJson()` aus `shared/api.js` bisher nur GET kann und Abfragen laut
-`CLAUDE.md` nur darüber laufen (Steckbrief D6). Eigene CSS-Klassen gibt es noch nicht; der Reiter
-benutzt nur `hint`, `empty`, `status` und Standard-Elemente des Browsers.
+Abfragen laufen laut `CLAUDE.md` nur über `getJson()` aus `shared/api.js`, und das kann bisher nur
+GET (Steckbrief D6). Lesen funktioniert deshalb vollständig; **Speichern ist ausgeschaltet**
+(`WRITE_ENABLED = false`). Eigene CSS-Klassen gibt es noch nicht; der Reiter benutzt nur `hint`,
+`empty`, `status` und Standard-Elemente des Browsers (`<details>`, `<dialog>`, `<fieldset>`).
 
 - **Liste:** `GET /api/customers` über `getJson()`. Jeder Kunde ist ein `<details>`: die Zeile
-  zeigt Name und Ort, aufgeklappt die Daten als `<dl class="status">`.
+  zeigt Name und Ort, aufgeklappt die Daten als `<dl class="status">` und die Aktionen.
 - **Suche:** sucht 250 ms nach dem letzten Tastendruck (`SEARCH_DELAY`). Jede Suche hat eine
   Nummer; eine verspätete ältere Antwort wird verworfen.
-- **Felder:** Die Liste `FIELDS` sagt, welches Feld zu welcher Kundenart gehört. Die Anzeige
-  nutzt sie; das Formular zum Anlegen und Bearbeiten soll darauf aufbauen.
 - **Export:** ein normaler Link mit `download` auf `/api/customers/export.csv` (mit `API_BASE` aus
   `config.js`). Der Browser lädt die Datei; das ist keine `fetch`-Abfrage.
-- **Aktionen:** „Neuer Kunde“, „Bearbeiten“, „Archivieren“ bzw. bei archivierten Kunden
-  „Wiederherstellen“ und „Endgültig löschen …“ sind sichtbar, aber `disabled`.
-- Alle Daten kommen mit `textContent` in die Seite; ein Name wie `<b>Test</b>` erscheint als Text.
+- **Felder:** `FIELDS` sagt je Feld: Beschriftung, Kundenart (`types`), Pflicht (`required`) und
+  Höchstlänge (`max`, wie in `models.py`). Anzeige, Formular und Prüfung nutzen dieselbe Liste.
+- **Formular** (`openCustomerForm`): ein `<dialog>` mit Kundenart als Auswahl (Privatkunde/Firma);
+  es zeigt nur die Felder dieser Art. `validateCustomer()` prüft bei jeder Eingabe; Meldungen
+  erscheinen unter dem Feld, sobald jemand hineingetippt oder „Speichern“ versucht hat. Solange
+  etwas fehlt, ist der Knopf gesperrt. Esc oder „Abbrechen“ schließt ohne Änderung.
+- **Dialoge** (`openConfirmDialog`): Archivieren und Wiederherstellen fragen einmal nach;
+  „Endgültig löschen“ (nur bei archivierten Kunden) braucht zusätzlich das Häkchen
+  „Ja, ich möchte diesen Kunden endgültig löschen.“. „Abbrechen“ hat jeweils den Fokus.
+- **Schreiben** (`sendChange(action, id, body)`): der einzige Weg für Änderungen. Methode und
+  Adresse stehen in `ACTIONS`. Ist `WRITE_ENABLED` aus, wirft die Funktion sofort einen Fehler –
+  es geht keine Abfrage hinaus. Sonst prüft `confirmsChange()` die Antwort: Anlegen/Bearbeiten
+  müssen jeden gesendeten Wert zurückgeben, Archivieren `archived: true`, Wiederherstellen
+  `archived: false`, Löschen eine leere Antwort (204). Nur dann schließt der Dialog und oben
+  erscheint „… wurde gespeichert/archiviert/…“. Sonst bleibt er offen mit einer Meldung aus
+  `errorMessage()` (404, 409, 422, ausgeschaltet, unbestätigt).
+- **Freischalten** nach Erweiterung von `shared/api.js` zu `getJson(path, options)`:
+  `WRITE_ENABLED = true` setzen. Der Test `test_schreiben_bleibt_aus_solange_getjson_nur_get_kann`
+  schlägt fehl, wenn jemand vorher umschaltet.
+- `validateCustomer`, `confirmsChange` und `errorMessage` sind zusätzlich exportiert, damit sie
+  sich im Browser prüfen lassen; `app.js` nutzt nur `id`, `title` und `render`.
+- Alle Daten kommen mit `textContent` oder als `value` in die Seite; `innerHTML` steht nur einmal,
+  für das feste Gerüst. Ein Name wie `<b>Test</b>` erscheint als Text.
 
 ## Endpunkte
 
