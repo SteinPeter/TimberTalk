@@ -2,4 +2,7 @@
 // Jeder Abschnitt ist eine eigene Datei sections/<feature>.js oder sections/<feature>-<thema>.js.
 // Einen Abschnitt ergänzen: eine import-Zeile und einen Eintrag in SECTIONS.
 
-export const SECTIONS = [];
+import * as materialsCompany from "./sections/materials-company.js";
+import * as materialsMaster from "./sections/materials-master.js";
+
+export const SECTIONS = [materialsCompany, materialsMaster];
