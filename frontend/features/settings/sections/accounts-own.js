@@ -1,6 +1,6 @@
 // Der Abschnitt „Mein Konto“ im Reiter „Einstellungen“ (Feature F10):
 // zeigt das eigene Konto und lässt jeden sein eigenes Passwort ändern. Die Rolle steht hier
-// nicht – sie dient nur Chef und Admin zur Einordnung (Abschnitt „Benutzerkonten“).
+// nicht – sie dient nur dem Admin zur Einordnung (Abschnitt „Benutzerkonten“).
 // Eingetragen ist der Abschnitt in settings/sections.js.
 
 import { el } from "../../../shared/dom.js";

@@ -610,7 +610,7 @@ def test_geselle_bucht_material_sieht_aber_keine_preise(
 
     liste = geselle.get("/api/materials/bookings", params={"project_id": 12}).json()
     assert [(b["description"], b["quantity"], b["amount"]) for b in liste] == [("Brett", "4", None)]
-    # Der Chef sieht dieselbe Buchung mit Betrag.
+    # Der Admin sieht dieselbe Buchung mit Betrag.
     assert (
         client.get("/api/materials/bookings", params={"project_id": 12}).json()[0]["amount"]
         == "50.00"

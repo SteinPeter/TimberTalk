@@ -307,7 +307,7 @@ def login(session: Session, identifier: str, password: str) -> tuple[Account, st
     if not security.verify_password(password, account.password_hash):
         raise LoginFailed(LOGIN_FAILED_TEXT)
     if not account.active:
-        raise LoginFailed("Dieses Konto ist gesperrt. Bitte beim Chef oder Admin melden.")
+        raise LoginFailed("Dieses Konto ist gesperrt. Bitte beim Admin melden.")
 
     token = security.new_session_token()
     now = _now()

@@ -19,6 +19,13 @@ def _admin(session: Session):
     return account
 
 
+def _office_manager(session: Session, admin):
+    """Ein Verwaltungs-Konto, dem der Admin das Recht „Konten verwalten“ gegeben hat."""
+    service.set_role_permission(session, "office", "accounts.manage", True, admin)
+    account, _ = service.create_account(session, "buero", "Büro", "office")
+    return account
+
+
 # --- Passwörter -------------------------------------------------------------------
 
 
@@ -70,9 +77,9 @@ def test_konto_anlegen_prueft_die_angaben(
 
 
 def test_admin_konten_legt_nur_ein_admin_an(session: Session) -> None:
-    chef, _ = service.create_account(session, "chef", "Chef", "owner")
+    buero = _office_manager(session, _admin(session))
     with pytest.raises(PermissionError):
-        service.create_account(session, "neu", "Neu", "admin", acting=chef)
+        service.create_account(session, "neu", "Neu", "admin", acting=buero)
 
 
 # --- Anmelden ------------------------------------------------------------------------
@@ -160,9 +167,9 @@ def test_admin_setzt_vergessenes_passwort_zurueck(session: Session) -> None:
 
 def test_admin_konto_setzt_nur_ein_admin_zurueck(session: Session) -> None:
     admin = _admin(session)
-    chef, _ = service.create_account(session, "chef", "Chef", "owner")
+    buero = _office_manager(session, admin)
     with pytest.raises(PermissionError):
-        service.reset_password(session, admin.id, None, chef)
+        service.reset_password(session, admin.id, None, buero)
 
 
 # --- Schutz vor dem Aussperren -------------------------------------------------------
@@ -173,9 +180,9 @@ def test_letzter_admin_bleibt_admin(session: Session) -> None:
     other, _ = service.create_account(session, "zweit", "Zweiter", "admin")
     service.update_account(session, other.id, "Zweiter", "admin", None, False, admin)
     with pytest.raises(ValueError, match="eigene"):
-        service.update_account(session, admin.id, "Admin", "owner", None, True, admin)
+        service.update_account(session, admin.id, "Admin", "master", None, True, admin)
     with pytest.raises(ValueError, match="mindestens ein aktives Admin"):
-        service.update_account(session, admin.id, "Admin", "owner", None, True, other)
+        service.update_account(session, admin.id, "Admin", "master", None, True, other)
 
 
 def test_eigenes_konto_kann_man_nicht_sperren(session: Session) -> None:
@@ -220,9 +227,9 @@ def test_admin_hat_immer_alle_rechte(session: Session) -> None:
 
 
 def test_eigene_rolle_verliert_nicht_die_kontenverwaltung(session: Session) -> None:
-    chef, _ = service.create_account(session, "chef", "Chef", "owner")
+    buero = _office_manager(session, _admin(session))
     with pytest.raises(ValueError, match="eigenen Rolle"):
-        service.set_role_permission(session, "owner", "accounts.manage", False, chef)
+        service.set_role_permission(session, "office", "accounts.manage", False, buero)
 
 
 # --- Endpunkte -----------------------------------------------------------------------
@@ -284,8 +291,9 @@ def test_api_kontenverwaltung_nur_mit_recht(client_as: Callable[[str], TestClien
     assert "Konten verwalten" in response.json()["detail"]
     assert geselle.get("/api/accounts/roles").status_code == 403
 
-    chef = client_as("owner")
-    assert chef.get("/api/accounts").status_code == 200
+    assert client_as("admin").get("/api/accounts").status_code == 200
+    # Ohne Häkchen darf auch die Verwaltung keine Konten verwalten.
+    assert client_as("office").get("/api/accounts").status_code == 403
 
 
 def test_api_konto_aendern_und_zuruecksetzen(client: TestClient) -> None:
@@ -325,3 +333,15 @@ def test_api_rollen_und_rechte(client: TestClient, client_as: Callable[[str], Te
 
     falsch = client.put("/api/accounts/roles/journeyman/permissions/zaubern", json={"allowed": 1})
     assert falsch.status_code == 422
+
+
+def test_es_gibt_keine_eigene_chef_rolle(session: Session) -> None:
+    # Der Chef bekommt ein Admin-Konto; eine Rolle „owner“ gibt es nicht (mehr).
+    assert [row.label for row in service.role_matrix(session).roles] == [
+        "Admin",
+        "Meister",
+        "Verwaltung",
+        "Geselle",
+    ]
+    with pytest.raises(ValueError, match="Rolle"):
+        service.create_account(session, "chef", "Chef", "owner")

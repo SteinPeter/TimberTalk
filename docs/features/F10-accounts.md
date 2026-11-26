@@ -2,18 +2,19 @@
 
 ## Ziel
 
-Jeder Mensch im Betrieb hat ein eigenes Konto mit einer Rolle (Admin, Chef, Meister, Verwaltung,
-Geselle). Die Rolle bestimmt, was er sehen und ändern darf – zuerst bei Preisen und Kosten.
+Jeder Mensch im Betrieb hat ein eigenes Konto mit einer Rolle (Admin, Meister, Verwaltung,
+Geselle). Der Chef bekommt ein Admin-Konto – eine eigene Chef-Rolle gibt es nicht. Die Rolle
+bestimmt, was jemand sehen und ändern darf – zuerst bei Preisen und Kosten.
 Grundlage: `TimberTalk_Programmaufbau.pdf`, Kapitel 10 „Konten und Rechte“.
 
 ## Was der Zimmerer danach kann
 
 Wer TimberTalk öffnet, meldet sich mit Anmeldenamen oder Personalnummer und Passwort an und bleibt
-auf dem Gerät 30 Tage angemeldet. Chef oder Admin legen in den Einstellungen Konten an. Jedes neue
+auf dem Gerät 30 Tage angemeldet. Der Admin legt in den Einstellungen Konten an. Jedes neue
 Konto bekommt ein Startpasswort, das die Seite einmal anzeigt. Bei der ersten Anmeldung muss man
-es durch ein eigenes ersetzen. Hat jemand sein Passwort vergessen, vergibt der Chef ein neues
-Startpasswort. In „Rollen und Rechte“ legen Chef und Admin mit Häkchen fest, welche Rolle was
-darf. Ein Geselle bucht zum Beispiel Material und Fahrten, sieht aber keine Preise, keine Beträge
+es durch ein eigenes ersetzen. Hat jemand sein Passwort vergessen, vergibt der Admin ein neues
+Startpasswort. In „Rollen und Rechte“ legt der Admin mit Häkchen fest, welche Rolle was darf –
+soll z. B. die Verwaltung auch Konten pflegen, bekommt sie das Häkchen „Konten verwalten“. Ein Geselle bucht zum Beispiel Material und Fahrten, sieht aber keine Preise, keine Beträge
 und keine Projektkosten.
 
 ## Abnahme
@@ -30,8 +31,8 @@ Im Meeting wird genau das vorgeführt:
    eigenes Passwort.
 4. **Rechte beim Material:** Max sieht im Reiter „Buchungen“ das Material ohne Preis, bucht
    2,5 m³ und sieht die Buchung ohne Preis, Betrag und Gesamtkosten. In den Einstellungen sieht er
-   nur „Mein Konto“. Der Chef sieht dieselbe Buchung mit Betrag.
-5. **Passwort vergessen:** Der Chef setzt das Passwort von Max zurück. Max ist auf allen Geräten
+   nur „Mein Konto“. Der Admin sieht dieselbe Buchung mit Betrag.
+5. **Passwort vergessen:** Der Admin setzt das Passwort von Max zurück. Max ist auf allen Geräten
    abgemeldet und meldet sich mit dem neuen Startpasswort an.
 6. **Rechte ändern:** In „Rollen und Rechte“ bekommt der Geselle ein Häkchen bei „Preise … sehen“.
    Nach dem Neuladen sieht Max die Preise. Häkchen beim Admin lassen sich nicht abwählen.
@@ -41,18 +42,18 @@ Im Meeting wird genau das vorgeführt:
 
 ## Rollen und Rechte (Voreinstellung)
 
-| Recht | Admin | Chef | Meister | Verwaltung | Geselle |
-| --- | :-: | :-: | :-: | :-: | :-: |
-| Konten verwalten, Passwörter zurücksetzen, Rechte ändern | ✓ | ✓ | – | – | – |
-| Preise, Stundensätze und Projektkosten sehen | ✓ | ✓ | ✓ | ✓ | – |
-| Preise, Stundensätze und Firmendaten ändern | ✓ | ✓ | – | ✓ | – |
-| Materialstamm pflegen | ✓ | ✓ | ✓ | ✓ | – |
-| Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Recht | Admin | Meister | Verwaltung | Geselle |
+| --- | :-: | :-: | :-: | :-: |
+| Konten verwalten, Passwörter zurücksetzen, Rechte ändern | ✓ | – | – | – |
+| Preise, Stundensätze und Projektkosten sehen | ✓ | ✓ | ✓ | – |
+| Preise, Stundensätze und Firmendaten ändern | ✓ | – | ✓ | – |
+| Materialstamm pflegen | ✓ | ✓ | ✓ | – |
+| Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ |
 
-Chef und Admin können jedes Häkchen außer denen des Admins ändern. Admin-Konten legt, ändert und
-setzt nur ein Admin zurück.
+Wer „Konten verwalten“ hat, kann jedes Häkchen außer denen des Admins ändern. Admin-Konten legt,
+ändert und setzt nur ein Admin zurück.
 
-Die Rolle ist eine Einordnung für Chef und Admin: Sie steht nur im Abschnitt „Benutzerkonten“
+Die Rolle ist eine Einordnung für den Admin: Sie steht nur im Abschnitt „Benutzerkonten“
 (Recht `accounts.manage`). In der Leiste, in „Mein Konto“ und in anderen Features erscheint nur
 der Name.
 

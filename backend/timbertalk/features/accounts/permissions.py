@@ -1,8 +1,9 @@
 # Die Rollen und Rechte von TimberTalk an einer Stelle.
 #
-# Eine Rolle ist die Art des Kontos (Chef, Meister, Geselle …). Ein Recht ist eine Sache, die man
+# Eine Rolle ist die Art des Kontos (Admin, Meister, Geselle …). Ein Recht ist eine Sache, die man
 # tun oder sehen darf (z. B. „Preise sehen“). Welche Rolle welches Recht hat, steht hier als
-# Voreinstellung. Chef und Admin können das in den Einstellungen ändern („Rollen und Rechte“);
+# Voreinstellung. Der Admin (in der Regel der Chef) kann das in den Einstellungen ändern
+# („Rollen und Rechte“) – ebenso jede Rolle, der er das Recht „accounts.manage“ gibt;
 # geänderte Häkchen speichert service.py in der Tabelle accounts_role_permission.
 #
 # Ein neues Recht für ein Feature: eine Zeile in PERMISSIONS und das Recht in DEFAULTS bei den
@@ -11,7 +12,6 @@
 # Rollen: Schlüssel im Code → Name auf dem Bildschirm. Die Reihenfolge ist die der Anzeige.
 ROLES: dict[str, str] = {
     "admin": "Admin",
-    "owner": "Chef",
     "master": "Meister",
     "office": "Verwaltung",
     "journeyman": "Geselle",
@@ -33,7 +33,6 @@ PERMISSIONS: dict[str, str] = {
 # Voreinstellung: welche Rolle welches Recht hat, solange niemand etwas ändert.
 DEFAULTS: dict[str, set[str]] = {
     "admin": set(PERMISSIONS),
-    "owner": set(PERMISSIONS),
     "master": {"finance.view", "materials.edit", "bookings.create"},
     "office": {"finance.view", "finance.edit", "materials.edit", "bookings.create"},
     "journeyman": {"bookings.create"},

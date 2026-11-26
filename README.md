@@ -40,7 +40,7 @@ dazu ein eigenes Kapitel unter `docs/handbuch/`.
 | Buchung | `booking` |
 | Kostenart | `cost_type` |
 | Konto | `account` |
-| Rolle (Chef, Meister, Verwaltung, Geselle) | `role` (`owner`, `master`, `office`, `journeyman`) |
+| Rolle (Admin, Meister, Verwaltung, Geselle) | `role` (`admin`, `master`, `office`, `journeyman`) |
 | Recht | `permission` |
 
 ## Den alten Code ansehen

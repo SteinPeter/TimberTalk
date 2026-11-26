@@ -35,7 +35,7 @@ export function renderLogin(container) {
       "p",
       { class: "form-hint" },
       "Mit Ihrem Anmeldenamen oder Ihrer Personalnummer. Passwort vergessen? " +
-        "Chef oder Admin setzen es zurück.",
+        "Der Admin setzt es zurück.",
     ),
     field("Anmeldename oder Personalnummer", identifier),
     field("Passwort", password),

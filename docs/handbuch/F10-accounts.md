@@ -137,7 +137,7 @@ Ausnahme von der Regel „nur über `service.py`“ und so im Programmaufbau (Ka
 | Begriff | Im Code |
 | --- | --- |
 | Konto | `Account` |
-| Rolle (Admin, Chef, Meister, Verwaltung, Geselle) | `role`: `admin`, `owner`, `master`, `office`, `journeyman` |
+| Rolle (Admin, Meister, Verwaltung, Geselle; der Chef hat ein Admin-Konto) | `role`: `admin`, `master`, `office`, `journeyman` |
 | Recht | `permission`, z. B. `finance.view` |
 | Anmeldung auf einem Gerät | `AccountSession` |
 | Sitzungsschlüssel | `token` (im Cookie), `token_hash` (in der Datenbank) |

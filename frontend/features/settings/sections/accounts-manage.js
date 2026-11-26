@@ -1,6 +1,6 @@
 // Der Abschnitt „Benutzerkonten“ im Reiter „Einstellungen“ (Feature F10):
 // Konten anlegen, ändern, sperren und Passwörter zurücksetzen. Nur mit dem Recht
-// „accounts.manage“ sichtbar (Chef und Admin). Eingetragen in settings/sections.js.
+// „accounts.manage“ sichtbar (Admin, und wem er dieses Recht gibt). Eingetragen in settings/sections.js.
 //
 // Das Startpasswort zeigt die Seite genau einmal – nach dem Anlegen oder Zurücksetzen. Danach
 // kennt es niemand mehr; gespeichert ist nur sein Hash.
