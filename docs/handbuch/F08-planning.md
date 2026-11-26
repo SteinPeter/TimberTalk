@@ -17,7 +17,7 @@ In gemeinsamen Dateien geändert:
 | Datei | Änderung |
 | --- | --- |
 | `backend/timbertalk/features/accounts/permissions.py` | Rechte `calendar.view_all` und `calendar.dispatch` mit Voreinstellung. |
-| `backend/timbertalk/features/accounts/service.py`, `models.py` | Neue Funktion `list_people()` mit der Antwortklasse `Person` (nur Nummer und Name – die Rolle sehen nur Chef und Admin). |
+| `backend/timbertalk/features/accounts/service.py`, `models.py` | Neue Funktion `list_people()` mit der Antwortklasse `Person` (nur Nummer und Name – die Rolle sieht nur der Admin). |
 | `frontend/style.css` | Ein Block am Ende mit Klassen `planning-…`. Keine neuen Farben. |
 
 ## Endpunkte
