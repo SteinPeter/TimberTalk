@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session
 
 from timbertalk.features.accounts import service as accounts
+from timbertalk.features.notifications import service as notifications
 from timbertalk.features.planning import service
 from timbertalk.features.planning.models import EntryIn
 
@@ -228,3 +229,49 @@ def test_api_fehler_mit_deutschem_text(client: TestClient) -> None:
     assert client.put("/api/planning/entries/99", json=unbekannt).status_code == 404
     kinds = client.get("/api/planning/kinds").json()
     assert {"kind": "vacation", "label": "Urlaub", "absence": True} in kinds
+
+
+# --- Mitteilungen -------------------------------------------------------------------
+
+
+def _texts(session: Session, account_id: int) -> list[str]:
+    return [n.text for n in reversed(notifications.list_notifications(session, account_id))]
+
+
+def test_mitteilungen_beim_einplanen_aendern_und_absagen(session: Session) -> None:
+    chef = _person(session, "chef", "Chef", "admin")
+    max_ = _person(session, "max", "Max")
+    tom = _person(session, "tom", "Tom")
+    saved = service.create_entry(
+        session, _entry([max_, chef], end_date=TUE, location="Potsdam"), created_by=chef
+    )
+    entry_id = saved.entry.id
+    # Ohne Änderung keine Mitteilung „Geändert“; Tom kommt dazu, Max fällt weg.
+    service.update_entry(
+        session, entry_id, _entry([tom, chef], end_date=TUE, location="Potsdam"), acting_id=chef
+    )
+    service.update_entry(
+        session, entry_id, _entry([tom, chef], end_date=WED, location="Potsdam"), acting_id=chef
+    )
+    service.delete_entry(session, entry_id, acting_id=chef)
+
+    assert _texts(session, max_) == [
+        "Neu eingeplant: Carport Berger, Mo 30.11.–Di 01.12., Potsdam.",
+        "Ausgeplant: Carport Berger, Mo 30.11.–Di 01.12., Potsdam.",
+    ]
+    assert _texts(session, tom) == [
+        "Neu eingeplant: Carport Berger, Mo 30.11.–Di 01.12., Potsdam.",
+        "Geändert: Carport Berger, Mo 30.11.–Mi 02.12., Potsdam "
+        "(vorher: Carport Berger, Mo 30.11.–Di 01.12., Potsdam).",
+        "Abgesagt: Carport Berger, Mo 30.11.–Mi 02.12., Potsdam.",
+    ]
+    assert _texts(session, chef) == []  # wer plant, bekommt selbst nichts
+
+
+def test_beschreibung_mit_uhrzeit(session: Session) -> None:
+    max_ = _person(session, "max", "Max")
+    saved = service.create_entry(
+        session, _entry([max_], start_time=time(7, 0), end_time=time(12, 30)), None
+    )
+    entry = service.get_entry(session, saved.entry.id)
+    assert service.describe(entry) == "Carport Berger, Mo 30.11., 07:00–12:30 Uhr"

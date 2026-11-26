@@ -9,6 +9,7 @@
 import { REITER } from "./reiter.js";
 import { el } from "./shared/dom.js";
 import { renderFirstPassword, renderLogin } from "./shared/login.js";
+import { notificationsButton } from "./shared/notifications.js";
 import { can, loadAccount, logout } from "./shared/session.js";
 
 const DEFAULT_TAB = "start";
@@ -38,6 +39,7 @@ if (reachable && account === null) {
 } else {
   if (account) {
     header.append(accountBox(account));
+    header.querySelector(".account").prepend(notificationsButton());
   }
   startTabs(REITER.filter((reiter) => !reiter.permission || can(reiter.permission)));
 }

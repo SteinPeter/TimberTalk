@@ -5,6 +5,8 @@
 # Jede Funktion bekommt als ersten Parameter die Datenbank-Sitzung: session: Session.
 # Fehler: ValueError – die Angabe passt nicht (422), LookupError – gibt es nicht (404).
 # Die Personen kommen aus F10 und nur über dessen service.py (list_people()).
+# Wer ein-, aus- oder umgeplant wird, bekommt eine Mitteilung (Feature notifications) – außer der
+# Person, die gerade plant.
 
 from datetime import UTC, date, datetime
 
@@ -12,6 +14,7 @@ from sqlmodel import Session, col, delete, select
 
 from timbertalk.features.accounts import service as accounts
 from timbertalk.features.accounts.models import Person
+from timbertalk.features.notifications import service as notifications
 from timbertalk.features.planning.models import (
     ABSENCE_KINDS,
     KINDS,
@@ -31,6 +34,27 @@ MAX_RANGE_DAYS = 62
 
 def _format_date(day: date) -> str:
     return day.strftime("%d.%m.%Y")
+
+
+_WEEKDAYS = ["Mo", "Di", "Mi", "Do", "Fr", "Sa", "So"]
+
+
+def _short_day(day: date) -> str:
+    return f"{_WEEKDAYS[day.weekday()]} {day.strftime('%d.%m.')}"
+
+
+def describe(entry: CalendarEntry) -> str:
+    """Ein Termin in einer Zeile, z. B. „Carport Berger, Mo 30.11.–Mi 02.12., Potsdam“."""
+    parts = [entry.title]
+    days = _short_day(entry.start_date)
+    if entry.end_date != entry.start_date:
+        days += f"–{_short_day(entry.end_date)}"
+    parts.append(days)
+    if entry.start_time is not None:
+        parts.append(f"{entry.start_time:%H:%M}–{entry.end_time:%H:%M} Uhr")
+    if entry.location:
+        parts.append(entry.location)
+    return ", ".join(parts)
 
 
 def kinds() -> list[KindInfo]:
@@ -208,6 +232,11 @@ def list_entries(
 # --- Schreiben ------------------------------------------------------------------
 
 
+def _assigned(session: Session, entry_id: int) -> list[int]:
+    statement = select(CalendarAssignment.account_id).where(CalendarAssignment.entry_id == entry_id)
+    return list(session.exec(statement))
+
+
 def _assign(session: Session, entry_id: int, people: list[int]) -> None:
     session.exec(delete(CalendarAssignment).where(CalendarAssignment.entry_id == entry_id))
     for account_id in people:
@@ -228,26 +257,48 @@ def create_entry(session: Session, data: EntryIn, created_by: int | None) -> Sav
     _assign(session, entry.id, data.people)
     session.commit()
     session.refresh(entry)
+    others = [p for p in data.people if p != created_by]
+    notifications.notify(session, others, f"Neu eingeplant: {describe(entry)}.")
     return SavedEntry(entry=_info(session, entry, _names(session)), warnings=warnings)
 
 
-def update_entry(session: Session, entry_id: int, data: EntryIn) -> SavedEntry:
-    """Ändert einen Termin. Gibt ihn mit Hinweisen auf Überschneidungen zurück."""
+def update_entry(
+    session: Session, entry_id: int, data: EntryIn, acting_id: int | None = None
+) -> SavedEntry:
+    """Ändert einen Termin. Gibt ihn mit Hinweisen auf Überschneidungen zurück.
+
+    Mitteilungen: Neue Personen „neu eingeplant“, entfernte „ausgeplant“, alle anderen
+    „geändert“ – aber nur, wenn sich für sie wirklich etwas geändert hat.
+    """
     entry = get_entry(session, entry_id)
     data = _clean(session, data)
     warnings = _warnings(session, data, except_id=entry_id)
+    before = describe(entry)
+    old_people = _assigned(session, entry_id)
     for key, value in data.model_dump(exclude={"people"}).items():
         setattr(entry, key, value)
     session.add(entry)
     _assign(session, entry.id, data.people)
     session.commit()
     session.refresh(entry)
+
+    after = describe(entry)
+    added = [p for p in data.people if p not in old_people and p != acting_id]
+    removed = [p for p in old_people if p not in data.people and p != acting_id]
+    stayed = [p for p in data.people if p in old_people and p != acting_id]
+    notifications.notify(session, added, f"Neu eingeplant: {after}.")
+    notifications.notify(session, removed, f"Ausgeplant: {before}.")
+    if after != before:
+        notifications.notify(session, stayed, f"Geändert: {after} (vorher: {before}).")
     return SavedEntry(entry=_info(session, entry, _names(session)), warnings=warnings)
 
 
-def delete_entry(session: Session, entry_id: int) -> None:
-    """Löscht einen Termin mit allen Einplanungen."""
+def delete_entry(session: Session, entry_id: int, acting_id: int | None = None) -> None:
+    """Löscht einen Termin mit allen Einplanungen. Die Eingeplanten erfahren es."""
     entry = get_entry(session, entry_id)
+    text = f"Abgesagt: {describe(entry)}."
+    people = [p for p in _assigned(session, entry_id) if p != acting_id]
     session.exec(delete(CalendarAssignment).where(CalendarAssignment.entry_id == entry_id))
     session.delete(entry)
     session.commit()
+    notifications.notify(session, people, text)

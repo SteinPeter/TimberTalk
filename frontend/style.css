@@ -99,6 +99,74 @@ body {
   padding: 0.4rem 0;
 }
 
+/* Knopf „Mitteilungen“ mit Zahl der ungelesenen und der Liste darunter (shared/notifications.js). */
+.notify {
+  position: relative;
+}
+
+.notify-badge {
+  display: inline-block;
+  min-width: 1.25rem;
+  margin-left: 0.4rem;
+  padding: 0 0.3rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: var(--card);
+  text-align: center;
+  background: var(--accent);
+  border-radius: 0.625rem;
+}
+
+.notify-badge[hidden],
+.notify-panel[hidden] {
+  display: none;
+}
+
+.notify-panel {
+  position: absolute;
+  top: calc(100% + 0.4rem);
+  right: 0;
+  z-index: 10;
+  width: min(22rem, calc(100vw - 2rem));
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  box-shadow: 0 0.5rem 1.5rem rgb(0 0 0 / 20%);
+}
+
+.notify-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.notify-list li {
+  padding: 0.6rem 0.9rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.notify-list li:last-child {
+  border-bottom: 0;
+}
+
+.notify-list small {
+  display: block;
+  color: var(--muted);
+}
+
+/* Ungelesen: fett und mit Balken – nicht nur Farbe. */
+.notify-unread {
+  font-weight: 600;
+  border-left: 4px solid var(--accent);
+}
+
+.notify-empty {
+  color: var(--muted);
+}
+
 .account-name {
   color: var(--muted);
   font-size: 0.9rem;

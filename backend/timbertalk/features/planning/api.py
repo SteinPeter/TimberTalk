@@ -72,16 +72,16 @@ def create_entry(
 def update_entry(
     entry_id: int,
     data: EntryIn,
-    _: Account = Depends(require("calendar.dispatch")),
+    account: Account = Depends(require("calendar.dispatch")),
     session: Session = Depends(get_session),
 ) -> SavedEntry:
-    return _run(service.update_entry, session, entry_id, data)
+    return _run(service.update_entry, session, entry_id, data, account.id)
 
 
 @router.delete("/entries/{entry_id}", status_code=204)
 def delete_entry(
     entry_id: int,
-    _: Account = Depends(require("calendar.dispatch")),
+    account: Account = Depends(require("calendar.dispatch")),
     session: Session = Depends(get_session),
 ) -> None:
-    _run(service.delete_entry, session, entry_id)
+    _run(service.delete_entry, session, entry_id, account.id)
