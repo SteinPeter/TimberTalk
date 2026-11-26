@@ -247,6 +247,8 @@ das Feature im Frontend zeigt.
 | `planning/` | Planung: Kalender und Gantt | `planning` | `/api/planning` |
 | `accounts/` | Benutzerkonten, Rollen und gleichzeitiges Arbeiten | `settings` | `/api/accounts` |
 | `backup/` | Datensicherung, Wiederherstellung und Export | `settings` | `/api/backup` |
+| `notifications/` | Mitteilungen an Personen (F8) | Knopf in der Leiste | `/api/notifications` |
+| `audit/` | Änderungsprotokoll (F11) | `settings` | `/api/audit` |
 
 Ordnernamen sind englisch (Regel: Bezeichner auf Englisch) – im Backend wie im Frontend. Nur die
 Titel, die man auf der Webseite liest, sind deutsch. Ein Ordner ohne Inhalt schadet nicht: `load_features()`
