@@ -90,30 +90,28 @@ export function renderFirstPassword(container, account) {
 }
 
 // Formular „Passwort ändern“: bisheriges Passwort, neues Passwort, neues Passwort wiederholen.
-// Der Knopf wird erst aktiv, wenn das neue Passwort lang genug ist und beide gleich sind.
+// Der Knopf ist immer bedienbar: Beim Klick wird geprüft, und eine Meldung sagt genau, was noch
+// fehlt. (Ein grauer Knopf ohne Erklärung hilft niemandem – und Passwort-Manager füllen Felder
+// oft aus, ohne dass der Browser „input“ meldet.)
 export function passwordForm({ oldLabel = "Bisheriges Passwort", submitText, onDone }) {
   const oldPassword = el("input", {
     type: "password",
+    name: "current-password",
     autocomplete: "current-password",
-    required: "",
   });
-  const newPassword = el("input", {
-    type: "password",
-    autocomplete: "new-password",
-    minlength: String(MIN_LENGTH),
-    required: "",
-  });
-  const repeat = el("input", { type: "password", autocomplete: "new-password", required: "" });
+  const newPassword = el("input", { type: "password", name: "new-password", autocomplete: "new-password" });
+  const repeat = el("input", { type: "password", name: "new-password-repeat", autocomplete: "new-password" });
   const repeatHint = el("small", { class: "form-hint", "aria-live": "polite" });
-  const button = el("button", { type: "submit", class: "button", disabled: true }, submitText);
+  const button = el("button", { type: "submit", class: "button" }, submitText);
   const message = messageBox();
 
   const repeatField = field("Neues Passwort wiederholen", repeat);
   repeatField.append(repeatHint);
 
+  // novalidate: Wir prüfen selbst und sagen es auf Deutsch in der Meldung darunter.
   const form = el(
     "form",
-    { class: "form" },
+    { class: "form", novalidate: "" },
     field(oldLabel, oldPassword),
     field("Neues Passwort", newPassword, `Mindestens ${MIN_LENGTH} Zeichen.`),
     repeatField,
@@ -121,21 +119,38 @@ export function passwordForm({ oldLabel = "Bisheriges Passwort", submitText, onD
     message,
   );
 
-  // Während man tippt: Knopf freigeben, sobald alles passt; Unterschied gleich anzeigen.
-  function check() {
-    const longEnough = newPassword.value.length >= MIN_LENGTH;
-    const same = newPassword.value === repeat.value;
+  // Was noch fehlt – oder null, wenn alles passt.
+  function problem() {
+    if (!oldPassword.value) {
+      return `Bitte oben das ${oldLabel === "Startpasswort" ? "Startpasswort" : "bisherige Passwort"} eingeben.`;
+    }
+    if (newPassword.value.length < MIN_LENGTH) {
+      return `Das neue Passwort braucht mindestens ${MIN_LENGTH} Zeichen.`;
+    }
+    if (newPassword.value !== repeat.value) {
+      return "Die beiden neuen Passwörter sind nicht gleich.";
+    }
+    return null;
+  }
+
+  // Unterschied schon beim Tippen (oder Ausfüllen durch den Passwort-Manager) anzeigen.
+  function hint() {
     repeatHint.textContent =
-      repeat.value && !same ? "Die beiden neuen Passwörter sind noch nicht gleich." : "";
-    button.disabled = !(oldPassword.value && longEnough && same);
+      repeat.value && newPassword.value !== repeat.value ? "Die beiden neuen Passwörter sind noch nicht gleich." : "";
   }
   for (const input of [oldPassword, newPassword, repeat]) {
-    input.addEventListener("input", check);
+    input.addEventListener("input", hint);
+    input.addEventListener("change", hint);
   }
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     message.clear();
+    const missing = problem();
+    if (missing) {
+      message.show(missing, true);
+      return;
+    }
     button.disabled = true;
     try {
       const account = await sendJson("POST", "/api/accounts/me/password", {
@@ -143,12 +158,13 @@ export function passwordForm({ oldLabel = "Bisheriges Passwort", submitText, onD
         new_password: newPassword.value,
       });
       form.reset();
+      hint();
       message.show("Das neue Passwort gilt ab sofort. Andere Geräte sind abgemeldet.");
       onDone?.(account);
     } catch (error) {
       message.show(error.message, true);
     }
-    check();
+    button.disabled = false;
   });
 
   return form;

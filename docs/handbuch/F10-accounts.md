@@ -14,7 +14,7 @@
 | `backend/timbertalk/features/accounts/api.py` | Die Endpunkte unter `/api/accounts`, setzt und löscht das Cookie. |
 | `backend/timbertalk/features/accounts/test_accounts.py` | Tests für Passwörter, Konten, Anmeldung, Rechte und Endpunkte. |
 | `frontend/shared/session.js` | `loadAccount()`, `currentAccount()`, `can()`, `logout()`. |
-| `frontend/shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()`. |
+| `frontend/shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()`. Dessen Knopf ist immer bedienbar; beim Klick prüft `problem()` und sagt in der Meldung, was fehlt (Passwort-Manager füllen Felder oft ohne `input`-Ereignis aus). |
 | `frontend/shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`; dazu `avatar()`, `lastName()`, `photoFromFile()`, `menuButton()` (kleines Menü unter einem Knopf) und `openSettings()`. |
 | `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: Foto, Name, Anmeldename, Personalnummer, Passwort ändern. Für alle. Die Rolle steht nur in „Benutzerkonten“. |
 | `frontend/features/settings/sections/accounts-manage.js` | Abschnitt „Benutzerkonten“: Standardpasswort, Liste mit Fotos; „+ Neues Konto“ und „Bearbeiten“ öffnen ein Fenster (anlegen, Foto, sperren, Passwort zurücksetzen). |
