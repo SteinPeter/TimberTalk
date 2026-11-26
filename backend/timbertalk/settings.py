@@ -28,6 +28,16 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
 
+    # Während der Entwicklung: Vor der ersten Anmeldung zeigt die Anmeldeseite ein Fenster mit den
+    # Anmeldedaten (Erst-Konto admin/admin, Standardpasswort). Im Betrieb ausschalten:
+    # TIMBERTALK_DEV_LOGIN_HINT=false in backend/.env.
+    dev_login_hint: bool = True
+
+    # Demo: Eine neue, leere Datenbank bekommt beim Start einen Beispielbetrieb (timbertalk/demo.py)
+    # und der Demo-Modus (ohne Passwort anmelden) ist an, bis jemand ihn ausschaltet. Für den echten
+    # Betrieb: TIMBERTALK_DEMO=false in backend/.env.
+    demo: bool = True
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

@@ -3,6 +3,7 @@
 // Einen Abschnitt ergänzen: eine import-Zeile und einen Eintrag in SECTIONS.
 // Ein Abschnitt mit `permission` erscheint nur für Konten mit diesem Recht (F10).
 
+import * as accountsDemo from "./sections/accounts-demo.js";
 import * as accountsManage from "./sections/accounts-manage.js";
 import * as accountsOwn from "./sections/accounts-own.js";
 import * as accountsRoles from "./sections/accounts-roles.js";
@@ -18,5 +19,6 @@ export const SECTIONS = [
   planningResources,
   accountsManage,
   accountsRoles,
+  accountsDemo,
   audit,
 ];

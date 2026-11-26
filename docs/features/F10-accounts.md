@@ -49,7 +49,15 @@ Im Meeting wird genau das vorgeführt:
    sofort oben rechts. Im Änderungsprotokoll steht das Standardpasswort nicht.
 10. **Sperren:** Ein gesperrtes Konto wird sofort abgemeldet und kann sich nicht mehr anmelden.
    Das eigene Konto und das letzte Admin-Konto lassen sich nicht sperren.
-11. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
+11. **Demo-Modus:** In „Einstellungen → Demo-Modus“ schaltet der Admin ihn ein und wählt „Max
+    Berger“. Beim Öffnen ist man ohne Passwort als Max angemeldet und muss kein eigenes Passwort
+    festlegen. Nach „Abmelden“ zeigt die Anmeldeseite Knöpfe „Anmelden als …“ für jedes Konto.
+    Ausgeschaltet geht `POST /api/accounts/demo-login` nicht (403).
+12. **Anmeldedaten für die Entwicklung:** Vor der ersten Anmeldung in einem Browser öffnet sich ein
+    Fenster mit `admin` / `admin` (solange das Erst-Konto unverändert ist) und dem Standardpasswort;
+    der Link „Anmeldedaten für die Entwicklung anzeigen“ öffnet es wieder. Mit
+    `TIMBERTALK_DEV_LOGIN_HINT=false` gibt es beides nicht.
+13. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
 
 ## Rollen und Rechte (Voreinstellung)
 

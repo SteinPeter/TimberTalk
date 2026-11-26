@@ -481,3 +481,71 @@ def test_api_rechte_je_konto(client_as: Callable[[str], TestClient]) -> None:
     assert geselle.get("/api/materials/projects/1/costs").status_code == 200
     assert "finance.view" in geselle.get("/api/accounts/me").json()["permissions"]
     assert geselle.get(f"/api/accounts/{geselle_id}/permissions").status_code == 403
+
+
+# --- Demo-Modus und Anmeldedaten für die Entwicklung -----------------------------------
+
+
+def test_demo_login_nur_wenn_der_demo_modus_an_ist(session: Session) -> None:
+    max_, _ = service.create_account(session, "max", "Max", "journeyman")
+    with pytest.raises(PermissionError, match="aus"):
+        service.demo_login(session, max_.id)
+    service.set_demo_mode(session, True, max_.id)
+    account, token = service.demo_login(session, None)  # das voreingestellte Konto
+    assert account.id == max_.id
+    assert service.account_for_token(session, token).id == max_.id
+    # Im Demo-Modus muss Max nicht erst ein eigenes Passwort festlegen.
+    assert not service.me(session, account).must_change_password
+    service.set_demo_mode(session, False, None)
+    assert service.me(session, account).must_change_password
+
+
+def test_anmeldedaten_fuer_die_entwicklung(session: Session) -> None:
+    service.ensure_initial_admin(session)
+    info = service.login_info(session, show_hint=True)
+    assert info.hint.initial_admin and info.hint.standard_password == "timbertalk-start"
+    assert info.demo_people == []  # Demo-Modus aus: keine Konten zum Anklicken
+    assert service.login_info(session, show_hint=False).hint is None
+    admin, _ = service.login(session, "admin", "admin")
+    service.change_own_password(session, admin, "admin", "eigenes-passwort", "")
+    assert not service.login_info(session, show_hint=True).hint.initial_admin
+
+
+def test_api_demo_modus(client: TestClient, anonymous_client: TestClient) -> None:
+    assert anonymous_client.post("/api/accounts/demo-login", json={}).status_code == 403
+    max_id = client.post(
+        "/api/accounts",
+        json={"username": "max", "display_name": "Max Berger", "role": "journeyman"},
+    ).json()["account"]["id"]
+    saved = client.put("/api/accounts/demo-mode", json={"enabled": True, "account_id": max_id})
+    assert saved.json() == {"enabled": True, "account_id": max_id}
+
+    info = anonymous_client.get("/api/accounts/login-info").json()
+    assert info["demo_mode"] and info["demo_account_id"] == max_id
+    assert "Max Berger" in [p["display_name"] for p in info["demo_people"]]
+
+    me = anonymous_client.post("/api/accounts/demo-login", json={})
+    assert me.status_code == 200 and me.json()["display_name"] == "Max Berger"
+    assert anonymous_client.get("/api/materials/items").status_code == 200  # ohne Passwortwechsel
+    assert (
+        anonymous_client.put("/api/accounts/demo-mode", json={"enabled": False}).status_code == 403
+    )
+
+
+def test_notfall_befehl_setzt_vergessenes_admin_passwort_zurueck(
+    session: Session, engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from timbertalk.features.accounts import cli
+
+    admin = _admin(session)
+    service.change_own_password(session, admin, "geheim123", "vergessen-123", "")
+    for _ in range(service.MAX_FAILED_LOGINS):  # ausgesperrt
+        with pytest.raises(service.LoginFailed):
+            service.login(session, "chef.admin", "falsch!!")
+    monkeypatch.setattr(cli, "get_engine", lambda: engine)
+    assert cli.reset("chef.admin") == "chef.admin"
+    session.expire_all()
+    account, _ = service.login(session, "chef.admin", service.DEFAULT_STANDARD_PASSWORD)
+    assert account.must_change_password
+    with pytest.raises(LookupError):
+        cli.reset("gibt-es-nicht")

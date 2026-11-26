@@ -19,6 +19,11 @@ export async function loadAccount() {
     throw new Error(`Antwort ${response.status}`);
   }
   account = await response.json();
+  try {
+    sessionStorage.removeItem("timbertalk.loggedOut"); // angemeldet: Merker wieder weg
+  } catch {
+    // nichts zu tun
+  }
   return account;
 }
 
@@ -32,8 +37,14 @@ export function can(permission) {
   return account !== null && account.permissions.includes(permission);
 }
 
-// Meldet ab und zeigt wieder die Anmeldung.
+// Meldet ab und zeigt wieder die Anmeldung. Der Merker sorgt dafür, dass der Demo-Modus einen
+// nicht sofort wieder anmeldet – man soll ein anderes Konto wählen können.
 export async function logout() {
+  try {
+    sessionStorage.setItem("timbertalk.loggedOut", "1");
+  } catch {
+    // Merken geht nicht – dann eben nicht.
+  }
   await sendJson("POST", "/api/accounts/logout");
   window.location.reload();
 }

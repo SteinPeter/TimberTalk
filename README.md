@@ -13,10 +13,26 @@ uv sync
 uv run timbertalk
 ```
 
-Der Server läuft dann auf <http://127.0.0.1:8000> und der Browser öffnet sich mit der Anmeldung.
-Beim allerersten Start gibt es ein Konto: Anmeldename `admin`, Passwort `admin`. Bei der ersten
-Anmeldung muss man ein eigenes Passwort festlegen; danach legt man in „Einstellungen →
-Benutzerkonten“ die Konten für den Betrieb an.
+Der Server läuft dann auf <http://127.0.0.1:8000> und der Browser öffnet sich.
+
+**Zum Ausprobieren ist alles schon da:** Eine neue Datenbank bekommt beim ersten Start einen
+Beispielbetrieb (Firma, Materialkatalog mit Preisen, Fahrzeuge, Konten aller Rollen, Termine,
+Urlaubsanträge, gebuchte Stunden) und der **Demo-Modus** ist an: Man ist ohne Passwort als Chef
+Klaus Schulz angemeldet; nach „Abmelden“ wählt man jedes andere Konto per Klick. Eine schon
+vorhandene Datenbank bekommt den Beispielbetrieb mit `uv run python -m timbertalk.demo`.
+
+**Für den echten Betrieb** in `backend/.env` eintragen: `TIMBERTALK_DEMO=false` und
+`TIMBERTALK_DEV_LOGIN_HINT=false`. Dann gibt es weder Demo-Modus noch Beispieldaten; beim ersten
+Start entsteht nur das Konto `admin` mit Passwort `admin`, das man bei der ersten Anmeldung ersetzt.
+
+Passwort des einzigen Admin-Kontos vergessen? Direkt am Rechner im Betrieb (im Ordner `backend/`):
+
+```bash
+uv run python -m timbertalk.features.accounts.cli admin
+```
+
+Das Konto bekommt wieder das Standardpasswort (`timbertalk-start`, falls nicht geändert); bei der
+nächsten Anmeldung legt man ein eigenes fest.
 
 ## Aufbau
 

@@ -10,15 +10,17 @@
 | `backend/timbertalk/features/accounts/security.py` | Passwort-Hash mit `scrypt`, Startpasswörter, Sitzungsschlüssel und deren Hash. |
 | `backend/timbertalk/features/accounts/models.py` | Die drei Tabellen und die Antwort- und Eingabeklassen. |
 | `backend/timbertalk/features/accounts/service.py` | Die Logik: Konten, Anmelden, Passwörter, Rechte, erstes Admin-Konto. |
+| `backend/timbertalk/features/accounts/cli.py` | Notfall-Befehl am Rechner: `uv run python -m timbertalk.features.accounts.cli <anmeldename>` setzt ein Konto auf das Standardpasswort zurück (entsperrt, alle Anmeldungen enden) – auch das einzige Admin-Konto. |
 | `backend/timbertalk/features/accounts/deps.py` | Bausteine für alle Endpunkte: `require_login`, `current_account`, `require()`, `can()`. |
 | `backend/timbertalk/features/accounts/api.py` | Die Endpunkte unter `/api/accounts`, setzt und löscht das Cookie. |
 | `backend/timbertalk/features/accounts/test_accounts.py` | Tests für Passwörter, Konten, Anmeldung, Rechte und Endpunkte. |
 | `frontend/shared/session.js` | `loadAccount()`, `currentAccount()`, `can()`, `logout()`. |
-| `frontend/shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()`. |
+| `frontend/shared/login.js` | Anmeldeseite (im Demo-Modus mit Knöpfen „Anmelden als …“, in der Entwicklung mit dem Fenster der Anmeldedaten), „eigenes Passwort festlegen“ und das Formular `passwordForm()`. Dessen Knopf ist immer bedienbar; beim Klick prüft `problem()` und sagt in der Meldung, was fehlt (Passwort-Manager füllen Felder oft ohne `input`-Ereignis aus). |
 | `frontend/shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`; dazu `avatar()`, `lastName()`, `photoFromFile()`, `menuButton()` (kleines Menü unter einem Knopf) und `openSettings()`. |
 | `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: Foto, Name, Anmeldename, Personalnummer, Passwort ändern. Für alle. Die Rolle steht nur in „Benutzerkonten“. |
 | `frontend/features/settings/sections/accounts-manage.js` | Abschnitt „Benutzerkonten“: Standardpasswort, Liste mit Fotos; „+ Neues Konto“ und „Bearbeiten“ öffnen ein Fenster (anlegen, Foto, sperren, Passwort zurücksetzen). |
 | `frontend/features/settings/sections/accounts-roles.js` | Abschnitt „Rollen und Rechte“: Tabelle mit Häkchen. |
+| `frontend/features/settings/sections/accounts-demo.js` | Abschnitt „Demo-Modus“: an/aus, Demo-Konto, Warnhinweis. |
 
 In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 
@@ -45,6 +47,9 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | `POST /api/accounts` | `accounts.manage` | `create_account()` | Konto anlegen; es bekommt das Standardpasswort (steht in der Antwort). |
 | `PUT /api/accounts/{id}` | `accounts.manage` | `update_account()` | Name, Rolle, Personalnummer, gesperrt. |
 | `POST /api/accounts/{id}/reset-password` | `accounts.manage` | `reset_password()` | Wieder das Standardpasswort, alle Anmeldungen enden, Sperre aufgehoben. |
+| `GET /api/accounts/login-info` | ohne Anmeldung | `login_info()` | Für die Anmeldeseite: Demo-Modus mit Konten zum Anklicken; mit `dev_login_hint` die Anmeldedaten für die Entwicklung. |
+| `POST /api/accounts/demo-login` | ohne Anmeldung, nur im Demo-Modus | `demo_login()` | Ohne Passwort anmelden (ohne `account_id`: das voreingestellte Konto). |
+| `GET`/`PUT /api/accounts/demo-mode` | `accounts.manage` | `demo_settings()`/`set_demo_mode()` | Demo-Modus an/aus und Demo-Konto. |
 | `GET /api/accounts/standard-password` | `accounts.manage` | `standard_password()` | Das aktuelle Standardpasswort. |
 | `PUT /api/accounts/standard-password` | `accounts.manage` | `set_standard_password()` | Anderes Standardpasswort festlegen (mindestens 8 Zeichen). |
 | `PUT /api/accounts/me/photo` | angemeldet | `set_photo()` | Eigenes Foto setzen oder entfernen (`photo: null`). |
@@ -124,7 +129,15 @@ Tabelle anfasst.
    (`LOCK_MINUTES`). Solange das in der Zukunft liegt, lehnt `login()` jede Anmeldung ab – auch
    mit richtigem Passwort. Eine erfolgreiche Anmeldung und `reset_password()` setzen beides zurück.
    Nicht existierende Namen werden nicht gezählt (es gibt kein Konto, das man sperren könnte).
-9. **Erster Start:** `lifespan()` in `main.py` ruft `ensure_initial_admin()`. Gibt es noch kein
+9. **Demo-Modus:** steht in `accounts_setting` (`demo_mode`, `demo_account_id`). Ist er an,
+   meldet `app.js` ohne Sitzung automatisch mit `POST /demo-login` an – außer direkt nach
+   „Abmelden“ (Merker `timbertalk.loggedOut` in `sessionStorage`); dann zeigt `renderLogin()` die
+   Knöpfe „Anmelden als …“. `me()` und `require_login` verlangen im Demo-Modus kein eigenes
+   Passwort. Wer die Seite erreicht, ist dann drin – nur für Vorführungen.
+10. **Anmeldedaten für die Entwicklung:** `login_info()` meldet mit `dev_login_hint` (Einstellung,
+   Standard an), ob `admin`/`admin` noch gilt, und das Standardpasswort. `renderLogin()` zeigt das
+   vor der ersten Anmeldung je Browser einmal als Fenster (Merker `timbertalk.devhint.seen`).
+11. **Erster Start:** `lifespan()` in `main.py` ruft `ensure_initial_admin()`. Gibt es noch kein
    Konto, entsteht `admin` / `admin` mit `must_change_password=True`. Das steht auch in der Konsole.
 
 ## Weg einer typischen Anfrage
