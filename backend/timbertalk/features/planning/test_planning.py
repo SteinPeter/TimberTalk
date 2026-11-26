@@ -3,7 +3,7 @@
 # `client_as("<rolle>")` für die Endpunkte. Jeder Test bekommt eine eigene, leere Datenbank.
 
 from collections.abc import Callable
-from datetime import date, time
+from datetime import date, time, timedelta
 
 import pytest
 from fastapi.testclient import TestClient
@@ -12,7 +12,7 @@ from sqlmodel import Session
 from timbertalk.features.accounts import service as accounts
 from timbertalk.features.notifications import service as notifications
 from timbertalk.features.planning import service
-from timbertalk.features.planning.models import EntryIn, ResourceIn
+from timbertalk.features.planning.models import EntryIn, RequestIn, ResourceIn
 
 MON = date(2026, 11, 30)
 TUE = date(2026, 12, 1)
@@ -335,3 +335,125 @@ def test_api_fahrzeuge_pflegt_nur_wer_plant(client_as: Callable[[str], TestClien
     assert created.status_code == 201
     assert created.json()["category_label"] == "Fahrzeug"
     assert [r["name"] for r in geselle.get("/api/planning/resources").json()] == ["Transporter"]
+
+
+# --- Urlaubsanträge -------------------------------------------------------------------
+
+
+def test_urlaub_beantragen_genehmigen_landet_im_kalender(session: Session) -> None:
+    chef = _person(session, "chef", "Chef", "admin")
+    max_ = _person(session, "max", "Max Berger")
+    service.create_entry(session, _entry([max_], end_date=TUE), created_by=chef)
+
+    request = service.request_absence(session, max_, RequestIn(start_date=TUE, end_date=SUN))
+    assert request.status_label == "Offen" and request.days == 6
+    # Der Chef sieht beim Antrag gleich, dass Max am Dienstag eingeplant ist.
+    assert request.conflicts == ["Max Berger ist am 01.12.2026 schon eingeplant: Carport Berger."]
+    assert _texts(session, chef) == ["Urlaubsantrag von Max Berger: Di 01.12.–So 06.12."]
+
+    decision = service.decide_request(session, request.id, True, chef)
+    assert decision.request.status_label == "Genehmigt"
+    assert decision.warnings == request.conflicts
+    week = service.list_entries(session, MON, SUN, max_, view_all=False)
+    assert [(e.title, e.kind) for e in week] == [
+        ("Carport Berger", "job"),
+        ("Urlaub", "vacation"),
+    ]
+    assert _texts(session, max_)[-1] == "Urlaub genehmigt: Di 01.12.–So 06.12."
+    with pytest.raises(ValueError, match="schon entschieden"):
+        service.decide_request(session, request.id, False, chef)
+
+
+def test_urlaub_ablehnen_mit_grund_und_zurueckziehen(session: Session) -> None:
+    chef = _person(session, "chef", "Chef", "admin")
+    max_ = _person(session, "max", "Max")
+    tom = _person(session, "tom", "Tom")
+    first = service.request_absence(session, max_, RequestIn(start_date=MON, end_date=WED))
+    service.decide_request(session, first.id, False, chef, " Da ist Abnahme. ")
+    assert _texts(session, max_) == ["Urlaub abgelehnt: Mo 30.11.–Mi 02.12. Da ist Abnahme."]
+    assert service.list_entries(session, MON, SUN, max_, view_all=False) == []
+
+    second = service.request_absence(session, max_, RequestIn(start_date=SUN, end_date=SUN))
+    with pytest.raises(LookupError):
+        service.withdraw_request(session, second.id, tom)  # fremde Anträge nicht
+    service.withdraw_request(session, second.id, max_)
+    assert [r.status for r in service.list_requests(session, max_, may_approve=False)] == [
+        "rejected"
+    ]
+    with pytest.raises(ValueError, match="vor dem ersten"):
+        service.request_absence(session, max_, RequestIn(start_date=WED, end_date=MON))
+
+
+def test_api_urlaub_geselle_beantragt_admin_genehmigt(
+    client: TestClient, client_as: Callable[[str], TestClient]
+) -> None:
+    geselle = client_as("journeyman")
+    created = geselle.post(
+        "/api/planning/requests", json={"start_date": "2026-12-21", "end_date": "2026-12-23"}
+    )
+    assert created.status_code == 201
+    request_id = created.json()["id"]
+    assert geselle.post(f"/api/planning/requests/{request_id}/approve", json={}).status_code == 403
+    assert len(client.get("/api/planning/requests").json()) == 1
+    approved = client.post(f"/api/planning/requests/{request_id}/approve", json={})
+    assert approved.json()["request"]["status"] == "approved"
+    assert geselle.get("/api/planning/requests").json()[0]["status_label"] == "Genehmigt"
+
+
+# --- Kalender-Abo (iCal) ---------------------------------------------------------------
+
+
+def test_ical_link_und_kalender_als_text(session: Session) -> None:
+    max_ = _person(session, "max", "Max Berger")
+    tom = _person(session, "tom", "Tom")
+    today = date.today()
+    service.create_entry(
+        session,
+        _entry([max_, tom], title="Carport Berger; Teil 2", start_date=today, location="Potsdam"),
+        None,
+    )
+    service.create_entry(
+        session,
+        _entry(
+            [max_],
+            title="Werkstatt",
+            kind="workshop",
+            start_date=today,
+            end_date=today + timedelta(days=2),
+            start_time=time(7, 0),
+            end_time=time(15, 30),
+        ),
+        None,
+    )
+    assert not service.ical_link(session, max_).active
+    link = service.new_ical_link(session, max_)
+    token = link.path.removeprefix("/api/planning/ical/").removesuffix(".ics")
+
+    text = service.ical_feed(session, token)
+    assert text.startswith("BEGIN:VCALENDAR\r\n")
+    assert "SUMMARY:Carport Berger\\; Teil 2\r\n" in text
+    assert f"DTSTART;VALUE=DATE:{today:%Y%m%d}" in text
+    assert f"DTEND;VALUE=DATE:{today + timedelta(days=1):%Y%m%d}" in text
+    assert f"DTSTART:{today:%Y%m%d}T070000" in text
+    assert "RRULE:FREQ=DAILY;COUNT=3" in text
+    assert "Mit: Max Berger\\, Tom" in text
+    assert all(len(line.encode()) <= 75 for line in text.split("\r\n"))
+
+    # Ein neuer Link macht den alten ungültig; Löschen auch.
+    service.new_ical_link(session, max_)
+    with pytest.raises(LookupError):
+        service.ical_feed(session, token)
+    service.delete_ical_link(session, max_)
+    assert not service.ical_link(session, max_).active
+
+
+def test_api_ical_ohne_anmeldung_nur_mit_schluessel(
+    client_as: Callable[[str], TestClient], anonymous_client: TestClient
+) -> None:
+    geselle = client_as("journeyman")
+    path = geselle.post("/api/planning/ical-link").json()["path"]
+    feed = anonymous_client.get(path)
+    assert feed.status_code == 200
+    assert feed.headers["content-type"].startswith("text/calendar")
+    assert anonymous_client.get("/api/planning/ical/falsch.ics").status_code == 404
+    assert anonymous_client.get("/api/planning/ical-link").status_code == 401

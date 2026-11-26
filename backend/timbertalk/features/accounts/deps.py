@@ -31,6 +31,11 @@ COOKIE_NAME = "timbertalk_session"
 # Diese Adressen gehen ohne Anmeldung.
 PUBLIC_PATHS = {"/api/accounts/login"}
 
+# Adressen, die mit diesem Anfang ohne Anmeldung gehen. Der Kalender-Abo-Link (F8) muss von der
+# Kalender-App des Handys abrufbar sein, die sich nicht anmelden kann; dort schützt ein geheimer,
+# langer Schlüssel in der Adresse selbst.
+PUBLIC_PREFIXES = ("/api/planning/ical/",)
+
 # Diese Adressen gehen auch, solange jemand noch sein Startpasswort ersetzen muss.
 PASSWORD_CHANGE_PATHS = {
     "/api/accounts/me",
@@ -66,7 +71,8 @@ def current_account(request: Request, session: Session = Depends(get_session)) -
 
 def require_login(request: Request, session: Session = Depends(get_session)) -> None:
     """Für alle Feature-Router (main.py): nur mit Anmeldung, und erst nach dem eigenen Passwort."""
-    if request.url.path in PUBLIC_PATHS:
+    path = request.url.path
+    if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
         return
     account = _account_or_401(request, session)
     if account.must_change_password and request.url.path not in PASSWORD_CHANGE_PATHS:

@@ -164,6 +164,16 @@ def list_people(session: Session) -> list[Person]:
     ]
 
 
+def people_with_permission(session: Session, permission: str) -> list[int]:
+    """Die Nummern aller aktiven Konten mit diesem Recht – z. B. an wen ein Urlaubsantrag geht."""
+    statement = select(Account).where(col(Account.active).is_(True))
+    return [
+        account.id
+        for account in session.exec(statement)
+        if has_permission(session, account, permission)
+    ]
+
+
 def get_account(session: Session, account_id: int) -> Account:
     account = session.get(Account, account_id)
     if account is None:

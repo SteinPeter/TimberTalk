@@ -77,6 +77,42 @@ class ResourceAssignment(SQLModel, table=True):
     resource_id: int = Field(foreign_key="planning_resource.id", primary_key=True, index=True)
 
 
+# Stand eines Urlaubsantrags: Schlüssel im Code → Name auf dem Bildschirm.
+REQUEST_STATUS: dict[str, str] = {
+    "pending": "Offen",
+    "approved": "Genehmigt",
+    "rejected": "Abgelehnt",
+}
+
+
+class AbsenceRequest(SQLModel, table=True):
+    """Ein Urlaubsantrag. Genehmigt wird daraus ein Termin „Urlaub“ im Kalender."""
+
+    __tablename__ = "planning_absence_request"
+
+    id: int | None = Field(default=None, primary_key=True)
+    account_id: int = Field(index=True)  # wer Urlaub möchte
+    start_date: date
+    end_date: date
+    note: str = ""
+    status: str = "pending"  # Schlüssel aus REQUEST_STATUS
+    created_at: datetime
+    decided_by: int | None = None
+    decided_at: datetime | None = None
+    decision_note: str = ""  # z. B. der Grund für eine Ablehnung
+    entry_id: int | None = None  # der Termin im Kalender, sobald genehmigt
+
+
+class IcalToken(SQLModel, table=True):
+    """Der geheime Schlüssel für das Kalender-Abo einer Person. Gespeichert ist nur sein Hash."""
+
+    __tablename__ = "planning_ical_token"
+
+    account_id: int = Field(primary_key=True)
+    token_hash: str = Field(unique=True, index=True)
+    created_at: datetime
+
+
 # --- Antworten und Eingaben (keine Tabellen) -------------------------------------
 
 
@@ -150,3 +186,49 @@ class EntryIn(SQLModel):
     note: str = ""
     people: list[int] = []  # Nummern der Konten
     resources: list[int] = []  # Nummern der Fahrzeuge und Maschinen
+
+
+# --- Urlaubsanträge und Kalender-Abo: Antworten und Eingaben -------------------------
+
+
+class RequestInfo(SQLModel):
+    """Ein Urlaubsantrag für die Anzeige – bei offenen Anträgen mit Hinweisen auf Termine."""
+
+    id: int
+    person: PersonRef
+    start_date: date
+    end_date: date
+    days: int  # Kalendertage, Wochenenden eingeschlossen
+    note: str
+    status: str
+    status_label: str
+    decision_note: str
+    conflicts: list[str]  # nur bei offenen Anträgen: was in der Zeit schon eingeplant ist
+
+
+class RequestIn(SQLModel):
+    """Eingabe: Urlaub von bis, mit Notiz."""
+
+    start_date: date
+    end_date: date
+    note: str = ""
+
+
+class DecisionIn(SQLModel):
+    """Eingabe: Genehmigen oder Ablehnen, wahlweise mit Grund."""
+
+    note: str = ""
+
+
+class Decision(SQLModel):
+    """Antwort nach dem Entscheiden: der Antrag und beim Genehmigen Hinweise aus dem Kalender."""
+
+    request: RequestInfo
+    warnings: list[str]
+
+
+class IcalLink(SQLModel):
+    """Antwort zum Kalender-Abo: ob es einen Link gibt, und direkt nach dem Erzeugen die Adresse."""
+
+    active: bool
+    path: str | None = None  # nur direkt nach dem Erzeugen, danach nie wieder

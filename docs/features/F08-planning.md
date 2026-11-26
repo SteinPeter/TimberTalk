@@ -14,6 +14,13 @@ z. B. „Carport Berger“ von Montag bis Mittwoch für Max und Tom, mit Ort und
 schon verplant oder im Urlaub, sagt TimberTalk es nach dem Speichern. Ein Geselle sieht auf dem
 Handy seine eigene Woche als Liste nach Tagen – wo er wann ist und mit wem.
 
+Dazu: Fahrzeuge und Maschinen (Transporter, Kran) stehen als eigene Zeilen auf der Plantafel und
+werden wie Personen eingeplant. Termine lassen sich mit der Maus auf einen anderen Tag oder zu
+einer anderen Person ziehen, mit „Rückgängig“. Wer ein-, aus- oder umgeplant wird, bekommt oben
+rechts eine Mitteilung. Gesellen beantragen Urlaub, der Chef genehmigt ihn mit einem Klick, und er
+steht im Kalender. Jede Person kann ihren Kalender über einen geheimen Link in der Kalender-App
+des Handys abonnieren.
+
 ## Abnahme
 
 Im Meeting wird genau das vorgeführt:
@@ -32,14 +39,31 @@ Im Meeting wird genau das vorgeführt:
 6. **Rechte:** Nimmt der Chef (Admin-Konto) in „Rollen und Rechte“ den Gesellen das Häkchen „Kalender aller
    Mitarbeitenden sehen“, sieht Max nur noch seinen eigenen Kalender, auch über die API.
    Eintragen ohne „Termine für alle planen“ antwortet mit 403.
-7. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
+7. **Mitteilungen:** Max sieht oben rechts „Mitteilungen 1“: „Neu eingeplant: Carport Berger,
+   Mo 30.11.–Mi 02.12., Potsdam.“ Ändert der Chef den Zeitraum, kommt „Geändert: …“, nimmt er
+   Max heraus „Ausgeplant: …“, löscht er den Termin „Abgesagt: …“. Wer plant, bekommt selbst nichts.
+8. **Fahrzeuge und Maschinen:** In „Einstellungen → Fahrzeuge und Maschinen“ legt der Chef
+   „Transporter“ und „Autokran“ an. Sie erscheinen als Zeilen auf der Plantafel und im Dialog.
+   Ist der Kran schon verplant, kommt der Hinweis „Autokran ist am … schon verplant: …“.
+   Ausgemusterte erscheinen nicht mehr, alte Termine behalten sie.
+9. **Ziehen:** Der Chef zieht „Carport Berger“ bei Max von Montag auf Dienstag: Der Termin läuft
+   jetzt Di–Do, mit Hinweis auf Überschneidungen. „Rückgängig“ holt ihn zurück. Auf eine andere
+   Person gezogen, tritt diese an die Stelle von Max.
+10. **Urlaubsantrag:** Max beantragt im Kalender Urlaub. Der Chef bekommt eine Mitteilung, sieht
+    beim Antrag „Achtung: Max Berger ist am … schon eingeplant …“ und genehmigt. Der Urlaub steht
+    im Kalender, Max bekommt „Urlaub genehmigt: …“. Abgelehnt mit Grund steht der Grund dabei.
+11. **Kalender-Abo:** Max erzeugt unter „Kalender aufs Handy holen“ einen Abo-Link. Die Adresse
+    liefert ohne Anmeldung seinen Kalender als iCalendar; ein neuer Link macht den alten ungültig.
+12. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
 
 ## Rechte (Voreinstellung, in „Rollen und Rechte“ änderbar)
 
 | Recht | Admin (Chef) | Meister | Verwaltung | Geselle | Azubi |
 | --- | :-: | :-: | :-: | :-: | :-: |
 | Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Termine für alle planen und ändern (`calendar.dispatch`) | ✓ | ✓ | ✓ | – | – |
+| Termine für alle planen und ändern, Fahrzeuge pflegen (`calendar.dispatch`) | ✓ | ✓ | ✓ | – | – |
+| Urlaub beantragen (`calendar.request_absence`) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Urlaubsanträge genehmigen oder ablehnen (`calendar.approve_absence`) | ✓ | – | – | – | – |
 
 Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
 
@@ -48,8 +72,9 @@ Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
 - **Verknüpfung mit Projekten:** Der Termin hat einen freien Titel. Die Projektnummer kommt dazu,
   sobald F3 (Projekte) in `main` ist.
 - **Arbeitspakete und Gantt-Ansicht:** späterer Teil von `planning/`.
-- **Urlaubsanträge durch Gesellen, wiederkehrende Termine, Export in den Handy-Kalender (iCal),
-  Fahrzeuge und Maschinen als „Personen“:** Vorschläge für spätere Features.
+- **Wiederkehrende Termine, Resturlaub zählen, Ziehen auf dem Handy:** später.
+- **Mitteilungen per E-Mail oder Push aufs Handy:** Mitteilungen gibt es nur in TimberTalk selbst.
+- **Kalender-Abo von unterwegs:** Das Handy muss den Rechner im Betrieb erreichen (WLAN oder VPN).
 
 ## Neues Konzept fürs Team
 
@@ -59,10 +84,18 @@ Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
   Entscheidung bleibt beim Planenden.
 - **`<dialog>`:** Der Browser bringt das Fenster „Termin eintragen“ selbst mit (`showModal()`);
   Escape und „Abbrechen“ schließen es.
+- **Mitteilungen als eigenes kleines Feature** (`notifications/`): Jedes Feature kann mit
+  `notifications.service.notify(session, [konten], "Text")` Personen etwas mitteilen.
+- **Ziehen und Ablegen** (HTML Drag and Drop): `draggable`, `dragstart`, `dragover`, `drop`.
+- **iCalendar** (RFC 5545): Kalender als Text, den jede Kalender-App abonnieren kann; der Link
+  enthält einen geheimen Schlüssel, weil Kalender-Apps sich nicht anmelden können.
 
 ## Reiter
 
-`frontend/features/planning/planning.js` („Kalender“) – war bisher leer.
+`frontend/features/planning/planning.js` („Kalender“) – war bisher leer – mit
+`requests.js` (Urlaubsanträge) und `ical.js` (Kalender-Abo) im selben Ordner. Dazu der Abschnitt
+`frontend/features/settings/sections/planning-resources.js` („Fahrzeuge und Maschinen“) und der
+Knopf „Mitteilungen“ in der Leiste (`frontend/shared/notifications.js`).
 
 ## Pate
 

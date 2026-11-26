@@ -1018,3 +1018,95 @@ button.planning-chip[draggable="true"] {
   margin-left: 0.5rem;
   padding: 0.15rem 0.75rem;
 }
+
+/* Unter der Woche: Urlaubsanträge und Kalender-Abo (requests.js, ical.js). */
+.planning-extras {
+  margin-top: 2rem;
+}
+
+.planning-extra {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.planning-extra h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.125rem;
+}
+
+/* Aufklappbar mit dem üblichen Dreieck; die Zeile ist hoch genug zum Antippen. */
+.planning-extra summary {
+  padding: 0.6rem 0;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.planning-requests {
+  margin: 1rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.planning-request {
+  margin-bottom: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  border-radius: 0.375rem;
+}
+
+/* Entschiedene Anträge treten zurück: grau und gestrichelt – der Status steht zusätzlich dabei. */
+.planning-request-approved,
+.planning-request-rejected {
+  border-left-style: dashed;
+  border-left-color: var(--muted);
+}
+
+.planning-request p {
+  margin: 0.25rem 0 0;
+}
+
+.planning-request-head {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 0.25rem 1rem;
+}
+
+.planning-request-status {
+  color: var(--muted);
+}
+
+.planning-conflict {
+  font-weight: 600;
+}
+
+.planning-request-actions,
+.planning-ical-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.planning-request-actions input,
+.planning-ical-row input {
+  flex: 1 1 12rem;
+  min-height: 2.75rem;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--page);
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+
+.planning-ical-link p {
+  margin: 0.5rem 0 0;
+}
+
+.planning-ical-link a {
+  color: var(--accent);
+}

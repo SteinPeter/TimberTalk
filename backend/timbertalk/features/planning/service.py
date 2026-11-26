@@ -8,7 +8,9 @@
 # Wer ein-, aus- oder umgeplant wird, bekommt eine Mitteilung (Feature notifications) – außer der
 # Person, die gerade plant.
 
-from datetime import UTC, date, datetime
+import hashlib
+import secrets
+from datetime import UTC, date, datetime, timedelta
 
 from sqlmodel import Session, col, delete, select
 
@@ -18,13 +20,20 @@ from timbertalk.features.notifications import service as notifications
 from timbertalk.features.planning.models import (
     ABSENCE_KINDS,
     KINDS,
+    REQUEST_STATUS,
     RESOURCE_CATEGORIES,
+    AbsenceRequest,
     CalendarAssignment,
     CalendarEntry,
+    Decision,
     EntryIn,
     EntryInfo,
+    IcalLink,
+    IcalToken,
     KindInfo,
     PersonRef,
+    RequestIn,
+    RequestInfo,
     Resource,
     ResourceAssignment,
     ResourceIn,
@@ -287,8 +296,14 @@ def _assign(session: Session, entry_id: int, data: EntryIn) -> None:
         session.add(ResourceAssignment(entry_id=entry_id, resource_id=resource_id))
 
 
-def create_entry(session: Session, data: EntryIn, created_by: int | None) -> SavedEntry:
-    """Trägt einen Termin ein. Gibt ihn mit Hinweisen auf Überschneidungen zurück."""
+def create_entry(
+    session: Session, data: EntryIn, created_by: int | None, notify: bool = True
+) -> SavedEntry:
+    """Trägt einen Termin ein. Gibt ihn mit Hinweisen auf Überschneidungen zurück.
+
+    notify=False: keine Mitteilung „neu eingeplant“ (z. B. bei genehmigtem Urlaub, dort gibt es
+    eine eigene Mitteilung).
+    """
     data = _clean(session, data)
     warnings = _warnings(session, data, except_id=None)
     entry = CalendarEntry(
@@ -301,8 +316,9 @@ def create_entry(session: Session, data: EntryIn, created_by: int | None) -> Sav
     _assign(session, entry.id, data)
     session.commit()
     session.refresh(entry)
-    others = [p for p in data.people if p != created_by]
-    notifications.notify(session, others, f"Neu eingeplant: {describe(entry)}.")
+    if notify:
+        others = [p for p in data.people if p != created_by]
+        notifications.notify(session, others, f"Neu eingeplant: {describe(entry)}.")
     return SavedEntry(entry=_info(session, entry, _names(session)), warnings=warnings)
 
 
@@ -408,3 +424,266 @@ def update_resource(session: Session, resource_id: int, data: ResourceIn) -> Res
     session.commit()
     session.refresh(resource)
     return _resource_info(resource)
+
+
+# --- Urlaubsanträge -----------------------------------------------------------------
+
+
+def _days_text(start: date, end: date) -> str:
+    if start == end:
+        return _short_day(start)
+    return f"{_short_day(start)}–{_short_day(end)}"
+
+
+def _request_entry(request: AbsenceRequest | RequestIn, account_id: int) -> EntryIn:
+    """Der Termin, der aus einem Antrag würde – für Hinweise und beim Genehmigen."""
+    return EntryIn(
+        title="Urlaub",
+        kind="vacation",
+        start_date=request.start_date,
+        end_date=request.end_date,
+        note=request.note,
+        people=[account_id],
+    )
+
+
+def _request_info(session: Session, request: AbsenceRequest, names: dict[int, str]) -> RequestInfo:
+    conflicts = []
+    if request.status == "pending":
+        conflicts = _warnings(session, _request_entry(request, request.account_id), None)
+    return RequestInfo(
+        id=request.id,
+        person=PersonRef(
+            id=request.account_id,
+            display_name=names.get(request.account_id, f"Person {request.account_id}"),
+        ),
+        start_date=request.start_date,
+        end_date=request.end_date,
+        days=(request.end_date - request.start_date).days + 1,
+        note=request.note,
+        status=request.status,
+        status_label=REQUEST_STATUS[request.status],
+        decision_note=request.decision_note,
+        conflicts=conflicts,
+    )
+
+
+def request_absence(session: Session, account_id: int, data: RequestIn) -> RequestInfo:
+    """Stellt einen Urlaubsantrag. Wer genehmigen darf, bekommt eine Mitteilung."""
+    if data.end_date < data.start_date:
+        raise ValueError("Der letzte Urlaubstag liegt vor dem ersten.")
+    if (data.end_date - data.start_date).days >= MAX_ENTRY_DAYS:
+        raise ValueError("Ein Antrag darf höchstens ein Jahr umfassen.")
+    request = AbsenceRequest(
+        account_id=account_id,
+        start_date=data.start_date,
+        end_date=data.end_date,
+        note=data.note.strip(),
+        created_at=datetime.now(UTC),
+    )
+    session.add(request)
+    session.commit()
+    session.refresh(request)
+    names = _names(session)
+    approvers = [
+        p
+        for p in accounts.people_with_permission(session, "calendar.approve_absence")
+        if p != account_id
+    ]
+    notifications.notify(
+        session,
+        approvers,
+        f"Urlaubsantrag von {names.get(account_id, '?')}: "
+        f"{_days_text(request.start_date, request.end_date)}",  # endet schon auf „.“
+    )
+    return _request_info(session, request, names)
+
+
+def list_requests(session: Session, viewer_id: int, may_approve: bool) -> list[RequestInfo]:
+    """Wer genehmigen darf, sieht alle Anträge; alle anderen nur die eigenen. Offene zuerst."""
+    statement = select(AbsenceRequest)
+    if not may_approve:
+        statement = statement.where(AbsenceRequest.account_id == viewer_id)
+    requests = list(session.exec(statement))
+    requests.sort(key=lambda r: (r.status != "pending", r.start_date, r.id))
+    names = _names(session)
+    return [_request_info(session, request, names) for request in requests]
+
+
+def _pending_request(session: Session, request_id: int) -> AbsenceRequest:
+    request = session.get(AbsenceRequest, request_id)
+    if request is None:
+        raise LookupError(f"Den Antrag {request_id} gibt es nicht.")
+    if request.status != "pending":
+        raise ValueError("Über diesen Antrag ist schon entschieden.")
+    return request
+
+
+def decide_request(
+    session: Session, request_id: int, approve: bool, acting_id: int, note: str = ""
+) -> Decision:
+    """Genehmigt oder lehnt einen Antrag ab. Genehmigt entsteht ein Termin „Urlaub“.
+
+    Die Person bekommt eine Mitteilung; beim Genehmigen kommen Hinweise zurück, falls sie in der
+    Zeit schon eingeplant ist (die Einsätze bleiben – der Planende entscheidet, was damit wird).
+    """
+    request = _pending_request(session, request_id)
+    days = _days_text(request.start_date, request.end_date)
+    warnings: list[str] = []
+    if approve:
+        saved = create_entry(
+            session, _request_entry(request, request.account_id), acting_id, notify=False
+        )
+        request.entry_id = saved.entry.id
+        warnings = saved.warnings
+    request.status = "approved" if approve else "rejected"
+    request.decided_by = acting_id
+    request.decided_at = datetime.now(UTC)
+    request.decision_note = note.strip()
+    session.add(request)
+    session.commit()
+    session.refresh(request)
+    text = f"Urlaub {'genehmigt' if approve else 'abgelehnt'}: {days}"  # endet auf „.“
+    if request.decision_note:
+        text += f" {request.decision_note}"
+    notifications.notify(session, [request.account_id], text)
+    info = _request_info(session, request, _names(session))
+    return Decision(request=info, warnings=warnings)
+
+
+def withdraw_request(session: Session, request_id: int, account_id: int) -> None:
+    """Zieht einen eigenen, noch offenen Antrag zurück."""
+    request = _pending_request(session, request_id)
+    if request.account_id != account_id:
+        raise LookupError(f"Den Antrag {request_id} gibt es nicht.")
+    session.delete(request)
+    session.commit()
+
+
+# --- Kalender-Abo (iCal) ------------------------------------------------------------
+#
+# Kalender-Apps (iPhone, Android, Outlook) können einen Kalender über eine Adresse abonnieren und
+# holen ihn regelmäßig neu. Die Adresse enthält einen langen geheimen Schlüssel; in der Datenbank
+# steht nur sein Hash. Das Format ist iCalendar (RFC 5545): reiner Text, eine Angabe je Zeile.
+
+# Das Abo zeigt die Termine ab so vielen Tagen vor heute bis so viele Tage danach.
+ICAL_DAYS_BACK = 60
+ICAL_DAYS_AHEAD = 365
+
+
+def _ical_hash(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def ical_link(session: Session, account_id: int) -> IcalLink:
+    """Ob diese Person einen Abo-Link hat (die Adresse selbst wird nie wieder gezeigt)."""
+    return IcalLink(active=session.get(IcalToken, account_id) is not None)
+
+
+def new_ical_link(session: Session, account_id: int) -> IcalLink:
+    """Erzeugt einen neuen Abo-Link. Ein alter Link hört damit auf zu funktionieren."""
+    token = secrets.token_urlsafe(32)
+    stored = session.get(IcalToken, account_id) or IcalToken(account_id=account_id, token_hash="")
+    stored.token_hash = _ical_hash(token)
+    stored.created_at = datetime.now(UTC)
+    session.add(stored)
+    session.commit()
+    return IcalLink(active=True, path=f"/api/planning/ical/{token}.ics")
+
+
+def delete_ical_link(session: Session, account_id: int) -> None:
+    """Macht den Abo-Link ungültig."""
+    stored = session.get(IcalToken, account_id)
+    if stored is not None:
+        session.delete(stored)
+        session.commit()
+
+
+def _ical_text(value: str) -> str:
+    """Text so schreiben, wie iCalendar ihn erwartet: \\, Komma, Semikolon und Zeilenumbruch."""
+    return (
+        value.replace("\\", "\\\\")
+        .replace(";", "\\;")
+        .replace(",", "\\,")
+        .replace("\r\n", "\\n")
+        .replace("\n", "\\n")
+    )
+
+
+def _fold(line: str) -> str:
+    """iCalendar erlaubt höchstens 75 Byte je Zeile; längere werden mit Leerzeichen fortgesetzt."""
+    data = line.encode()
+    parts = []
+    limit = 75
+    while len(data) > limit:
+        cut = limit
+        while (data[cut] & 0xC0) == 0x80:  # nie mitten in einem Umlaut trennen
+            cut -= 1
+        parts.append(data[:cut].decode())
+        data = data[cut:]
+        limit = 74  # Fortsetzungszeilen beginnen mit einem Leerzeichen
+    parts.append(data.decode())
+    return "\r\n ".join(parts)
+
+
+def ical_feed(session: Session, token: str) -> str:
+    """Der Kalender einer Person als iCalendar-Text – für ihren geheimen Abo-Link."""
+    statement = select(IcalToken).where(IcalToken.token_hash == _ical_hash(token))
+    stored = session.exec(statement).first()
+    names = _names(session)
+    if stored is None or stored.account_id not in names:
+        raise LookupError("Diesen Kalender gibt es nicht (mehr).")
+    today = date.today()
+    entries = session.exec(
+        select(CalendarEntry)
+        .join(CalendarAssignment, CalendarAssignment.entry_id == CalendarEntry.id)
+        .where(
+            CalendarAssignment.account_id == stored.account_id,
+            CalendarEntry.end_date >= today - timedelta(days=ICAL_DAYS_BACK),
+            CalendarEntry.start_date <= today + timedelta(days=ICAL_DAYS_AHEAD),
+        )
+        .order_by(CalendarEntry.start_date)
+    )
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//TimberTalk//Kalender//DE",
+        "CALSCALE:GREGORIAN",
+        f"X-WR-CALNAME:{_ical_text('TimberTalk – ' + names[stored.account_id])}",
+        "REFRESH-INTERVAL;VALUE=DURATION:PT1H",
+        "X-PUBLISHED-TTL:PT1H",
+    ]
+    for entry in entries:
+        info = _info(session, entry, names)
+        with_whom = [p.display_name for p in info.people + info.resources]
+        details = [info.kind_label, "Mit: " + ", ".join(with_whom), entry.note]
+        lines += [
+            "BEGIN:VEVENT",
+            f"UID:planning-entry-{entry.id}@timbertalk",
+            f"DTSTAMP:{stamp}",
+            f"SUMMARY:{_ical_text(entry.title)}",
+        ]
+        if entry.start_time is None:
+            # Ganztägig: das Ende ist in iCalendar der Tag NACH dem letzten Tag.
+            lines += [
+                f"DTSTART;VALUE=DATE:{entry.start_date:%Y%m%d}",
+                f"DTEND;VALUE=DATE:{entry.end_date + timedelta(days=1):%Y%m%d}",
+            ]
+        else:
+            # Mit Uhrzeit über mehrere Tage: jeden Tag dieselbe Zeit (Wiederholung täglich).
+            # Ohne Zeitzone = Ortszeit des Handys, so wie es auf der Plantafel steht.
+            day = f"{entry.start_date:%Y%m%d}"
+            lines += [
+                f"DTSTART:{day}T{entry.start_time:%H%M%S}",
+                f"DTEND:{day}T{entry.end_time:%H%M%S}",
+            ]
+            count = (entry.end_date - entry.start_date).days + 1
+            if count > 1:
+                lines.append(f"RRULE:FREQ=DAILY;COUNT={count}")
+        if entry.location:
+            lines.append(f"LOCATION:{_ical_text(entry.location)}")
+        description = "\n".join(part for part in details if part and part != "Mit: ")
+        lines += [f"DESCRIPTION:{_ical_text(description)}", "END:VEVENT"]
+    lines.append("END:VCALENDAR")
+    return "\r\n".join(_fold(line) for line in lines) + "\r\n"

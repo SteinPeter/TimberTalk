@@ -14,6 +14,8 @@
 import { getJson, sendJson } from "../../shared/api.js";
 import { el, field, messageBox } from "../../shared/dom.js";
 import { can, currentAccount } from "../../shared/session.js";
+import { renderIcal } from "./ical.js";
+import { renderRequests } from "./requests.js";
 
 export const id = "planning";
 export const title = "Kalender";
@@ -87,6 +89,7 @@ export async function render(panel) {
   );
   const message = messageBox();
   const content = el("div", { class: "planning-content" });
+  const extras = el("div", { class: "planning-extras" });
 
   panel.replaceChildren(
     el("h1", {}, "Kalender"),
@@ -94,6 +97,7 @@ export async function render(panel) {
     toolbar,
     message,
     content,
+    extras,
   );
 
   const dialog = buildDialog();
@@ -579,4 +583,7 @@ export async function render(panel) {
   ]);
   fillViewSelect();
   await loadWeek();
+  // Unter der Woche: Urlaubsanträge und das Kalender-Abo fürs Handy.
+  await renderRequests(extras, { onChange: loadWeek });
+  await renderIcal(extras);
 }

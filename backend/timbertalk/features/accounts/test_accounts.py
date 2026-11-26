@@ -281,7 +281,11 @@ def test_api_erste_anmeldung_erst_passwort_dann_alles_andere(
 def test_api_me_nennt_rolle_und_rechte(client_as: Callable[[str], TestClient]) -> None:
     me = client_as("journeyman").get("/api/accounts/me").json()
     assert me["role_label"] == "Geselle"
-    assert me["permissions"] == ["bookings.create", "calendar.view_all"]
+    assert me["permissions"] == [
+        "bookings.create",
+        "calendar.request_absence",
+        "calendar.view_all",
+    ]
 
 
 def test_api_kontenverwaltung_nur_mit_recht(client_as: Callable[[str], TestClient]) -> None:
