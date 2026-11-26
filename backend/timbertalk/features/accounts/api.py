@@ -23,15 +23,18 @@ from timbertalk.features.accounts.models import (
     Account,
     AccountIn,
     AccountInfo,
+    AccountPermission,
     AccountUpdateIn,
     CreatedAccount,
     LoginIn,
     Me,
     PasswordChangeIn,
     PermissionIn,
+    PhotoIn,
     ResetPasswordIn,
     RoleMatrix,
     StartPassword,
+    UserPermissionIn,
 )
 
 router = APIRouter(prefix="/api/accounts", tags=["Benutzerkonten und Rechte"])
@@ -85,7 +88,7 @@ def get_me(
     return service.me(session, account)
 
 
-@router.post("/me/password")
+@router.post("/me/password", summary="Eigenes Passwort ändern")
 def change_password(
     data: PasswordChangeIn,
     request: Request,
@@ -103,7 +106,45 @@ def change_password(
     return service.me(session, account)
 
 
+@router.put("/me/photo", summary="Eigenes Foto ändern")
+def set_own_photo(
+    data: PhotoIn,
+    account: Account = Depends(current_account),
+    session: Session = Depends(get_session),
+) -> Me:
+    _run(service.set_photo, session, account.id, data.photo)
+    return service.me(session, account)
+
+
 # --- Konten verwalten (Recht „accounts.manage“) ------------------------------------------
+
+
+@router.get("/standard-password")
+def get_standard_password(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> StartPassword:
+    return StartPassword(start_password=service.standard_password(session))
+
+
+@router.put("/standard-password", summary="Standardpasswort ändern")
+def set_standard_password(
+    data: StartPassword,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> StartPassword:
+    return StartPassword(
+        start_password=_run(service.set_standard_password, session, data.start_password)
+    )
+
+
+@router.put("/{account_id}/photo", summary="Foto eines Kontos ändern")
+def set_photo(
+    account_id: int,
+    data: PhotoIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> AccountInfo:
+    return service.info(_run(service.set_photo, session, account_id, data.photo, acting))
 
 
 @router.get("")
@@ -113,7 +154,7 @@ def list_accounts(
     return service.list_accounts(session)
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, summary="Konto anlegen")
 def create_account(
     data: AccountIn,
     acting: Account = Depends(require("accounts.manage")),
@@ -132,7 +173,7 @@ def create_account(
     return CreatedAccount(account=service.info(account), start_password=start_password)
 
 
-@router.put("/{account_id}")
+@router.put("/{account_id}", summary="Konto ändern")
 def update_account(
     account_id: int,
     data: AccountUpdateIn,
@@ -152,7 +193,7 @@ def update_account(
     return service.info(account)
 
 
-@router.post("/{account_id}/reset-password")
+@router.post("/{account_id}/reset-password", summary="Passwort zurücksetzen")
 def reset_password(
     account_id: int,
     data: ResetPasswordIn,
@@ -173,7 +214,7 @@ def role_matrix(
     return service.role_matrix(session)
 
 
-@router.put("/roles/{role}/permissions/{permission}")
+@router.put("/roles/{role}/permissions/{permission}", summary="Recht einer Rolle ändern")
 def set_role_permission(
     role: str,
     permission: str,
@@ -182,3 +223,28 @@ def set_role_permission(
     session: Session = Depends(get_session),
 ) -> RoleMatrix:
     return _run(service.set_role_permission, session, role, permission, data.allowed, acting)
+
+
+# --- Rechte eines einzelnen Kontos (Recht „accounts.manage“) -----------------------------
+
+
+@router.get("/{account_id}/permissions")
+def account_permissions(
+    account_id: int,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> list[AccountPermission]:
+    return _run(service.permissions_of, session, account_id)
+
+
+@router.put("/{account_id}/permissions/{permission}", summary="Recht eines Kontos ändern")
+def set_account_permission(
+    account_id: int,
+    permission: str,
+    data: UserPermissionIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> list[AccountPermission]:
+    return _run(
+        service.set_account_permission, session, account_id, permission, data.allowed, acting
+    )

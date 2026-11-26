@@ -7,12 +7,14 @@
 // erscheint nur, wenn das Konto dieses Recht hat.
 
 import { REITER } from "./reiter.js";
-import { el } from "./shared/dom.js";
+import { avatar, el, lastName, menuButton, openSettings } from "./shared/dom.js";
 import { renderFirstPassword, renderLogin } from "./shared/login.js";
+import { notificationsButton } from "./shared/notifications.js";
 import { can, loadAccount, logout } from "./shared/session.js";
 
 const DEFAULT_TAB = "start";
 const header = document.querySelector(".topbar");
+const brand = document.querySelector(".brand");
 const nav = document.querySelector(".tabs");
 const main = document.querySelector("main");
 
@@ -38,30 +40,41 @@ if (reachable && account === null) {
 } else {
   if (account) {
     header.append(accountBox(account));
+    header.querySelector(".account").prepend(notificationsButton());
   }
   startTabs(REITER.filter((reiter) => !reiter.permission || can(reiter.permission)));
 }
 
-// Rechts in der Leiste: wer angemeldet ist, und „Abmelden“. Die Rolle steht hier bewusst nicht –
-// sie sieht nur, wer Konten verwaltet (Einstellungen → Benutzerkonten).
+// Rechts in der Leiste: Foto (oder Initialen) mit dem Nachnamen darunter. Ein Klick öffnet ein
+// kleines Menü mit „Mein Konto“ und „Abmelden“. Die Rolle steht hier bewusst nicht – sie sieht
+// nur, wer Konten verwaltet (Einstellungen → Benutzerkonten).
 function accountBox(me) {
-  return el(
-    "div",
-    { class: "account" },
-    el("span", { class: "account-name" }, me.display_name),
-    el("button", { type: "button", class: "button-quiet", onclick: logout }, "Abmelden"),
+  const button = el(
+    "button",
+    { type: "button", class: "account-button", "aria-label": `Konto von ${me.display_name}` },
+    avatar(me, "small"),
+    el("span", { class: "account-name" }, lastName(me.display_name)),
   );
+  const items = [el("p", { class: "menu-title" }, me.display_name)];
+  if (!me.must_change_password) {
+    items.push({ label: "Mein Konto", onSelect: () => openSettings("accounts-own") });
+  }
+  items.push({ label: "Abmelden", onSelect: logout });
+  return el("div", { class: "account" }, menuButton(button, items));
 }
 
 // --- Gerüst aufbauen ----------------------------------------------------------
 
 function startTabs(tabs) {
-  // Für jeden Reiter ein Link in der Leiste und ein leerer Bereich in <main>.
+  // Für jeden Reiter ein Link in der Leiste und ein leerer Bereich in <main>. „Start“ bekommt
+  // keinen eigenen Link – dorthin führt das Logo oben links.
   for (const reiter of tabs) {
-    const link = document.createElement("a");
-    link.href = `#${reiter.id}`;
-    link.textContent = reiter.title;
-    nav.append(link);
+    if (reiter.id !== DEFAULT_TAB) {
+      const link = document.createElement("a");
+      link.href = `#${reiter.id}`;
+      link.textContent = reiter.title;
+      nav.append(link);
+    }
 
     const panel = document.createElement("section");
     panel.id = reiter.id;
@@ -109,7 +122,7 @@ function startTabs(tabs) {
         renderOnce(reiter, panel);
       }
     }
-    for (const link of nav.querySelectorAll("a")) {
+    for (const link of [brand, ...nav.querySelectorAll("a")]) {
       if (link.getAttribute("href") === `#${current}`) {
         link.setAttribute("aria-current", "page");
       } else {
@@ -122,4 +135,19 @@ function startTabs(tabs) {
   // mit "hashchange". Dasselbe passiert bei Zurück und Vor.
   window.addEventListener("hashchange", showTabFromAddress);
   showTabFromAddress();
+}
+
+// --- Textfelder wachsen mit --------------------------------------------------------
+
+// Mehrzeilige Felder (<textarea>) werden so hoch wie ihr Text, damit man alles auf einen Blick
+// sieht. Neuere Browser können das selbst (CSS „field-sizing: content“ in style.css); für alle
+// anderen passt diese Funktion die Höhe beim Tippen an.
+if (!CSS.supports("field-sizing", "content")) {
+  document.addEventListener("input", (event) => {
+    const field = event.target;
+    if (field instanceof HTMLTextAreaElement) {
+      field.style.height = "auto";
+      field.style.height = `${field.scrollHeight + 2}px`;
+    }
+  });
 }

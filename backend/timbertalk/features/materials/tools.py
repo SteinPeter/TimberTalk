@@ -18,6 +18,7 @@ from decimal import Decimal, InvalidOperation
 from sqlmodel import Session
 
 from timbertalk.features.materials import service
+from timbertalk.features.planning import service as planning
 
 ART_LESEN = "lesen"  # führt direkt aus
 ART_ENTWURF = "entwurf"  # legt nur einen Entwurf an, der Mensch bestätigt (S-10)
@@ -215,8 +216,8 @@ def material_buchen(session: Session, projekt_id: int, datum: str, positionen: l
 
 @werkzeug(
     name="fahrt_buchen",
-    beschreibung="Bucht eine Fahrt (Strecke in km) auf ein Projekt – als Entwurf, den der "
-    "Zimmerer noch bestätigt.",
+    beschreibung="Bucht eine Fahrt (Strecke in km, mit welchem Fahrzeug) auf ein Projekt – als "
+    "Entwurf, den der Zimmerer noch bestätigt. Gibt es mehrere Fahrzeuge, wird nachgefragt.",
     art=ART_ENTWURF,
     schema_ein={
         "type": "object",
@@ -224,6 +225,7 @@ def material_buchen(session: Session, projekt_id: int, datum: str, positionen: l
             "projekt_id": {"type": "integer"},
             "datum": {"type": "string", "format": "date"},
             "km": {"type": "string"},
+            "fahrzeug_id": {"type": "integer"},
         },
         "required": ["projekt_id", "datum", "km"],
     },
@@ -233,9 +235,19 @@ def material_buchen(session: Session, projekt_id: int, datum: str, positionen: l
         "ergebnis": {"status": "ok", "entwurf_id": 1},
     },
 )
-def fahrt_buchen(session: Session, projekt_id: int, datum: str, km: str) -> dict:
+def fahrt_buchen(
+    session: Session, projekt_id: int, datum: str, km: str, fahrzeug_id: int | None = None
+) -> dict:
+    fahrzeuge = planning.vehicles_with_rate(session)
+    if fahrzeug_id is None and len(fahrzeuge) > 1:
+        # Mehrere Fahrzeuge: nicht raten, sondern nachfragen (der Satz je km ist verschieden).
+        return _rueckfrage(
+            "fahrzeug_id",
+            "Mit welchem Fahrzeug wurde gefahren?",
+            [{"fahrzeug_id": f.id, "name": f.name} for f in fahrzeuge],
+        )
     entwurf_id = service.book_travel_draft(
-        session, projekt_id, _dezimal(km, "Strecke"), _datum(datum)
+        session, projekt_id, _dezimal(km, "Strecke"), _datum(datum), fahrzeug_id
     )
     return _ok(entwurf_id=entwurf_id)
 

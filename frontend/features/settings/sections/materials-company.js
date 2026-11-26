@@ -1,5 +1,6 @@
 // Der Abschnitt „Stammdaten der Abrechnung“ im Reiter „Einstellungen“ (Feature F5):
-// Firma, Logo, Bankverbindung, Fahrtkosten je km, Umsatzsteuer und die Stundensätze.
+// Firma, Logo, Bankverbindung, Umsatzsteuer und die Stundensätze. Fahrtkosten je km stehen seit F8
+// beim jeweiligen Fahrzeug (Einstellungen → Fahrzeuge und Maschinen).
 // Diese Angaben werden einmal eingetragen und später für Kosten und Rechnungen benutzt.
 // Eingetragen ist der Abschnitt in settings/sections.js.
 
@@ -40,7 +41,6 @@ export function render(container) {
   const bankName = el("input", { type: "text", autocomplete: "off" });
   const iban = el("input", { type: "text", autocomplete: "off", spellcheck: "false" });
   const bic = el("input", { type: "text", autocomplete: "off", spellcheck: "false" });
-  const travelRate = el("input", { type: "text", inputmode: "decimal", autocomplete: "off" });
   const vatRate = el("input", { type: "text", inputmode: "decimal", autocomplete: "off" });
 
   // --- Logo ---
@@ -58,11 +58,10 @@ export function render(container) {
     el("div", { class: "materials-field" }, el("span", {}, "Logo"), logoPreview, logoInput, logoRemove),
     field("Name der Bank", bankName),
     el("div", { class: "materials-row" }, field("IBAN", iban), field("BIC", bic)),
-    el("h2", {}, "Preise und Steuer"),
+    el("h2", {}, "Steuer"),
     el(
       "div",
       { class: "materials-row" },
-      field("Fahrtkosten je km (Euro, netto)", travelRate, "z. B. 0,55"),
       field("Umsatzsteuer in Prozent", vatRate, "z. B. 19"),
     ),
     el("div", { class: "materials-actions" }, saveButton),
@@ -144,7 +143,6 @@ export function render(container) {
     bankName.value = company.bank_name;
     iban.value = company.iban;
     bic.value = company.bic;
-    travelRate.value = company.travel_rate_per_km === "0" ? "" : toInputText(company.travel_rate_per_km);
     vatRate.value = toInputText(company.vat_rate);
     logo = company.logo;
     showLogo();
@@ -239,10 +237,9 @@ export function render(container) {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     message.clear();
-    const travel = travelRate.value.trim() === "" ? "0" : toDecimalText(travelRate.value);
     const vat = toDecimalText(vatRate.value);
-    if (travel === null || vat === null) {
-      message.show("Fahrtkosten und Umsatzsteuer müssen Zahlen sein, z. B. 0,55 und 19.", true);
+    if (vat === null) {
+      message.show("Die Umsatzsteuer muss eine Zahl sein, z. B. 19.", true);
       return;
     }
     try {
@@ -253,7 +250,6 @@ export function render(container) {
         bank_name: bankName.value,
         iban: iban.value,
         bic: bic.value,
-        travel_rate_per_km: travel,
         vat_rate: vat,
       });
       showCompany(saved);

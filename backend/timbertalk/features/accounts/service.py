@@ -19,17 +19,36 @@ from timbertalk.features.accounts import security
 from timbertalk.features.accounts.models import (
     Account,
     AccountInfo,
+    AccountPermission,
     AccountSession,
     Me,
     PermissionInfo,
+    Person,
     RoleInfo,
     RoleMatrix,
     RolePermission,
+    Setting,
+    UserPermission,
 )
-from timbertalk.features.accounts.permissions import ADMIN_ROLE, DEFAULTS, PERMISSIONS, ROLES
+from timbertalk.features.accounts.permissions import (
+    ADMIN_ROLE,
+    DEFAULTS,
+    LOCKED,
+    PERMISSIONS,
+    ROLES,
+)
 
 # So lange bleibt man auf einem Gerät angemeldet (z. B. auf dem Handy auf der Baustelle).
 SESSION_DAYS = 30
+
+# Das Standardpasswort für neue Konten und nach dem Zurücksetzen, solange der Admin kein anderes
+# festlegt (Einstellungen → Benutzerkonten). Bei der ersten Anmeldung muss es ersetzt werden.
+DEFAULT_STANDARD_PASSWORD = "timbertalk-start"
+STANDARD_PASSWORD_KEY = "standard_password"
+
+# Fotos: nur diese Bildarten, als Text höchstens so lang (rund 300 KB Bild).
+PHOTO_PREFIXES = ("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")
+MAX_PHOTO_LENGTH = 400_000
 
 # Das erste Konto beim allerersten Start. Das Passwort wird bei der ersten Anmeldung ersetzt.
 INITIAL_ADMIN_USERNAME = "admin"
@@ -138,12 +157,13 @@ def info(account: Account) -> AccountInfo:
         must_change_password=account.must_change_password,
         locked_until=account.locked_until,
         last_login_at=account.last_login_at,
+        photo=account.photo,
     )
 
 
 def me(session: Session, account: Account) -> Me:
     """Das eigene Konto mit allen Rechten, die es gerade hat."""
-    permissions = sorted(role_permissions(session, account.role))
+    permissions = sorted(account_permissions(session, account))
     return Me(**info(account).model_dump(), permissions=permissions)
 
 
@@ -151,6 +171,26 @@ def list_accounts(session: Session) -> list[AccountInfo]:
     """Alle Konten, nach Namen sortiert – gesperrte stehen mit in der Liste."""
     statement = select(Account).order_by(Account.display_name)
     return [info(account) for account in session.exec(statement)]
+
+
+def list_people(session: Session) -> list[Person]:
+    """Alle aktiven Konten mit Nummer und Name, nach Namen sortiert – für andere Features,
+    z. B. die Plantafel im Kalender (F8). Ohne Rolle, Anmeldename, Personalnummer und Rechte."""
+    statement = select(Account).where(col(Account.active).is_(True)).order_by(Account.display_name)
+    return [
+        Person(id=account.id, display_name=account.display_name)
+        for account in session.exec(statement)
+    ]
+
+
+def people_with_permission(session: Session, permission: str) -> list[int]:
+    """Die Nummern aller aktiven Konten mit diesem Recht – z. B. an wen ein Urlaubsantrag geht."""
+    statement = select(Account).where(col(Account.active).is_(True))
+    return [
+        account.id
+        for account in session.exec(statement)
+        if has_permission(session, account, permission)
+    ]
 
 
 def get_account(session: Session, account_id: int) -> Account:
@@ -171,8 +211,8 @@ def create_account(
 ) -> tuple[Account, str]:
     """Legt ein Konto an. Gibt das Konto und sein Startpasswort zurück.
 
-    Ohne start_password denkt sich TimberTalk eines aus. Bei der ersten Anmeldung muss die
-    Person es durch ein eigenes ersetzen. acting ist das Konto, das gerade anlegt.
+    Ohne start_password gilt das Standardpasswort. Bei der ersten Anmeldung muss die Person es
+    durch ein eigenes ersetzen. acting ist das Konto, das gerade anlegt.
     """
     username = _clean_username(username)
     personnel_number = _clean_personnel_number(personnel_number)
@@ -180,7 +220,7 @@ def create_account(
     _check_role(role)
     _check_admin_change(acting, role)
     _check_unique(session, username, personnel_number)
-    start_password = (start_password or "").strip() or security.new_start_password()
+    start_password = (start_password or "").strip() or standard_password(session)
     _check_new_password(start_password, username)
 
     account = Account(
@@ -244,7 +284,7 @@ def reset_password(
     """
     account = get_account(session, account_id)
     _check_admin_change(acting, account.role)
-    start_password = (start_password or "").strip() or security.new_start_password()
+    start_password = (start_password or "").strip() or standard_password(session)
     _check_new_password(start_password, account.username)
     account.password_hash = security.hash_password(start_password)
     account.must_change_password = True
@@ -289,6 +329,48 @@ def ensure_initial_admin(session: Session) -> bool:
     )
     session.commit()
     return True
+
+
+# --- Standardpasswort und Foto ----------------------------------------------------
+
+
+def standard_password(session: Session) -> str:
+    """Das Passwort, das neue Konten und zurückgesetzte Passwörter bekommen."""
+    stored = session.get(Setting, STANDARD_PASSWORD_KEY)
+    return stored.value if stored is not None else DEFAULT_STANDARD_PASSWORD
+
+
+def set_standard_password(session: Session, password: str) -> str:
+    """Legt ein anderes Standardpasswort fest. Bestehende Konten ändern sich dadurch nicht."""
+    password = password.strip()
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen.")
+    stored = session.get(Setting, STANDARD_PASSWORD_KEY) or Setting(
+        key=STANDARD_PASSWORD_KEY, value=""
+    )
+    stored.value = password
+    session.add(stored)
+    session.commit()
+    return password
+
+
+def set_photo(
+    session: Session, account_id: int, photo: str | None, acting: Account | None = None
+) -> Account:
+    """Setzt oder entfernt ein Foto. Das Foto eines Admins ändert nur ein Admin oder er selbst."""
+    account = get_account(session, account_id)
+    if acting is not None and acting.id != account.id:
+        _check_admin_change(acting, account.role)
+    if photo is not None:
+        if not photo.startswith(PHOTO_PREFIXES):
+            raise ValueError("Bitte ein Foto als JPEG, PNG oder WebP.")
+        if len(photo) > MAX_PHOTO_LENGTH:
+            raise ValueError("Das Foto ist zu groß.")
+    account.photo = photo
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
 
 
 # --- Anmelden und Passwort ----------------------------------------------------------
@@ -404,6 +486,8 @@ def change_own_password(
     if not security.verify_password(old_password, account.password_hash):
         raise ValueError("Das bisherige Passwort stimmt nicht.")
     _check_new_password(new_password, account.username)
+    if new_password == standard_password(session):
+        raise ValueError("Das Standardpasswort kennen alle – bitte ein eigenes wählen.")
     if security.verify_password(new_password, account.password_hash):
         raise ValueError("Das neue Passwort muss sich vom bisherigen unterscheiden.")
     account.password_hash = security.hash_password(new_password)
@@ -428,20 +512,30 @@ def _end_sessions(session: Session, account_id: int) -> None:
 
 def role_permissions(session: Session, role: str) -> set[str]:
     """Alle Rechte einer Rolle: die Voreinstellung, darauf die geänderten Häkchen."""
-    if role == ADMIN_ROLE:
-        return set(PERMISSIONS)
     allowed = set(DEFAULTS.get(role, set()))
     for change in session.exec(select(RolePermission).where(RolePermission.role == role)):
         if change.allowed:
             allowed.add(change.permission)
         else:
             allowed.discard(change.permission)
-    return allowed & set(PERMISSIONS)
+    return (allowed | LOCKED.get(role, set())) & set(PERMISSIONS)
+
+
+def account_permissions(session: Session, account: Account) -> set[str]:
+    """Alle Rechte eines Kontos: die der Rolle, darauf die Ausnahmen für genau dieses Konto."""
+    allowed = role_permissions(session, account.role)
+    statement = select(UserPermission).where(UserPermission.account_id == account.id)
+    for change in session.exec(statement):
+        if change.allowed:
+            allowed.add(change.permission)
+        else:
+            allowed.discard(change.permission)
+    return (allowed | LOCKED.get(account.role, set())) & set(PERMISSIONS)
 
 
 def has_permission(session: Session, account: Account, permission: str) -> bool:
     """Darf dieses Konto das? permission ist ein Schlüssel aus permissions.PERMISSIONS."""
-    return permission in role_permissions(session, account.role)
+    return permission in account_permissions(session, account)
 
 
 def role_matrix(session: Session) -> RoleMatrix:
@@ -451,8 +545,9 @@ def role_matrix(session: Session) -> RoleMatrix:
             RoleInfo(
                 role=role,
                 label=label,
-                editable=role != ADMIN_ROLE,
+                editable=True,
                 permissions=sorted(role_permissions(session, role)),
+                locked=sorted(LOCKED.get(role, set())),
             )
             for role, label in ROLES.items()
         ],
@@ -462,14 +557,20 @@ def role_matrix(session: Session) -> RoleMatrix:
     )
 
 
+def _check_not_locked(role: str, permission: str, allowed: bool | None) -> None:
+    if allowed is not True and permission in LOCKED.get(role, set()):
+        raise ValueError(
+            f"Die Rolle {ROLES[role]} behält immer das Recht „{PERMISSIONS[permission]}“."
+        )
+
+
 def set_role_permission(
     session: Session, role: str, permission: str, allowed: bool, acting: Account
 ) -> RoleMatrix:
     """Setzt oder entfernt ein Häkchen. Gibt die ganze Tabelle neu zurück."""
     _check_role(role)
     _check_permission(permission)
-    if role == ADMIN_ROLE:
-        raise ValueError("Der Admin hat immer alle Rechte.")
+    _check_not_locked(role, permission, allowed)
     if role == acting.role and permission == "accounts.manage" and not allowed:
         raise ValueError("Das Recht, Konten zu verwalten, kann man der eigenen Rolle nicht nehmen.")
     change = session.get(RolePermission, (role, permission))
@@ -479,3 +580,52 @@ def set_role_permission(
     session.add(change)
     session.commit()
     return role_matrix(session)
+
+
+def permissions_of(session: Session, account_id: int) -> list[AccountPermission]:
+    """Alle Rechte eines Kontos mit Herkunft – für „Benutzerkonten → Bearbeiten“."""
+    account = get_account(session, account_id)
+    from_role = role_permissions(session, account.role)
+    effective = account_permissions(session, account)
+    overridden = {
+        change.permission
+        for change in session.exec(
+            select(UserPermission).where(UserPermission.account_id == account.id)
+        )
+    }
+    locked = LOCKED.get(account.role, set())
+    return [
+        AccountPermission(
+            permission=key,
+            label=text,
+            from_role=key in from_role,
+            allowed=key in effective,
+            overridden=key in overridden and key not in locked,
+            locked=key in locked,
+        )
+        for key, text in PERMISSIONS.items()
+    ]
+
+
+def set_account_permission(
+    session: Session, account_id: int, permission: str, allowed: bool | None, acting: Account
+) -> list[AccountPermission]:
+    """Setzt eine Ausnahme für ein Konto (True/False) oder entfernt sie (None = wie die Rolle)."""
+    account = get_account(session, account_id)
+    _check_permission(permission)
+    _check_admin_change(acting, account.role)
+    _check_not_locked(account.role, permission, allowed)
+    if account.id == acting.id and permission == "accounts.manage" and allowed is False:
+        raise ValueError("Das Recht, Konten zu verwalten, kann man sich nicht selbst nehmen.")
+    change = session.get(UserPermission, (account.id, permission))
+    if allowed is None:
+        if change is not None:
+            session.delete(change)
+    else:
+        change = change or UserPermission(
+            account_id=account.id, permission=permission, allowed=allowed
+        )
+        change.allowed = allowed
+        session.add(change)
+    session.commit()
+    return permissions_of(session, account.id)

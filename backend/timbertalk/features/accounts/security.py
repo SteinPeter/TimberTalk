@@ -17,9 +17,6 @@ _SCRYPT_N = 2**14
 _SCRYPT_R = 8
 _SCRYPT_P = 1
 
-# Startpasswörter ohne leicht verwechselbare Zeichen (0/O, 1/l/I), damit man sie gut diktieren kann.
-_START_ALPHABET = "abcdefghjkmnpqrstuvwxyz23456789"
-
 
 def hash_password(password: str) -> str:
     """Macht aus einem Passwort den Text, der in der Datenbank steht."""
@@ -41,12 +38,6 @@ def verify_password(password: str, stored: str) -> bool:
     )
     # compare_digest braucht immer gleich lang – so verrät die Zeit nicht, wie viel gestimmt hat.
     return hmac.compare_digest(candidate.hex(), digest)
-
-
-def new_start_password() -> str:
-    """Ein zufälliges Startpasswort wie „k7mq-x2pd“, das man vorlesen und abtippen kann."""
-    chars = [secrets.choice(_START_ALPHABET) for _ in range(8)]
-    return "".join(chars[:4]) + "-" + "".join(chars[4:])
 
 
 def new_session_token() -> str:

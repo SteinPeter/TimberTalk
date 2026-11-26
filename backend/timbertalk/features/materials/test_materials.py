@@ -12,6 +12,8 @@ from sqlmodel import Session
 
 from timbertalk.features.materials import service, tools
 from timbertalk.features.materials.models import CompanyIn
+from timbertalk.features.planning import service as planning
+from timbertalk.features.planning.models import ResourceIn
 
 DAY = date(2026, 12, 3)
 
@@ -25,8 +27,11 @@ def holz(session: Session):
     return material
 
 
-def set_travel_rate(session: Session, rate: str = "0.50") -> None:
-    service.save_company(session, CompanyIn(travel_rate_per_km=Decimal(rate)))
+def set_travel_rate(session: Session, rate: str = "0.50", name: str = "Transporter") -> int:
+    """Legt ein Fahrzeug mit diesem Kilometersatz an (F8) und gibt seine Nummer zurück."""
+    vehicle = planning.create_resource(session, ResourceIn(name=name, category="vehicle"))
+    planning.set_vehicle_rate(session, vehicle.id, Decimal(rate))
+    return vehicle.id
 
 
 # --- Materialstamm und Preise ------------------------------------------------------
@@ -193,9 +198,25 @@ def test_die_obergrenze_selbst_ist_erlaubt(session: Session) -> None:
     assert service.project_costs(session, 12).travel == Decimal("500000.00")
 
 
-def test_fahrt_braucht_den_satz_aus_den_stammdaten(session: Session) -> None:
-    with pytest.raises(ValueError, match="Einstellungen"):
+def test_fahrt_braucht_ein_fahrzeug_mit_kilometersatz(session: Session) -> None:
+    with pytest.raises(ValueError, match="Fahrzeug mit Kilometersatz"):
         service.book_travel(session, 12, Decimal("40"), DAY)
+    ohne_satz = planning.create_resource(session, ResourceIn(name="Bus", category="vehicle"))
+    with pytest.raises(ValueError, match="kein Kilometersatz"):
+        service.book_travel(session, 12, Decimal("40"), DAY, ohne_satz.id)
+
+
+def test_fahrt_rechnet_mit_dem_satz_des_fahrzeugs(session: Session) -> None:
+    transporter = set_travel_rate(session, "0.50", "Transporter")
+    pritsche = set_travel_rate(session, "0.80", "Pritsche")
+    with pytest.raises(ValueError, match="welchem Fahrzeug"):
+        service.book_travel(session, 12, Decimal("10"), DAY)  # zwei Fahrzeuge: welches?
+    service.book_travel(session, 12, Decimal("10"), DAY, transporter)  # 5.00
+    service.book_travel(session, 12, Decimal("10"), DAY, pritsche)  # 8.00
+    assert [(b.description, b.amount) for b in service.list_bookings(session, 12)] == [
+        ("Fahrt (Transporter)", Decimal("5.00")),
+        ("Fahrt (Pritsche)", Decimal("8.00")),
+    ]
 
 
 def test_fahrt_rechnet_km_mal_satz(session: Session) -> None:
@@ -239,7 +260,7 @@ def test_buchungsliste_zeigt_beschreibung_betrag_und_status(session: Session, ho
     liste = service.list_bookings(session, 12)
     assert [(b.description, b.amount, b.status) for b in liste] == [
         ("Konstruktionsvollholz C24", Decimal("960.00"), "confirmed"),
-        ("Fahrt", Decimal("20.00"), "draft"),
+        ("Fahrt (Transporter)", Decimal("20.00"), "draft"),
     ]
     assert service.list_bookings(session, 99) == []
 
@@ -369,7 +390,10 @@ def test_api_buchen_und_gesamtkosten(client: TestClient) -> None:
         f"/api/materials/items/{material_id}/prices",
         json={"unit_price": "12.50", "valid_from": "2026-01-01"},
     )
-    client.put("/api/materials/company", json={"travel_rate_per_km": "0.50"})
+    vehicle_id = client.post(
+        "/api/planning/resources", json={"name": "Transporter", "category": "vehicle"}
+    ).json()["id"]
+    client.put(f"/api/planning/resources/{vehicle_id}/rate", json={"rate_per_km": "0.50"})
 
     material = client.post(
         "/api/materials/bookings/material",
@@ -389,7 +413,7 @@ def test_api_buchen_und_gesamtkosten(client: TestClient) -> None:
     liste = client.get("/api/materials/bookings", params={"project_id": 12}).json()
     assert [(b["description"], b["amount"]) for b in liste] == [
         ("Brett", "50.00"),
-        ("Fahrt", "20.00"),
+        ("Fahrt (Transporter)", "20.00"),
     ]
     assert client.get("/api/materials/projects/12/costs").json() == {
         "hours": "0.00",
@@ -403,7 +427,10 @@ def test_api_buchen_und_gesamtkosten(client: TestClient) -> None:
 def test_api_riesige_strecke_wird_abgelehnt_und_das_projekt_bleibt_benutzbar(
     client: TestClient, km: str
 ) -> None:
-    client.put("/api/materials/company", json={"travel_rate_per_km": "0.50"})
+    vehicle_id = client.post(
+        "/api/planning/resources", json={"name": "Transporter", "category": "vehicle"}
+    ).json()["id"]
+    client.put(f"/api/planning/resources/{vehicle_id}/rate", json={"rate_per_km": "0.50"})
     response = client.post(
         "/api/materials/bookings/travel",
         json={"project_id": 12, "km": km, "booking_date": "2026-12-03"},
@@ -649,3 +676,35 @@ def test_verwaltung_aendert_preise_meister_sieht_sie_nur(
     assert (
         verwaltung.post(f"/api/materials/items/{material_id}/prices", json=preis).status_code == 201
     )
+
+
+def test_werkzeug_fragt_bei_mehreren_fahrzeugen_nach(session: Session) -> None:
+    set_travel_rate(session, "0.50", "Transporter")
+    pritsche = set_travel_rate(session, "0.80", "Pritsche")
+    args = {"projekt_id": 12, "datum": "2026-12-03", "km": "10"}
+    frage = tools.call_tool(session, "fahrt_buchen", args)
+    assert frage["rueckfrage"]["feld"] == "fahrzeug_id"
+    assert [o["name"] for o in frage["rueckfrage"]["optionen"]] == ["Pritsche", "Transporter"]
+    assert (
+        tools.call_tool(session, "fahrt_buchen", args | {"fahrzeug_id": pritsche})["status"] == "ok"
+    )
+
+
+def test_kilometersatz_sieht_nur_wer_preise_sehen_darf(
+    client: TestClient, client_as: Callable[[str], TestClient]
+) -> None:
+    vehicle_id = client.post(
+        "/api/planning/resources", json={"name": "Transporter", "category": "vehicle"}
+    ).json()["id"]
+    meister = client_as("master")
+    assert (
+        meister.put(
+            f"/api/planning/resources/{vehicle_id}/rate", json={"rate_per_km": "0.5"}
+        ).status_code
+        == 403
+    )  # sehen ja, ändern nein
+    client.put(f"/api/planning/resources/{vehicle_id}/rate", json={"rate_per_km": "0.5"})
+    assert meister.get("/api/planning/resources").json()[0]["rate_per_km"] == "0.5"
+    assert client_as("journeyman").get("/api/planning/resources").json()[0]["rate_per_km"] is None
+    zu_hoch = client.put(f"/api/planning/resources/{vehicle_id}/rate", json={"rate_per_km": "55"})
+    assert zu_hoch.status_code == 422

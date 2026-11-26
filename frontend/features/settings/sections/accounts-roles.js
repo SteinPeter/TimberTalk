@@ -18,7 +18,8 @@ export function render(container) {
       "p",
       { class: "form-hint accounts-intro" },
       "Legt fest, was jede Rolle sehen und tun darf. Ein Häkchen gilt sofort – auch für alle, " +
-        "die gerade angemeldet sind. Der Admin darf immer alles.",
+        "die gerade angemeldet sind. Ausnahmen für einzelne Personen: Benutzerkonten → Bearbeiten. " +
+        "Konten verwalten kann der Admin immer.",
     ),
     wrap,
     message,
@@ -40,7 +41,8 @@ export function render(container) {
           const box = el("input", {
             type: "checkbox",
             checked: role.permissions.includes(perm.permission),
-            disabled: !role.editable,
+            // Nicht abwählbar: z. B. „Konten verwalten“ beim Admin.
+            disabled: !role.editable || role.locked.includes(perm.permission),
             "aria-label": `${role.label}: ${perm.label}`,
           });
           box.addEventListener("change", () => save(role, perm, box));

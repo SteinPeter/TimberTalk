@@ -40,7 +40,8 @@ dazu ein eigenes Kapitel unter `docs/handbuch/`.
 | Buchung | `booking` |
 | Kostenart | `cost_type` |
 | Konto | `account` |
-| Rolle (Admin, Meister, Verwaltung, Geselle, Azubi) | `role` (`admin`, `master`, `office`, `journeyman`, `apprentice`) |
+| Rolle (Admin, Chef, Meister, Verwaltung, Geselle, Azubi) | `role` (`admin`, `owner`, `master`, `office`, `journeyman`, `apprentice`) |
+| Widget (Dashboard) | `frontend/features/<ordner>/widgets/<name>.js` |
 | Recht | `permission` |
 
 ## Den alten Code ansehen

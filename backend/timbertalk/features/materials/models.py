@@ -74,6 +74,8 @@ class Company(SQLModel, table=True):
     bank_name: str = ""
     iban: str = ""
     bic: str = ""
+    # Nicht mehr benutzt: Seit F8 hat jedes Fahrzeug seinen eigenen Kilometersatz. Die Spalte
+    # bleibt, damit bestehende Datenbanken ohne Migration weiterlaufen.
     travel_rate_per_km: Decimal = Field(default=Decimal("0"), sa_column=decimal_column("0"))
     vat_rate: Decimal = Field(default=Decimal("19"), sa_column=decimal_column("19"))  # Prozent
 
@@ -108,6 +110,19 @@ class Booking(SQLModel, table=True):
     quantity: Decimal = Field(sa_column=decimal_column())
     unit: str
     unit_price: Decimal = Field(sa_column=decimal_column())
+
+
+class TravelVehicle(SQLModel, table=True):
+    """Mit welchem Fahrzeug eine Fahrt gefahren wurde (Fahrzeug aus F8, Kalender).
+
+    Eine eigene kleine Tabelle statt einer neuen Spalte in materials_booking – so laufen
+    bestehende Datenbanken ohne Migration weiter.
+    """
+
+    __tablename__ = "materials_travel_vehicle"
+
+    booking_id: int = Field(foreign_key="materials_booking.id", primary_key=True)
+    vehicle_id: int
 
 
 # --- Antworten und Eingaben (keine Tabellen) -------------------------------------
@@ -193,8 +208,9 @@ class MaterialBookingIn(SQLModel):
 
 
 class TravelBookingIn(SQLModel):
-    """Eingabe: eine Fahrt auf ein Projekt buchen."""
+    """Eingabe: eine Fahrt auf ein Projekt buchen. Ohne vehicle_id: das einzige Fahrzeug."""
 
     project_id: int
     km: Decimal
     booking_date: date
+    vehicle_id: int | None = None

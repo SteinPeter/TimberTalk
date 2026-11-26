@@ -25,6 +25,7 @@ class Account(SQLModel, table=True):
     active: bool = True  # False: gesperrt, Anmeldung nicht möglich
     failed_logins: int = 0  # falsche Passwörter hintereinander, siehe service.MAX_FAILED_LOGINS
     locked_until: datetime | None = None  # nach zu vielen Fehlversuchen kurz gesperrt bis dahin
+    photo: str | None = None  # Foto als „data:image/jpeg;base64,…“-Text, klein (256 × 256)
     created_at: datetime
     last_login_at: datetime | None = None
 
@@ -39,6 +40,25 @@ class AccountSession(SQLModel, table=True):
     account_id: int = Field(foreign_key="accounts_account.id", index=True)
     created_at: datetime
     expires_at: datetime
+
+
+class Setting(SQLModel, table=True):
+    """Eine Einstellung der Kontenverwaltung, z. B. das Standardpasswort für neue Konten."""
+
+    __tablename__ = "accounts_setting"
+
+    key: str = Field(primary_key=True)
+    value: str
+
+
+class UserPermission(SQLModel, table=True):
+    """Eine Ausnahme für ein einzelnes Konto: dieses Recht ja oder nein, egal was die Rolle sagt."""
+
+    __tablename__ = "accounts_user_permission"
+
+    account_id: int = Field(foreign_key="accounts_account.id", primary_key=True)
+    permission: str = Field(primary_key=True)
+    allowed: bool
 
 
 class RolePermission(SQLModel, table=True):
@@ -67,6 +87,17 @@ class AccountInfo(SQLModel):
     must_change_password: bool
     locked_until: datetime | None  # gesetzt und in der Zukunft: wegen Fehlversuchen kurz gesperrt
     last_login_at: datetime | None
+    photo: str | None
+
+
+class Person(SQLModel):
+    """Eine Person für Listen anderer Features (z. B. Zeilen im Kalender): nur Nummer und Name.
+
+    Die Rolle steht absichtlich nicht dabei – sie sieht nur der Admin in der Kontenverwaltung.
+    """
+
+    id: int
+    display_name: str
 
 
 class Me(AccountInfo):
@@ -76,14 +107,14 @@ class Me(AccountInfo):
 
 
 class CreatedAccount(SQLModel):
-    """Antwort nach dem Anlegen: das Konto und sein Startpasswort (wird nur dieses Mal gezeigt)."""
+    """Antwort nach dem Anlegen: das Konto und sein Startpasswort (das Standardpasswort)."""
 
     account: AccountInfo
     start_password: str
 
 
 class StartPassword(SQLModel):
-    """Antwort nach dem Zurücksetzen: das neue Startpasswort (wird nur dieses Mal gezeigt)."""
+    """Antwort nach dem Zurücksetzen – und beim Lesen oder Ändern des Standardpassworts."""
 
     start_password: str
 
@@ -93,8 +124,26 @@ class RoleInfo(SQLModel):
 
     role: str
     label: str
-    editable: bool  # False beim Admin: er hat immer alle Rechte
+    editable: bool  # ob sich Häkchen dieser Rolle ändern lassen
     permissions: list[str]
+    locked: list[str]  # Rechte, die diese Rolle immer hat (z. B. Admin: Konten verwalten)
+
+
+class AccountPermission(SQLModel):
+    """Ein Recht eines Kontos: was die Rolle sagt, was gilt, und ob es eine Ausnahme ist."""
+
+    permission: str
+    label: str
+    from_role: bool  # hätte die Person es über ihre Rolle?
+    allowed: bool  # gilt jetzt für sie
+    overridden: bool  # Ausnahme nur für dieses Konto
+    locked: bool  # nicht abwählbar
+
+
+class UserPermissionIn(SQLModel):
+    """Eingabe: Ausnahme setzen (True/False) oder entfernen (None = wie die Rolle)."""
+
+    allowed: bool | None
 
 
 class PermissionInfo(SQLModel):
@@ -126,7 +175,7 @@ class PasswordChangeIn(SQLModel):
 
 
 class AccountIn(SQLModel):
-    """Eingabe: ein neues Konto. Ohne Startpasswort denkt sich TimberTalk eines aus."""
+    """Eingabe: ein neues Konto. Ohne Startpasswort bekommt es das Standardpasswort."""
 
     username: str
     display_name: str
@@ -145,9 +194,15 @@ class AccountUpdateIn(SQLModel):
 
 
 class ResetPasswordIn(SQLModel):
-    """Eingabe: Passwort zurücksetzen. Ohne Startpasswort denkt sich TimberTalk eines aus."""
+    """Eingabe: Passwort zurücksetzen. Ohne Startpasswort gilt wieder das Standardpasswort."""
 
     start_password: str | None = None
+
+
+class PhotoIn(SQLModel):
+    """Eingabe: ein Foto als „data:image/…;base64,…“-Text – oder None, um es zu entfernen."""
+
+    photo: str | None
 
 
 class PermissionIn(SQLModel):

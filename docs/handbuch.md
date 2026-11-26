@@ -118,8 +118,8 @@ in `.gitignore`.
 
 | Datei | Wofür |
 | --- | --- |
-| `index.html` | Die einzige Seite – nur das Gerüst: leere Reiterleiste `<nav class="tabs">` und leeres `<main>`. |
-| `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich, schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Zeigt rechts in der Leiste den Namen und „Abmelden“. |
+| `index.html` | Die einzige Seite – nur das Gerüst: Logo mit Schriftzug als Link zur Startseite, leere Reiterleiste `<nav class="tabs">` und leeres `<main>`. |
+| `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich (außer „Start“ – dorthin führt das Logo), schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Rechts in der Leiste: Glocke (Mitteilungen) und Foto mit Nachname als Konto-Menü. Lässt mehrzeilige Felder in älteren Browsern mitwachsen. |
 | `reiter.js` | Liste aller Reiter in der Reihenfolge der Leiste. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
 | `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. |
@@ -128,7 +128,7 @@ in `.gitignore`.
 | `shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
 | `shared/sections.js` | `renderSections()`: baut in einem gemeinsamen Reiter die Auswahl der Abschnitte und zeigt immer einen davon – nur die, für die das Konto das Recht hat (Abschnitt 7). |
 | `features/start/start.js` | Reiter „Start“: Überschrift „Übersicht“, „TimberTalk läuft“ und der Status von Backend und Datenbank. |
-| `features/planning/planning.js` | Reiter „Kalender“, noch leer. |
+| `features/planning/planning.js` | Reiter „Kalender“: Plantafel und persönlicher Kalender (F8, Kapitel `handbuch/F08-planning.md`). |
 | `features/projects/projects.js` | Reiter „Projekte“, noch leer. |
 | `features/customers/customers.js` | Reiter „Kunden“, noch leer. |
 | `features/bookings/bookings.js` | Reiter „Buchungen“: zeigt seine Abschnitte als Reiter über dem Inhalt. |
@@ -170,6 +170,9 @@ in `.gitignore`.
 - **Features einbinden**: `for router in load_features(): app.include_router(router, ...)`. Jedes
   Feature bringt seine Endpunkte als `router` in seiner `api.py` mit; `main.py` kennt die
   Features nicht mit Namen und wird für ein neues Feature nicht geändert.
+- **Änderungsprotokoll** (F11): `app.add_middleware(AuditMiddleware)` schreibt jede erfolgreiche
+  Änderung über die API mit (Kapitel `docs/handbuch/F11-audit.md`). Ein ändernder Endpunkt
+  bekommt dafür einen lesbaren Namen: `@router.post(..., summary="Preis eintragen")`.
 - **Anmeldung für alle Features**: Jeder Router bekommt dabei `dependencies=[Depends(require_login)]`
   aus `features/accounts/deps.py`. Ohne gültige Anmeldung antwortet jeder Feature-Endpunkt mit
   401; nur die Anmeldung selbst ist frei. Ein Feature muss dafür nichts tun. Welche **Rechte** ein
@@ -244,6 +247,9 @@ das Feature im Frontend zeigt.
 | `planning/` | Planung: Kalender und Gantt | `planning` | `/api/planning` |
 | `accounts/` | Benutzerkonten, Rollen und gleichzeitiges Arbeiten | `settings` | `/api/accounts` |
 | `backup/` | Datensicherung, Wiederherstellung und Export | `settings` | `/api/backup` |
+| `notifications/` | Mitteilungen an Personen (F8) | Knopf in der Leiste | `/api/notifications` |
+| `audit/` | Änderungsprotokoll (F11) | `settings` | `/api/audit` |
+| `dashboard/` | Dashboard mit Widgets (F12) | `start` | `/api/dashboard` |
 
 Ordnernamen sind englisch (Regel: Bezeichner auf Englisch) – im Backend wie im Frontend. Nur die
 Titel, die man auf der Webseite liest, sind deutsch. Ein Ordner ohne Inhalt schadet nicht: `load_features()`
@@ -333,8 +339,8 @@ ihres Features bauen, ohne die Dateien der anderen anzufassen.
 
 | Reiter | Adresse | Datei | Inhalt |
 | --- | --- | --- | --- |
-| Start | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
-| Kalender | `/#planning` | `features/planning/planning.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Start = Dashboard (über das Logo oben links, kein eigener Reiter) | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
+| Kalender | `/#planning` | `features/planning/planning.js` | Plantafel der Woche und persönlicher Kalender (F8) |
 | Projekte | `/#projects` | `features/projects/projects.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Kunden | `/#customers` | `features/customers/customers.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Buchungen | `/#bookings` | `features/bookings/bookings.js` | Abschnitte als Reiter über dem Inhalt; noch keiner – ein Satz sagt, was hier hinkommt |
@@ -422,6 +428,31 @@ Gestaltung nach dem Skill `apple-design`: `settings.md › Platform consideratio
 Umschalten, zuletzt benutzten wieder öffnen), `sidebars.md › Best practices` (höchstens zwei
 Ebenen, nichts Wichtiges unten) und `segmented-controls.md › Platform considerations` (zum
 Umschalten von Ansichten im Hauptbereich eine Tab-Ansicht statt eines Umschalters).
+
+### Dashboard und Widgets
+
+Die Startseite ist das Dashboard (F12, Kapitel `docs/handbuch/F12-dashboard.md`). Ein Widget ist
+eine Datei `features/<ordner>/widgets/<name>.js` im Ordner seines Features; das Backend findet sie
+selbst (`GET /api/dashboard/widgets`), so wie `load_features()` die Feature-Ordner findet. Ein
+neues Widget ändert also weder `start.js` noch eine Liste. Den Bauplan (`title`, `render()`,
+wahlweise `permission`, `order`, `defaultOn`) beschreibt der Kommentar oben in `start.js`.
+
+### Kopfzeile und Textfelder
+
+- Logo, Reiter, Glocke und Foto stehen **in einer Linie**; wird es eng, scrollen die Reiter
+  seitlich, statt in eine zweite Zeile umzubrechen.
+- **Oben links** steht das Logo mit dem Schriftzug TimberTalk. Es ist ein Link auf `#start` und
+  ersetzt den früheren Reiter „Start“; auf der Startseite ist es unterstrichen wie ein gewählter
+  Reiter.
+- **Oben rechts** stehen die Glocke für Mitteilungen und das Foto (ohne Foto: die Initialen) mit
+  dem Nachnamen daneben. Eine Mitteilung kann einen Link haben (z. B. zum Dashboard). Ein Klick darauf öffnet ein kleines Menü (`menuButton()` aus
+  `shared/dom.js`) mit „Mein Konto“ und „Abmelden“.
+- **Mehrzeilige Felder** (`<textarea>`) wachsen mit dem Text: neuere Browser über CSS
+  `field-sizing: content`, ältere über einen kleinen `input`-Zuhörer in `app.js`.
+- **Übersicht:** Was man selten braucht, steht nicht dauerhaft auf der Seite, sondern hinter einem
+  Knopf („+ Neues Konto“, „+ Weitere Stunden buchen“), in einem Menü („Mehr ▾“) oder in einem
+  Fenster. Was jemand erledigen muss (z. B. offene Urlaubsanträge), steht in den Mitteilungen
+  und auf dem Dashboard, nicht als Popup.
 
 ### Farben, hell und dunkel
 
@@ -536,6 +567,7 @@ damit parallele Pull Requests nicht dieselbe Tabelle ändern. Die Liste ist der 
 | Dunkelmodus | Dunkle Darstellung, die das Betriebssystem einschaltet. Die Seite folgt ihr über `prefers-color-scheme`. |
 | Fixture | Eine Test-Hilfe aus `backend/conftest.py` (`engine`, `session`, `client`, `client_as`, `anonymous_client`). Ein Test bekommt sie, indem er ihren Namen als Parameter nennt. |
 | Anmeldung | Ein Konto meldet sich mit Name oder Personalnummer und Passwort an; der Browser hält danach einen Sitzungsschlüssel im Cookie (F10). |
+| Middleware | Code, der jede Anfrage auf dem Weg hinein und jede Antwort auf dem Weg hinaus sieht – z. B. `AuditMiddleware` (F11). |
 | Recht | Was ein Konto sehen oder tun darf, z. B. `finance.view`. Welche Rolle welches Recht hat, steht in `accounts/permissions.py` und ist in den Einstellungen änderbar (F10). |
 | Handbuch-Kapitel | Die Datei `docs/handbuch/F<nr>-<name>.md` eines Features: wie sein Code aufgebaut ist. |
 | Router | Das Objekt `router` in der `api.py` eines Features. Es sammelt dessen Endpunkte; `load_features()` hängt es an die App. |
