@@ -5,7 +5,7 @@ Projekt versteht, wie das Programm aufgebaut ist und was jede Datei tut. Es wäc
 Feature mit und beschreibt immer den **aktuellen** Stand des Arbeitszweigs – nicht Pläne und nicht
 den alten Code aus Block 1.
 
-> **Stand:** Feature F0e „Abschnitte in gemeinsamen Reitern“ · zuletzt aktualisiert am 2026-11-24
+> **Stand:** Feature F10 „Benutzerkonten und Rechte“ (Anmeldung im Grundgerüst) · zuletzt aktualisiert am 2026-11-26
 
 Wer nur wissen will, *was* ein Feature können soll, liest den Steckbrief in `docs/features/`.
 Wer wissen will, *wie* der Code das umsetzt, liest hier – und für jedes fachliche Feature dessen
@@ -70,6 +70,12 @@ Beispiel: der Reiter „Start“ zeigt den Zustand von Backend und Datenbank.
 6. `start.js` schreibt „antwortet“ oder eine Fehlermeldung in die Seite.
 
 So läuft später jede Anfrage: **Frontend → API → Service → Datenbank** und zurück.
+
+Seit F10 steht davor die **Anmeldung**: `app.js` fragt beim Start `GET /api/accounts/me`. Ist
+niemand angemeldet (401), zeigt die Seite nur die Anmeldung (`shared/login.js`). Jeder
+Feature-Endpunkt prüft über `require_login` (Abschnitt 5), ob das Cookie mit dem
+Sitzungsschlüssel gültig ist. `/api/health` geht ohne Anmeldung. Wie das im Einzelnen
+funktioniert, steht im Kapitel `docs/handbuch/F10-accounts.md`.
 Ab dem ersten echten Feature steht zwischen API und Datenbank die Service-Schicht (siehe
 Abschnitt 6).
 
@@ -104,7 +110,7 @@ in `.gitignore`.
 | `timbertalk/db.py` | Verbindung zur Datenbank, Sitzung je Anfrage (`get_session`), Anlegen der Tabellen, Gesundheitsprüfung. |
 | `timbertalk/features/__init__.py` | Findet die Feature-Ordner selbst und lädt ihre Tabellen und Router (`load_features()`). |
 | `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Zehn Ordner sind angelegt, aber noch ohne Inhalt (Tabelle in Abschnitt 6). |
-| `conftest.py` | Gemeinsame Test-Hilfen (Fixtures) `engine`, `session` und `client` für alle Tests. |
+| `conftest.py` | Gemeinsame Test-Hilfen (Fixtures) `engine`, `session`, `anonymous_client`, `client_as` und `client` für alle Tests. |
 | `tests/test_health.py` | Tests für `/api/health`, das Gerüst der Startseite, dass jeder Reiter-Ordner in `reiter.js` steht und jeder Abschnitt in der `sections.js` seines Reiters. |
 | `tests/test_grundlagen.py` | Tests für die Datenbank im Arbeitsspeicher und für `load_features()`. |
 
@@ -113,21 +119,24 @@ in `.gitignore`.
 | Datei | Wofür |
 | --- | --- |
 | `index.html` | Die einzige Seite – nur das Gerüst: leere Reiterleiste `<nav class="tabs">` und leeres `<main>`. |
-| `app.js` | Baut aus `reiter.js` je Reiter einen Link und einen Bereich, schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. |
+| `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich, schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Zeigt rechts in der Leiste den Namen und „Abmelden“. |
 | `reiter.js` | Liste aller Reiter in der Reihenfolge der Leiste. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
-| `shared/api.js` | `getJson(path)`: der gemeinsame Weg aller Reiter zur API. |
-| `shared/sections.js` | `renderSections()`: baut in einem gemeinsamen Reiter die Auswahl der Abschnitte und zeigt immer einen davon (Abschnitt 7). |
+| `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. |
+| `shared/session.js` | Das angemeldete Konto: `loadAccount()`, `currentAccount()`, `can(recht)`, `logout()` (F10). |
+| `shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()` (F10). |
+| `shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
+| `shared/sections.js` | `renderSections()`: baut in einem gemeinsamen Reiter die Auswahl der Abschnitte und zeigt immer einen davon – nur die, für die das Konto das Recht hat (Abschnitt 7). |
 | `features/start/start.js` | Reiter „Start“: Überschrift „Übersicht“, „TimberTalk läuft“ und der Status von Backend und Datenbank. |
 | `features/planning/planning.js` | Reiter „Kalender“, noch leer. |
 | `features/projects/projects.js` | Reiter „Projekte“, noch leer. |
 | `features/customers/customers.js` | Reiter „Kunden“, noch leer. |
-| `features/bookings/bookings.js` | Reiter „Buchungen“: zeigt seine Abschnitte als Reiter über dem Inhalt. Noch ohne Abschnitt. |
-| `features/bookings/sections.js` | Liste der Abschnitte im Reiter „Buchungen“. Noch leer. |
-| `features/settings/settings.js` | Reiter „Einstellungen“: zeigt seine Abschnitte in einer Seitenleiste. Noch ohne Abschnitt. |
-| `features/settings/sections.js` | Liste der Abschnitte im Reiter „Einstellungen“. Noch leer. |
+| `features/bookings/bookings.js` | Reiter „Buchungen“: zeigt seine Abschnitte als Reiter über dem Inhalt. |
+| `features/bookings/sections.js` | Liste der Abschnitte im Reiter „Buchungen“. |
+| `features/settings/settings.js` | Reiter „Einstellungen“: zeigt seine Abschnitte in einer Seitenleiste. |
+| `features/settings/sections.js` | Liste der Abschnitte im Reiter „Einstellungen“. |
 | `features/<id>/sections/<name>.js` | Ein Abschnitt eines gemeinsamen Reiters. Den Ordner legt der erste Abschnitt an. |
-| `style.css` | Gestaltung: Farben als Variablen für hell, dunkel und erhöhten Kontrast, Reiterleiste, Bereiche, Statuskasten, Abschnitte. |
+| `style.css` | Gestaltung: Farben als Variablen für hell, dunkel und erhöhten Kontrast, Reiterleiste, Bereiche, Statuskasten, Abschnitte, gemeinsame Formulare und Tabellen (`form-…`, `button…`, `table…`), Anmeldung. |
 
 ### `docs/`
 
@@ -135,7 +144,7 @@ in `.gitignore`.
 | --- | --- |
 | `handbuch.md` | Dieses Handbuch: das Grundgerüst. |
 | `handbuch/_vorlage.md` | Vorlage für das Handbuch-Kapitel eines Features. |
-| `handbuch/F<nr>-<name>.md` | Je fachliches Feature ein Kapitel. Noch keines vorhanden. |
+| `handbuch/F<nr>-<name>.md` | Je fachliches Feature ein Kapitel. |
 | `features/_vorlage.md` | Vorlage für einen neuen Steckbrief. |
 | `features/F00-skelett.md` | Steckbrief von F0. |
 | `features/F00b-reiter.md` | Steckbrief von F0b. |
@@ -154,12 +163,17 @@ in `.gitignore`.
 
 - **`app = FastAPI(...)`**: das zentrale Objekt. Alle Endpunkte hängen daran.
 - **`lifespan()`**: läuft einmal beim Start (vor dem `yield`) und einmal beim Beenden (danach).
-  Zurzeit legt es nur die Tabellen an.
+  Es legt die Tabellen an und beim allerersten Start das Konto `admin` / `admin`
+  (`ensure_initial_admin()` aus F10).
 - **`health()`** unter `GET /api/health`: meldet `status` und `database`. Er ist bewusst die
   einfachste Frage an das Programm und wird bei jedem Feature mitgetestet.
-- **Features einbinden**: `for router in load_features(): app.include_router(router)`. Jedes
+- **Features einbinden**: `for router in load_features(): app.include_router(router, ...)`. Jedes
   Feature bringt seine Endpunkte als `router` in seiner `api.py` mit; `main.py` kennt die
   Features nicht mit Namen und wird für ein neues Feature nicht geändert.
+- **Anmeldung für alle Features**: Jeder Router bekommt dabei `dependencies=[Depends(require_login)]`
+  aus `features/accounts/deps.py`. Ohne gültige Anmeldung antwortet jeder Feature-Endpunkt mit
+  401; nur die Anmeldung selbst ist frei. Ein Feature muss dafür nichts tun. Welche **Rechte** ein
+  Endpunkt braucht, sagt das Feature selbst mit `Depends(require("…"))` (Kapitel F10).
 - **Frontend-Auslieferung**: `app.mount("/", StaticFiles(...))` liefert den Ordner `frontend/`
   unter `/` aus. Diese Zeile steht **nach** allen API-Endpunkten, weil FastAPI in Reihenfolge
   sucht – sonst würde `/api/health` als Datei im Frontend gesucht.
@@ -299,8 +313,14 @@ Der Weg einer Anfrage durch ein Feature:
   Zeile geändert.
 - **ES-Module**: `app.js` wird mit `<script type="module">` geladen. Dadurch können alle Dateien
   einander mit `import` einbinden – ohne Bauschritt.
-- **`shared/api.js`** enthält `getJson(path)`. Alle Reiter fragen die API darüber; antwortet sie
-  mit einem Fehler, wirft `getJson` eine Ausnahme mit dem Statuscode.
+- **`shared/api.js`** enthält `getJson(path)` und `sendJson(method, path, body)`. Alle Reiter
+  fragen die API darüber; antwortet sie mit einem Fehler, werfen sie eine Ausnahme mit dem
+  deutschen Text der API (`detail`) oder dem Statuscode. Bei 401 (Anmeldung abgelaufen) lädt die
+  Seite neu und zeigt die Anmeldung.
+- **Anmeldung** (F10): Bevor `app.js` die Reiter baut, holt es mit `loadAccount()` aus
+  `shared/session.js` das eigene Konto. Ohne Anmeldung zeigt `<main>` nur die Anmeldung, mit
+  Startpasswort nur „eigenes Passwort festlegen“. Danach fragt jeder Reiter mit `can("…")`, ob er
+  etwas zeigen darf – die eigentliche Prüfung macht immer das Backend.
 - Kommt keine Antwort, zeigt „Start“ „nicht erreichbar“ mit dem Grund statt einer leeren Seite.
 - **Daten aus der API** kommen mit `textContent` in die Seite, nie über `innerHTML`.
   `innerHTML` steht nur für festen Text aus der eigenen Datei (Regel in `CLAUDE.md`).
@@ -327,6 +347,9 @@ Ein Reiter-Modul exportiert drei Dinge:
 | `id` | Name hinter `#` in der Adresse und `id` des Bereichs, z. B. `"customers"`. Englisch wie der Ordner im Backend; der sichtbare Titel ist deutsch. |
 | `title` | Text in der Reiterleiste, z. B. `"Kunden"`. |
 | `render(panel)` | Füllt den Bereich `panel` (ein `<section>`). Darf `async` sein. |
+
+Wahlweise exportiert ein Reiter – genauso ein Abschnitt – zusätzlich `permission`, z. B.
+`"finance.view"`. Dann erscheint er nur für Konten mit diesem Recht (F10).
 
 So entsteht die Seite:
 
@@ -436,7 +459,9 @@ Alle Befehle laufen im Ordner `backend/`.
   | --- | --- |
   | `engine` | Eine frische, leere Datenbank im Arbeitsspeicher – für jeden Test eine neue. |
   | `session` | Eine Sitzung auf dieser Datenbank, zum Testen von `service.py`. |
-  | `client` | Einen `TestClient`, dessen Anfragen alle diese Datenbank benutzen. |
+  | `anonymous_client` | Einen `TestClient`, dessen Anfragen alle diese Datenbank benutzen – nicht angemeldet. |
+  | `client_as` | Eine Funktion: `client_as("journeyman")` legt ein Konto dieser Rolle an und gibt einen damit angemeldeten `TestClient` zurück. |
+  | `client` | Einen `TestClient` auf dieser Datenbank, angemeldet als Admin (darf alles). |
 
 - **`TestClient`** aus FastAPI spielt einen Browser nach, ohne einen echten Server zu starten.
   `client` tauscht dafür `get_session` über `app.dependency_overrides` aus und setzt es nach dem
@@ -487,10 +512,13 @@ Alle Befehle laufen im Ordner `backend/`.
 | F0d | Grundlagen für parallele Features | `docs/features/F00d-parallele-features.md` | – | – |
 | F0e | Abschnitte in gemeinsamen Reitern | `docs/features/F00e-abschnitte.md` | – | – |
 
+Die Anmeldung (F10) greift ins Grundgerüst ein (`main.py`, `conftest.py`, `app.js`,
+`shared/`). Ihr Inhalt steht trotzdem im Feature-Kapitel `docs/handbuch/F10-accounts.md`; hier sind
+nur die Stellen im Grundgerüst beschrieben.
+
 **Fachliche Features** – jedes hat sein eigenes Kapitel `docs/handbuch/F<nr>-<name>.md` mit
 Dateien, Endpunkten, Tabellen und Abhängigkeiten. Sie werden hier bewusst **nicht** aufgezählt,
 damit parallele Pull Requests nicht dieselbe Tabelle ändern. Die Liste ist der Ordner selbst.
-Noch gibt es keines.
 
 ---
 
@@ -506,7 +534,9 @@ Noch gibt es keines.
 | Migration | Schrittweise Änderung bestehender Tabellen. Kommt mit F3. |
 | CI | Automatische Prüfung auf GitHub bei jedem Pull Request. |
 | Dunkelmodus | Dunkle Darstellung, die das Betriebssystem einschaltet. Die Seite folgt ihr über `prefers-color-scheme`. |
-| Fixture | Eine Test-Hilfe aus `backend/conftest.py` (`engine`, `session`, `client`). Ein Test bekommt sie, indem er ihren Namen als Parameter nennt. |
+| Fixture | Eine Test-Hilfe aus `backend/conftest.py` (`engine`, `session`, `client`, `client_as`, `anonymous_client`). Ein Test bekommt sie, indem er ihren Namen als Parameter nennt. |
+| Anmeldung | Ein Konto meldet sich mit Name oder Personalnummer und Passwort an; der Browser hält danach einen Sitzungsschlüssel im Cookie (F10). |
+| Recht | Was ein Konto sehen oder tun darf, z. B. `finance.view`. Welche Rolle welches Recht hat, steht in `accounts/permissions.py` und ist in den Einstellungen änderbar (F10). |
 | Handbuch-Kapitel | Die Datei `docs/handbuch/F<nr>-<name>.md` eines Features: wie sein Code aufgebaut ist. |
 | Router | Das Objekt `router` in der `api.py` eines Features. Es sammelt dessen Endpunkte; `load_features()` hängt es an die App. |
 | Sitzung | Eine Verbindung zur Datenbank für die Dauer einer Anfrage (`Session`). Endpunkte bekommen sie über `get_session`. |

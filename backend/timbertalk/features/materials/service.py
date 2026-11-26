@@ -130,8 +130,10 @@ def current_price(session: Session, material_id: int, on_date: date) -> Material
     return session.exec(statement).first()
 
 
-def _info(session: Session, material: MaterialItem, on_date: date) -> MaterialInfo:
-    price = current_price(session, material.id, on_date)
+def _info(
+    session: Session, material: MaterialItem, on_date: date, show_prices: bool = True
+) -> MaterialInfo:
+    price = current_price(session, material.id, on_date) if show_prices else None
     return MaterialInfo(
         id=material.id,
         name=material.name,
@@ -143,17 +145,25 @@ def _info(session: Session, material: MaterialItem, on_date: date) -> MaterialIn
 
 
 def list_materials(
-    session: Session, category: str | None = None, on_date: date | None = None
+    session: Session,
+    category: str | None = None,
+    on_date: date | None = None,
+    show_prices: bool = True,
 ) -> list[MaterialInfo]:
     """Die Materialliste mit dem Preis von heute (S-04). Ohne Treffer: eine leere Liste.
 
     Mit `category` nur diese Kategorie. Mit `on_date` der Preis von einem anderen Tag.
+    Mit show_prices=False bleiben Preis und Gültigkeit leer – für Konten ohne das Recht
+    „finance.view“ (F10).
     """
     statement = select(MaterialItem).order_by(MaterialItem.name)
     if category:
         statement = statement.where(MaterialItem.category == category)
     reference_date = on_date or date.today()
-    return [_info(session, material, reference_date) for material in session.exec(statement)]
+    return [
+        _info(session, material, reference_date, show_prices)
+        for material in session.exec(statement)
+    ]
 
 
 def search_materials(session: Session, text: str) -> list[MaterialInfo]:
@@ -406,7 +416,8 @@ def confirm_draft(session: Session, draft_id: int) -> None:
 # --- Anzeigen ---------------------------------------------------------------------
 
 
-def _booking_info(session: Session, booking: Booking) -> BookingInfo:
+def booking_info(session: Session, booking: Booking, show_prices: bool = True) -> BookingInfo:
+    """Eine Buchung für die Anzeige. Mit show_prices=False ohne Preis und Betrag (F10)."""
     if booking.kind == KIND_MATERIAL:
         description = get_material(session, booking.material_id).name
     else:
@@ -420,20 +431,23 @@ def _booking_info(session: Session, booking: Booking) -> BookingInfo:
         description=description,
         quantity=booking.quantity,
         unit=booking.unit,
-        unit_price=booking.unit_price,
-        amount=to_cents(booking.quantity * booking.unit_price),
+        unit_price=booking.unit_price if show_prices else None,
+        amount=to_cents(booking.quantity * booking.unit_price) if show_prices else None,
     )
 
 
-def list_bookings(session: Session, project_id: int) -> list[BookingInfo]:
-    """Alle Buchungen eines Projekts, nach Datum sortiert. Entwürfe sind dabei."""
+def list_bookings(session: Session, project_id: int, show_prices: bool = True) -> list[BookingInfo]:
+    """Alle Buchungen eines Projekts, nach Datum sortiert. Entwürfe sind dabei.
+
+    Mit show_prices=False ohne Preis und Betrag – für Konten ohne „finance.view“ (F10).
+    """
     _require_project(project_id)
     statement = (
         select(Booking)
         .where(Booking.project_id == project_id)
         .order_by(Booking.booking_date, Booking.id)
     )
-    return [_booking_info(session, booking) for booking in session.exec(statement)]
+    return [booking_info(session, booking, show_prices) for booking in session.exec(statement)]
 
 
 def project_costs(session: Session, project_id: int) -> ProjectCosts:

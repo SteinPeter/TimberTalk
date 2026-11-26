@@ -24,6 +24,8 @@ function toInputText(value) {
 
 export const id = "materials-company";
 export const title = "Firma und Bank";
+// Nur für Konten, die Preise sehen dürfen (F10). Ändern prüft das Backend mit „finance.edit“.
+export const permission = "finance.view";
 
 // Baut den Abschnitt in `container` auf.
 export function render(container) {

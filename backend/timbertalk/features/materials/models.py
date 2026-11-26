@@ -120,7 +120,7 @@ class MaterialInfo(SQLModel):
     name: str
     kategorie: str
     einheit: str
-    preis: Decimal | None  # None: für den Stichtag gibt es noch keinen Preis
+    preis: Decimal | None  # None: kein Preis für den Stichtag – oder das Konto darf ihn nicht sehen
     gueltig_ab: date | None
 
 
@@ -135,8 +135,8 @@ class BookingInfo(SQLModel):
     description: str
     quantity: Decimal
     unit: str
-    unit_price: Decimal
-    amount: Decimal  # Menge mal Preis, auf Cent gerundet
+    unit_price: Decimal | None  # None: das Konto darf keine Preise sehen (F10)
+    amount: Decimal | None  # Menge mal Preis, auf Cent gerundet; None wie unit_price
 
 
 class ProjectCosts(SQLModel):

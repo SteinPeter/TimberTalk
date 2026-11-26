@@ -42,6 +42,13 @@ In gemeinsamen Dateien geändert (mit Peter oder Anton abzustimmen):
 | `POST /api/materials/bookings/travel` | `book_travel()` | Bucht eine Fahrt (km), zählt sofort zu den Kosten. |
 | `GET /api/materials/projects/{id}/costs` | `project_costs()` | Kosten eines Projekts: Stunden, Material, Fahrten, Summe (netto). |
 
+**Rechte (seit F10):** Preise, Stundensätze, Firmendaten und Projektkosten sieht nur, wer
+`finance.view` hat, ändern nur `finance.edit`; buchen braucht `bookings.create`. Ohne
+`finance.view` liefern `list_materials()` und `list_bookings()` (Parameter `show_prices=False`)
+keine Preise und Beträge, und der Abschnitt „Buchungen“ blendet sie aus. Die Antwort der beiden
+Buch-Endpunkte ist eine `BookingInfo` aus `booking_info()`. Die genaue Tabelle steht in
+`docs/handbuch/F10-accounts.md`.
+
 Meldet der Service einen Fehler, antwortet die API mit einem deutschen Text: `LookupError` → 404
 („gibt es nicht“), `ValueError` → 422 („Angabe passt nicht“). Dafür gibt es die Hilfsfunktion
 `_run()` in `api.py`.

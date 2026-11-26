@@ -19,6 +19,8 @@ const UNITS = ["m³", "m²", "m", "Stk", "kg", "l", "Pack"];
 
 export const id = "materials-master";
 export const title = "Materialstamm";
+// Nur für Konten, die Preise sehen dürfen (F10). Ändern prüft das Backend mit „finance.edit“.
+export const permission = "finance.view";
 
 // Baut den Abschnitt in `container` auf.
 export function render(container) {

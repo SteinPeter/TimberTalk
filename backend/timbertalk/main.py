@@ -6,11 +6,14 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
+from sqlmodel import Session
 
-from timbertalk.db import create_tables, database_ok
+from timbertalk.db import create_tables, database_ok, get_engine
 from timbertalk.features import load_features
+from timbertalk.features.accounts import service as accounts
+from timbertalk.features.accounts.deps import require_login
 from timbertalk.settings import BACKEND_DIR, get_settings
 
 # Der Ordner frontend/ liegt neben backend/ im Hauptordner des Projekts.
@@ -19,8 +22,14 @@ FRONTEND_DIR = BACKEND_DIR.parent / "frontend"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Beim Start der Anwendung werden fehlende Tabellen angelegt."""
+    """Beim Start: fehlende Tabellen anlegen und beim allerersten Start das Konto „admin“."""
     create_tables()
+    with Session(get_engine()) as session:
+        if accounts.ensure_initial_admin(session):
+            print(
+                "TimberTalk: Erstes Konto angelegt – Anmeldename „admin“, Passwort „admin“. "
+                "Bei der ersten Anmeldung muss ein eigenes Passwort gesetzt werden."
+            )
     yield
 
 
@@ -36,8 +45,10 @@ def health() -> dict[str, str]:
 # Jedes Feature unter features/ bringt in seiner api.py einen Router mit. load_features()
 # findet sie selbst und lädt dabei auch die Tabellen aus models.py. Ein neues Feature
 # ändert main.py deshalb nicht.
+# require_login (Feature accounts) gilt für jeden Router: Ohne Anmeldung antwortet die API mit
+# 401. Nur /api/health oben und die Anmeldung selbst gehen ohne.
 for router in load_features():
-    app.include_router(router)
+    app.include_router(router, dependencies=[Depends(require_login)])
 
 
 # Das Frontend sind einfache Dateien. Diese Zeile steht hinter der API,
