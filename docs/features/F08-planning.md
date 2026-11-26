@@ -67,12 +67,12 @@ Im Meeting wird genau das vorgeführt:
 
 ## Rechte (Voreinstellung, in „Rollen und Rechte“ änderbar)
 
-| Recht | Admin (Chef) | Meister | Verwaltung | Geselle | Azubi |
-| --- | :-: | :-: | :-: | :-: | :-: |
-| Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Termine für alle planen und ändern, Fahrzeuge pflegen (`calendar.dispatch`) | ✓ | ✓ | ✓ | – | – |
-| Urlaub beantragen (`calendar.request_absence`) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Urlaubsanträge genehmigen oder ablehnen (`calendar.approve_absence`) | – (Chef: ✓) | – | – | – | – |
+| Recht | Admin | Chef | Meister | Verwaltung | Geselle | Azubi |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: |
+| Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Termine für alle planen und ändern, Fahrzeuge pflegen (`calendar.dispatch`) | ✓ | ✓ | ✓ | ✓ | – | – |
+| Urlaub beantragen (`calendar.request_absence`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Urlaubsanträge genehmigen oder ablehnen (`calendar.approve_absence`) | – | ✓ | – | – | – | – |
 
 Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
 
