@@ -10,6 +10,7 @@ from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import Session
 
+from timbertalk import demo
 from timbertalk.db import create_tables, database_ok, get_engine
 from timbertalk.features import load_features
 from timbertalk.features.accounts import service as accounts
@@ -23,9 +24,14 @@ FRONTEND_DIR = BACKEND_DIR.parent / "frontend"
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-    """Beim Start: fehlende Tabellen anlegen und beim allerersten Start das Konto „admin“."""
+    """Beim Start: fehlende Tabellen anlegen; beim allerersten Start das Konto „admin“ und –
+    mit TIMBERTALK_DEMO – den Beispielbetrieb aus demo.py."""
     create_tables()
     with Session(get_engine()) as session:
+        # Neue, leere Datenbank mit TIMBERTALK_DEMO (Standard): gleich ein Beispielbetrieb.
+        if get_settings().demo and not accounts.list_accounts(session):
+            demo.seed(session)
+            print("TimberTalk: Beispielbetrieb angelegt (Demo-Modus an, siehe timbertalk/demo.py).")
         if accounts.ensure_initial_admin(session):
             print(
                 "TimberTalk: Erstes Konto angelegt – Anmeldename „admin“, Passwort „admin“. "

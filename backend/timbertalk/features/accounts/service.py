@@ -41,6 +41,7 @@ from timbertalk.features.accounts.permissions import (
     PERMISSIONS,
     ROLES,
 )
+from timbertalk.settings import get_settings
 
 # So lange bleibt man auf einem Gerät angemeldet (z. B. auf dem Handy auf der Baustelle).
 SESSION_DAYS = 30
@@ -409,7 +410,11 @@ def _set_setting(session: Session, key: str, value: str | None) -> None:
 
 
 def demo_mode(session: Session) -> bool:
-    return _setting(session, DEMO_MODE_KEY) == "on"
+    """An, wenn eingeschaltet – oder noch nie geschaltet und TIMBERTALK_DEMO an (Standard)."""
+    stored = _setting(session, DEMO_MODE_KEY)
+    if stored is None:
+        return get_settings().demo
+    return stored == "on"
 
 
 def demo_settings(session: Session) -> DemoModeIn:
@@ -425,7 +430,7 @@ def set_demo_mode(session: Session, enabled: bool, account_id: int | None) -> De
         account = get_account(session, account_id)
         if not account.active:
             raise ValueError("Ein gesperrtes Konto kann nicht das Demo-Konto sein.")
-    _set_setting(session, DEMO_MODE_KEY, "on" if enabled else None)
+    _set_setting(session, DEMO_MODE_KEY, "on" if enabled else "off")  # „off“ bleibt aus
     _set_setting(session, DEMO_ACCOUNT_KEY, str(account_id) if account_id else None)
     session.commit()
     return demo_settings(session)

@@ -47,6 +47,8 @@ Befehl im Ordner `backend/`: `uv run timbertalk`
    von `main.py` ruft `load_features()` jeden Feature-Ordner unter `features/` auf: Es lädt
    dessen `models.py` (Tabellen) und hängt den `router` aus dessen `api.py` an die App (Abschnitt 5).
 5. Beim Hochfahren der App läuft `lifespan()` in `main.py` und ruft `create_tables()` aus `db.py`.
+   Ist die Datenbank neu (noch kein Konto) und `TIMBERTALK_DEMO` an, legt `demo.seed()` den
+   Beispielbetrieb an; sonst entsteht beim allerersten Start nur das Konto `admin`.
    Dabei wird die Datenbankdatei angelegt (falls nötig) und fehlende Tabellen entstehen.
 6. Der Browser lädt `/`. Das Backend liefert `frontend/index.html` aus; `app.js` baut daraus mit
    der Liste in `reiter.js` die Reiterleiste und zeigt den Reiter „Start“ (Abschnitt 7).
@@ -106,7 +108,8 @@ in `.gitignore`.
 | `.env.example` | Vorlage für eigene Einstellungen. Kopiert als `backend/.env` wird sie gelesen. |
 | `timbertalk/__init__.py` | Markiert den Ordner als Python-Paket. Sonst leer. |
 | `timbertalk/main.py` | Die App: FastAPI-Objekt, `/api/health`, Auslieferung des Frontends, `run()`. |
-| `timbertalk/settings.py` | Einstellungen (Datenbankadresse, Host, Port) aus Umgebung oder `.env`. |
+| `timbertalk/settings.py` | Einstellungen (Datenbankadresse, Host, Port, Demo) aus Umgebung oder `.env`. |
+| `timbertalk/demo.py` | Beispielbetrieb zum Ausprobieren (Firma, Kataloge, Konten, Termine, Buchungen) über die `service.py` der Features; `uv run python -m timbertalk.demo` für eine bestehende Datenbank. |
 | `timbertalk/db.py` | Verbindung zur Datenbank, Sitzung je Anfrage (`get_session`), Anlegen der Tabellen, Gesundheitsprüfung. |
 | `timbertalk/features/__init__.py` | Findet die Feature-Ordner selbst und lädt ihre Tabellen und Router (`load_features()`). |
 | `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Zehn Ordner sind angelegt, aber noch ohne Inhalt (Tabelle in Abschnitt 6). |
@@ -197,6 +200,7 @@ in `.gitignore`.
 | `database_url` | `TIMBERTALK_DATABASE_URL` | `sqlite:///…/backend/data/timbertalk.db` |
 | `host` | `TIMBERTALK_HOST` | `127.0.0.1` |
 | `port` | `TIMBERTALK_PORT` | `8000` |
+| `demo` | `TIMBERTALK_DEMO` | `true` – neue Datenbank bekommt den Beispielbetrieb, Demo-Modus an, bis jemand ihn ausschaltet; im Betrieb `false` |
 | `dev_login_hint` | `TIMBERTALK_DEV_LOGIN_HINT` | `true` – Fenster mit Anmeldedaten vor der ersten Anmeldung (F10); im Betrieb `false` |
 
 ### `db.py` – die Datenbank

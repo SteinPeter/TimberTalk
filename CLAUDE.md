@@ -59,6 +59,8 @@ geändert:
 - Jeder Endpunkt verlangt eine Anmeldung (`main.py`). Braucht er ein Recht, steht es im Endpunkt:
   `Depends(require("finance.view"))` aus `features/accounts/deps.py`; neue Rechte stehen in
   `features/accounts/permissions.py` (F10).
+- Wer ein Feature baut, ergänzt `backend/timbertalk/demo.py` um ein paar Beispieldaten (über die
+  eigene `service.py`), damit man es nach dem Start sofort ausprobieren kann.
 - Ein Dashboard-Widget ist eine Datei `frontend/features/<ordner>/widgets/<name>.js` im eigenen
   Ordner (Bauplan oben in `frontend/features/start/start.js`); es wird nirgends eingetragen (F12).
 - Jeder ändernde Endpunkt (POST, PUT, DELETE) bekommt `summary="…"` – das ist sein Name im

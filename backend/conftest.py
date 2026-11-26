@@ -6,6 +6,8 @@ import os
 
 # Vor allem anderen: Tests arbeiten nie mit der echten Datenbank-Datei, sondern im Arbeitsspeicher.
 os.environ["TIMBERTALK_DATABASE_URL"] = "sqlite://"
+# Tests laufen ohne Demo-Modus und ohne Demo-Daten (die prüft eigens test_demo.py).
+os.environ["TIMBERTALK_DEMO"] = "false"
 
 from collections.abc import Callable, Iterator  # noqa: E402
 
