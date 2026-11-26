@@ -12,10 +12,10 @@
 // zurück. Auf dem Handy (ohne Ziehen) geht dasselbe über den Dialog.
 
 import { getJson, sendJson } from "../../shared/api.js";
-import { el, field, messageBox } from "../../shared/dom.js";
+import { el, field, menuButton, messageBox } from "../../shared/dom.js";
 import { can, currentAccount } from "../../shared/session.js";
-import { renderIcal } from "./ical.js";
-import { renderRequests } from "./requests.js";
+import { openIcal } from "./ical.js";
+import { openOwnRequests, setupApprovals } from "./requests.js";
 
 export const id = "planning";
 export const title = "Kalender";
@@ -74,6 +74,18 @@ export async function render(panel) {
   const weekLabel = el("p", { class: "planning-week", "aria-live": "polite" });
   const viewSelect = el("select", { "aria-label": "Ansicht" });
   const newButton = el("button", { type: "button", class: "button", hidden: !mayDispatch }, "Termin eintragen");
+  // Hier erscheint „Urlaubsanträge (n)“ – nur wenn Anträge offen sind (requests.js).
+  const approvalsSlot = el("span", { class: "planning-approvals-slot" });
+
+  // Was man selten braucht, steht im Menü „Mehr“ statt dauerhaft auf der Seite.
+  function moreMenu() {
+    const items = [];
+    if (can("calendar.request_absence") && !can("calendar.approve_absence")) {
+      items.push({ label: "Urlaub beantragen …", onSelect: openOwnRequests });
+    }
+    items.push({ label: "Kalender aufs Handy holen …", onSelect: openIcal });
+    return menuButton(el("button", { type: "button", class: "button-quiet" }, "Mehr ▾"), items);
+  }
   const toolbar = el(
     "div",
     { class: "planning-toolbar" },
@@ -85,11 +97,10 @@ export async function render(panel) {
       el("button", { type: "button", class: "button-quiet", onclick: () => move(7) }, "Nächste ›"),
     ),
     weekLabel,
-    el("div", { class: "planning-actions" }, viewSelect, newButton),
+    el("div", { class: "planning-actions" }, approvalsSlot, viewSelect, newButton, moreMenu()),
   );
   const message = messageBox();
   const content = el("div", { class: "planning-content" });
-  const extras = el("div", { class: "planning-extras" });
 
   panel.replaceChildren(
     el("h1", {}, "Kalender"),
@@ -97,7 +108,6 @@ export async function render(panel) {
     toolbar,
     message,
     content,
-    extras,
   );
 
   const dialog = buildDialog();
@@ -438,7 +448,7 @@ export async function render(panel) {
     const endTime = el("input", { type: "time", step: "900", value: "16:00" });
     const times = el("div", { class: "form-row", hidden: true }, field("Beginn", startTime), field("Ende", endTime));
     const locationInput = el("input", { type: "text", autocomplete: "off", placeholder: "z. B. Potsdam, Lindenstraße 4" });
-    const noteInput = el("input", { type: "text", autocomplete: "off" });
+    const noteInput = el("textarea", { rows: "1", placeholder: "z. B. Material vorher in der Halle laden" });
     const projectInput = el("input", { type: "number", min: "1", step: "1", inputmode: "numeric" });
     const peopleBox = el("fieldset", { class: "planning-people" });
     const resourcesBox = el("fieldset", { class: "planning-people" });
@@ -592,7 +602,8 @@ export async function render(panel) {
   ]);
   fillViewSelect();
   await loadWeek();
-  // Unter der Woche: Urlaubsanträge und das Kalender-Abo fürs Handy.
-  await renderRequests(extras, { onChange: loadWeek });
-  await renderIcal(extras);
+  // Offene Urlaubsanträge: Knopf in der Kopfleiste, und das Fenster öffnet sich von selbst.
+  if (can("calendar.approve_absence")) {
+    await setupApprovals(approvalsSlot, { onChange: loadWeek, onMessage: (text) => message.show(text) });
+  }
 }

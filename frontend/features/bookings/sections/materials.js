@@ -3,6 +3,8 @@
 // Eingetragen ist der Abschnitt in bookings/sections.js.
 // Ohne das Recht „finance.view“ (z. B. Gesellen, F10) bleiben Preise, Beträge und Gesamtkosten
 // ausgeblendet; buchen geht trotzdem – den Preis setzt das Backend.
+// Fahrten werden mit einem Fahrzeug gebucht; der Kilometersatz kommt vom Fahrzeug (F8,
+// Einstellungen → Fahrzeuge und Maschinen).
 
 import { getJson } from "../../../shared/api.js";
 import { can } from "../../../shared/session.js";
@@ -78,6 +80,9 @@ export function render(container) {
   );
 
   // --- Fahrt buchen ---
+  let vehicles = [];
+  const vehicleSelect = el("select", { required: "" });
+  const vehicleHint = el("p", { class: "materials-hint" });
   const travelDate = el("input", { type: "date", required: "", value: today() });
   const travelKm = el("input", {
     type: "text",
@@ -95,6 +100,8 @@ export function render(container) {
     "form",
     { class: "materials-form", novalidate: "" },
     el("h2", {}, "Fahrt buchen"),
+    field("Fahrzeug", vehicleSelect),
+    vehicleHint,
     el(
       "div",
       { class: "materials-row" },
@@ -213,7 +220,7 @@ export function render(container) {
     const quantityOk = toDecimalText(materialQuantity.value) !== null;
     const priceOk = !showPrices || material?.preis !== null;
     materialButton.disabled = !(material && priceOk && quantityOk);
-    travelButton.disabled = toDecimalText(travelKm.value) === null;
+    travelButton.disabled = toDecimalText(travelKm.value) === null || !vehicleSelect.value;
   }
 
   async function loadProject() {
@@ -231,6 +238,33 @@ export function render(container) {
     } catch (error) {
       message.show(error.message, true);
     }
+  }
+
+  // Fahrzeuge aus dem Kalender (F8). Wer Preise sehen darf, sieht den Satz je km dabei.
+  async function loadVehicles() {
+    try {
+      const all = await getJson("/api/planning/resources");
+      vehicles = all.filter((resource) => resource.category === "vehicle");
+    } catch {
+      vehicles = [];
+    }
+    vehicleSelect.replaceChildren(
+      ...vehicles.map((vehicle) =>
+        el(
+          "option",
+          { value: String(vehicle.id), "data-name": vehicle.name },
+          showPrices && vehicle.rate_per_km ? `${vehicle.name} (${formatEuro(vehicle.rate_per_km)} je km)` : vehicle.name,
+        ),
+      ),
+    );
+    if (vehicles.length === 0) {
+      vehicleHint.textContent = "Es ist noch kein Fahrzeug angelegt (Einstellungen → Fahrzeuge und Maschinen).";
+    } else if (showPrices && vehicles.some((vehicle) => !vehicle.rate_per_km)) {
+      vehicleHint.textContent = "Fahrzeuge ohne Kilometersatz lassen sich erst buchen, wenn er eingetragen ist.";
+    } else {
+      vehicleHint.textContent = "";
+    }
+    updateButtons();
   }
 
   async function loadMaterials() {
@@ -256,6 +290,7 @@ export function render(container) {
   materialSelect.addEventListener("change", showPriceHint);
   materialQuantity.addEventListener("input", updateButtons);
   travelKm.addEventListener("input", updateButtons);
+  vehicleSelect.addEventListener("change", updateButtons);
 
   materialForm.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -285,8 +320,10 @@ export function render(container) {
         project_id: projectId,
         km: toDecimalText(travelKm.value),
         booking_date: travelDate.value,
+        vehicle_id: Number(vehicleSelect.value),
       });
-      travelMessage.show(`Gebucht: Fahrt über ${travelKm.value.trim()} km.`);
+      const vehicle = vehicleSelect.selectedOptions[0].dataset.name;
+      travelMessage.show(`Gebucht: Fahrt über ${travelKm.value.trim()} km mit ${vehicle}.`);
       travelKm.value = "";
       updateButtons();
       await loadProject();
@@ -295,5 +332,5 @@ export function render(container) {
     }
   });
 
-  return loadMaterials();
+  return Promise.all([loadMaterials(), loadVehicles()]);
 }

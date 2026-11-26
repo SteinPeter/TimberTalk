@@ -11,8 +11,9 @@
 | `backend/timbertalk/features/planning/api.py` | Die Endpunkte unter `/api/planning` mit den Rechten aus F10. |
 | `backend/timbertalk/features/planning/test_planning.py` | Tests für Service und Endpunkte. |
 | `frontend/features/planning/planning.js` | Der Reiter „Kalender“: Plantafel mit Personen und Fahrzeugen, Ziehen mit „Rückgängig“, persönlicher Kalender, Dialog „Termin eintragen“. |
-| `frontend/features/planning/requests.js` | Urlaubsanträge unter der Woche: beantragen, zurückziehen, genehmigen, ablehnen. |
-| `frontend/features/planning/ical.js` | „Kalender aufs Handy holen“: Abo-Link erzeugen, kopieren, ungültig machen. |
+| `frontend/features/planning/dialog.js` | `makeDialog(titel)`: ein Fenster mit Überschrift, Inhalt und „Schließen“. |
+| `frontend/features/planning/requests.js` | `openOwnRequests()`: Fenster „Urlaub beantragen“ mit den eigenen Anträgen (über „Mehr ▾“). `setupApprovals()`: Knopf „Urlaubsanträge (n)“ und Fenster zum Entscheiden – erscheint nur bei offenen Anträgen und öffnet sich dann beim Laden von selbst. |
+| `frontend/features/planning/ical.js` | `openIcal()`: Fenster „Kalender aufs Handy holen“ (über „Mehr ▾“): Abo-Link erzeugen, kopieren, ungültig machen. |
 | `frontend/features/settings/sections/planning-resources.js` | Abschnitt „Fahrzeuge und Maschinen“ in den Einstellungen (Recht `calendar.dispatch`). |
 | `backend/timbertalk/features/notifications/` | Eigenes kleines Feature „Mitteilungen“: Tabelle `notifications_message`, `notify()`, `list_notifications()`, `unread_count()`, `mark_all_read()`; Endpunkte `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all` (jeweils nur die eigenen). |
 | `frontend/shared/notifications.js` | Knopf „Mitteilungen“ oben rechts mit Zahl der ungelesenen; holt die Zahl jede Minute neu. |
@@ -38,7 +39,8 @@ In gemeinsamen Dateien geändert:
 | `POST /api/planning/entries` | `calendar.dispatch` | `create_entry()` | Termin eintragen; Antwort mit `warnings`. |
 | `PUT /api/planning/entries/{id}` | `calendar.dispatch` | `update_entry()` | Termin ändern; Antwort mit `warnings`. |
 | `DELETE /api/planning/entries/{id}` | `calendar.dispatch` | `delete_entry()` | Termin mit allen Einplanungen löschen. |
-| `GET /api/planning/resources?include_inactive=` | angemeldet | `list_resources()` | Fahrzeuge und Maschinen (ausgemusterte nur auf Wunsch). |
+| `GET /api/planning/resources?include_inactive=` | angemeldet | `list_resources()` | Fahrzeuge und Maschinen (ausgemusterte nur auf Wunsch); `rate_per_km` nur mit `finance.view`. |
+| `PUT /api/planning/resources/{id}/rate` | `finance.edit` | `set_vehicle_rate()` | Kilometersatz eines Fahrzeugs (0 bis 10 €, leer = keiner). |
 | `POST /api/planning/resources` | `calendar.dispatch` | `create_resource()` | Fahrzeug oder Maschine anlegen. |
 | `PUT /api/planning/resources/{id}` | `calendar.dispatch` | `update_resource()` | Umbenennen, Art ändern, ausmustern. |
 | `GET /api/planning/requests` | angemeldet | `list_requests()` | Mit `calendar.approve_absence` alle Anträge, sonst die eigenen; offene zuerst, mit `conflicts`. |
@@ -59,7 +61,7 @@ Fehler: `ValueError` → 422, `LookupError` → 404, jeweils mit deutschem Text 
 | --- | --- | --- |
 | `planning_entry` | `title`, `kind`, `start_date`, `end_date` (beide eingeschlossen), `start_time`, `end_time` (beide leer = ganzer Tag), `location`, `note`, `project_id` (freiwillig, für F4), `created_by` | – |
 | `planning_assignment` | `entry_id`, `account_id` (zusammen der Schlüssel) | `planning_entry`; `account_id` ist ein Konto aus F10 |
-| `planning_resource` | `name`, `category` (`vehicle`/`machine`), `active` | – |
+| `planning_resource` | `name`, `category` (`vehicle`/`machine`), `active`, `rate_per_km` (Euro je km, nur Fahrzeuge, als Text-Decimal) | – |
 | `planning_resource_assignment` | `entry_id`, `resource_id` (zusammen der Schlüssel) | `planning_entry`, `planning_resource` |
 | `planning_absence_request` | `account_id`, `start_date`, `end_date`, `note`, `status` (`pending`/`approved`/`rejected`), `decided_by`, `decided_at`, `decision_note`, `entry_id` | `entry_id` → der Termin „Urlaub“ |
 | `planning_ical_token` | `account_id` (Schlüssel), `token_hash` | – |
@@ -97,6 +99,12 @@ gehen in der Antwort als `warnings` zurück und stehen in der Oberfläche über 
   rechnet für offene Anträge mit `_warnings()` aus, was in der Zeit schon eingeplant ist.
   `decide_request()` legt beim Genehmigen mit `create_entry(..., notify=False)` den Termin
   „Urlaub“ an und schickt stattdessen „Urlaub genehmigt: …“.
+- **Kilometersatz für F5:** `vehicle_rate()` liefert Nummer, Name und Satz des Fahrzeugs für eine
+  Fahrt. Ohne Fahrzeug nimmt es das einzige Fahrzeug mit Satz; gibt es mehrere oder keines, kommt
+  ein Fehler mit deutschem Text. `vehicles_with_rate()` nutzt das KI-Werkzeug `fahrt_buchen` zum
+  Nachfragen, `resource_name()` die Buchungsliste („Fahrt (Transporter)“).
+- **Oberfläche:** Was man selten braucht, öffnet ein Fenster (`dialog.js`) statt dauerhaft unter
+  der Woche zu stehen. Notizen sind mehrzeilige Felder, die mit dem Text wachsen.
 - **Kalender-Abo:** `new_ical_link()` erzeugt 32 Byte Zufall, speichert nur den SHA-256-Hash und
   gibt die Adresse einmal zurück. `ical_feed()` sucht den Hash, liest die Termine der Person und
   schreibt iCalendar: ganztägige Termine mit `DTSTART;VALUE=DATE` (Ende = Tag nach dem letzten

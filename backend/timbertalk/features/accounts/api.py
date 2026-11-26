@@ -29,6 +29,7 @@ from timbertalk.features.accounts.models import (
     Me,
     PasswordChangeIn,
     PermissionIn,
+    PhotoIn,
     ResetPasswordIn,
     RoleMatrix,
     StartPassword,
@@ -103,7 +104,45 @@ def change_password(
     return service.me(session, account)
 
 
+@router.put("/me/photo", summary="Eigenes Foto ändern")
+def set_own_photo(
+    data: PhotoIn,
+    account: Account = Depends(current_account),
+    session: Session = Depends(get_session),
+) -> Me:
+    _run(service.set_photo, session, account.id, data.photo)
+    return service.me(session, account)
+
+
 # --- Konten verwalten (Recht „accounts.manage“) ------------------------------------------
+
+
+@router.get("/standard-password")
+def get_standard_password(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> StartPassword:
+    return StartPassword(start_password=service.standard_password(session))
+
+
+@router.put("/standard-password", summary="Standardpasswort ändern")
+def set_standard_password(
+    data: StartPassword,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> StartPassword:
+    return StartPassword(
+        start_password=_run(service.set_standard_password, session, data.start_password)
+    )
+
+
+@router.put("/{account_id}/photo", summary="Foto eines Kontos ändern")
+def set_photo(
+    account_id: int,
+    data: PhotoIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> AccountInfo:
+    return service.info(_run(service.set_photo, session, account_id, data.photo, acting))
 
 
 @router.get("")

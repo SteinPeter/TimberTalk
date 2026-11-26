@@ -17,9 +17,11 @@ Handy seine eigene Woche als Liste nach Tagen – wo er wann ist und mit wem.
 Dazu: Fahrzeuge und Maschinen (Transporter, Kran) stehen als eigene Zeilen auf der Plantafel und
 werden wie Personen eingeplant. Termine lassen sich mit der Maus auf einen anderen Tag oder zu
 einer anderen Person ziehen, mit „Rückgängig“. Wer ein-, aus- oder umgeplant wird, bekommt oben
-rechts eine Mitteilung. Gesellen beantragen Urlaub, der Chef genehmigt ihn mit einem Klick, und er
-steht im Kalender. Jede Person kann ihren Kalender über einen geheimen Link in der Kalender-App
-des Handys abonnieren.
+rechts eine Mitteilung (Glocke). Gesellen beantragen Urlaub über „Mehr ▾ → Urlaub beantragen …“;
+hat jemand Urlaub beantragt, öffnet sich beim Chef auf der Kalenderseite ein Fenster mit den offenen
+Anträgen, und er genehmigt mit einem Klick. Jede Person kann ihren Kalender über „Mehr ▾ → Kalender
+aufs Handy holen …“ in der Kalender-App des Handys abonnieren. Jedes Fahrzeug hat seinen eigenen
+Kilometersatz für Fahrtbuchungen. Was man selten braucht, steht nicht dauerhaft auf der Seite.
 
 ## Abnahme
 
@@ -49,12 +51,20 @@ Im Meeting wird genau das vorgeführt:
 9. **Ziehen:** Der Chef zieht „Carport Berger“ bei Max von Montag auf Dienstag: Der Termin läuft
    jetzt Di–Do, mit Hinweis auf Überschneidungen. „Rückgängig“ holt ihn zurück. Auf eine andere
    Person gezogen, tritt diese an die Stelle von Max.
-10. **Urlaubsantrag:** Max beantragt im Kalender Urlaub. Der Chef bekommt eine Mitteilung, sieht
-    beim Antrag „Achtung: Max Berger ist am … schon eingeplant …“ und genehmigt. Der Urlaub steht
+10. **Urlaubsantrag:** Max beantragt über „Mehr ▾ → Urlaub beantragen …“ Urlaub (das Fenster zeigt
+    auch seine Anträge). Der Chef bekommt eine Mitteilung; beim Öffnen des Kalenders geht das
+    Fenster „Offene Urlaubsanträge“ von selbst auf, dazu der Knopf „Urlaubsanträge (1)“. Er sieht
+    „Achtung: Max Berger ist am … schon eingeplant …“ und genehmigt. Ohne offene Anträge sieht er
+    davon nichts. Der Urlaub steht
     im Kalender, Max bekommt „Urlaub genehmigt: …“. Abgelehnt mit Grund steht der Grund dabei.
-11. **Kalender-Abo:** Max erzeugt unter „Kalender aufs Handy holen“ einen Abo-Link. Die Adresse
+11. **Kalender-Abo:** Max erzeugt über „Mehr ▾ → Kalender aufs Handy holen …“ einen Abo-Link. Die Adresse
     liefert ohne Anmeldung seinen Kalender als iCalendar; ein neuer Link macht den alten ungültig.
-12. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
+12. **Kilometersatz je Fahrzeug:** In „Einstellungen → Fahrzeuge und Maschinen“ trägt der Chef beim
+    Transporter 0,55 € je km ein (Spalte „€ je km“; sehen nur mit „Preise sehen“, ändern nur mit
+    „Preise ändern“). Beim Buchen einer Fahrt wählt man das Fahrzeug; die Buchung heißt
+    „Fahrt (Transporter)“ und rechnet mit dessen Satz. In „Firma und Bank“ gibt es keinen
+    Kilometersatz mehr.
+13. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
 
 ## Rechte (Voreinstellung, in „Rollen und Rechte“ änderbar)
 

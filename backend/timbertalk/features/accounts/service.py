@@ -26,11 +26,21 @@ from timbertalk.features.accounts.models import (
     RoleInfo,
     RoleMatrix,
     RolePermission,
+    Setting,
 )
 from timbertalk.features.accounts.permissions import ADMIN_ROLE, DEFAULTS, PERMISSIONS, ROLES
 
 # So lange bleibt man auf einem Gerät angemeldet (z. B. auf dem Handy auf der Baustelle).
 SESSION_DAYS = 30
+
+# Das Standardpasswort für neue Konten und nach dem Zurücksetzen, solange der Admin kein anderes
+# festlegt (Einstellungen → Benutzerkonten). Bei der ersten Anmeldung muss es ersetzt werden.
+DEFAULT_STANDARD_PASSWORD = "timbertalk-start"
+STANDARD_PASSWORD_KEY = "standard_password"
+
+# Fotos: nur diese Bildarten, als Text höchstens so lang (rund 300 KB Bild).
+PHOTO_PREFIXES = ("data:image/jpeg;base64,", "data:image/png;base64,", "data:image/webp;base64,")
+MAX_PHOTO_LENGTH = 400_000
 
 # Das erste Konto beim allerersten Start. Das Passwort wird bei der ersten Anmeldung ersetzt.
 INITIAL_ADMIN_USERNAME = "admin"
@@ -139,6 +149,7 @@ def info(account: Account) -> AccountInfo:
         must_change_password=account.must_change_password,
         locked_until=account.locked_until,
         last_login_at=account.last_login_at,
+        photo=account.photo,
     )
 
 
@@ -192,8 +203,8 @@ def create_account(
 ) -> tuple[Account, str]:
     """Legt ein Konto an. Gibt das Konto und sein Startpasswort zurück.
 
-    Ohne start_password denkt sich TimberTalk eines aus. Bei der ersten Anmeldung muss die
-    Person es durch ein eigenes ersetzen. acting ist das Konto, das gerade anlegt.
+    Ohne start_password gilt das Standardpasswort. Bei der ersten Anmeldung muss die Person es
+    durch ein eigenes ersetzen. acting ist das Konto, das gerade anlegt.
     """
     username = _clean_username(username)
     personnel_number = _clean_personnel_number(personnel_number)
@@ -201,7 +212,7 @@ def create_account(
     _check_role(role)
     _check_admin_change(acting, role)
     _check_unique(session, username, personnel_number)
-    start_password = (start_password or "").strip() or security.new_start_password()
+    start_password = (start_password or "").strip() or standard_password(session)
     _check_new_password(start_password, username)
 
     account = Account(
@@ -265,7 +276,7 @@ def reset_password(
     """
     account = get_account(session, account_id)
     _check_admin_change(acting, account.role)
-    start_password = (start_password or "").strip() or security.new_start_password()
+    start_password = (start_password or "").strip() or standard_password(session)
     _check_new_password(start_password, account.username)
     account.password_hash = security.hash_password(start_password)
     account.must_change_password = True
@@ -310,6 +321,48 @@ def ensure_initial_admin(session: Session) -> bool:
     )
     session.commit()
     return True
+
+
+# --- Standardpasswort und Foto ----------------------------------------------------
+
+
+def standard_password(session: Session) -> str:
+    """Das Passwort, das neue Konten und zurückgesetzte Passwörter bekommen."""
+    stored = session.get(Setting, STANDARD_PASSWORD_KEY)
+    return stored.value if stored is not None else DEFAULT_STANDARD_PASSWORD
+
+
+def set_standard_password(session: Session, password: str) -> str:
+    """Legt ein anderes Standardpasswort fest. Bestehende Konten ändern sich dadurch nicht."""
+    password = password.strip()
+    if len(password) < MIN_PASSWORD_LENGTH:
+        raise ValueError(f"Das Passwort braucht mindestens {MIN_PASSWORD_LENGTH} Zeichen.")
+    stored = session.get(Setting, STANDARD_PASSWORD_KEY) or Setting(
+        key=STANDARD_PASSWORD_KEY, value=""
+    )
+    stored.value = password
+    session.add(stored)
+    session.commit()
+    return password
+
+
+def set_photo(
+    session: Session, account_id: int, photo: str | None, acting: Account | None = None
+) -> Account:
+    """Setzt oder entfernt ein Foto. Das Foto eines Admins ändert nur ein Admin oder er selbst."""
+    account = get_account(session, account_id)
+    if acting is not None and acting.id != account.id:
+        _check_admin_change(acting, account.role)
+    if photo is not None:
+        if not photo.startswith(PHOTO_PREFIXES):
+            raise ValueError("Bitte ein Foto als JPEG, PNG oder WebP.")
+        if len(photo) > MAX_PHOTO_LENGTH:
+            raise ValueError("Das Foto ist zu groß.")
+    account.photo = photo
+    session.add(account)
+    session.commit()
+    session.refresh(account)
+    return account
 
 
 # --- Anmelden und Passwort ----------------------------------------------------------
@@ -425,6 +478,8 @@ def change_own_password(
     if not security.verify_password(old_password, account.password_hash):
         raise ValueError("Das bisherige Passwort stimmt nicht.")
     _check_new_password(new_password, account.username)
+    if new_password == standard_password(session):
+        raise ValueError("Das Standardpasswort kennen alle – bitte ein eigenes wählen.")
     if security.verify_password(new_password, account.password_hash):
         raise ValueError("Das neue Passwort muss sich vom bisherigen unterscheiden.")
     account.password_hash = security.hash_password(new_password)

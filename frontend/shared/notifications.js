@@ -9,10 +9,28 @@ const REFRESH_MS = 60_000;
 
 export function notificationsButton() {
   const badge = el("span", { class: "notify-badge", hidden: true });
+  // Eine Glocke statt des Worts – der Name steht für Bildschirmleser in aria-label.
+  const bell = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  bell.setAttribute("viewBox", "0 0 24 24");
+  bell.setAttribute("class", "notify-bell");
+  bell.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+  path.setAttribute(
+    "d",
+    "M12 3a6 6 0 0 0-6 6v3.5L4.5 15v1.5h15V15L18 12.5V9a6 6 0 0 0-6-6Zm-2 15a2 2 0 0 0 4 0",
+  );
+  bell.append(path);
   const button = el(
     "button",
-    { type: "button", class: "button-quiet notify-button", "aria-expanded": "false", "aria-haspopup": "true" },
-    "Mitteilungen",
+    {
+      type: "button",
+      class: "notify-button",
+      title: "Mitteilungen",
+      "aria-label": "Mitteilungen",
+      "aria-expanded": "false",
+      "aria-haspopup": "true",
+    },
+    bell,
     badge,
   );
   const list = el("ul", { class: "notify-list" });

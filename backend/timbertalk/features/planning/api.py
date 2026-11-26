@@ -27,6 +27,7 @@ from timbertalk.features.planning.models import (
     EntryInfo,
     IcalLink,
     KindInfo,
+    RateIn,
     RequestIn,
     RequestInfo,
     ResourceIn,
@@ -106,9 +107,21 @@ def delete_entry(
 
 @router.get("/resources")
 def list_resources(
-    include_inactive: bool = False, session: Session = Depends(get_session)
+    include_inactive: bool = False,
+    show_rates: bool = Depends(can("finance.view")),
+    session: Session = Depends(get_session),
 ) -> list[ResourceInfo]:
-    return service.list_resources(session, include_inactive)
+    return service.list_resources(session, include_inactive, show_rates)
+
+
+@router.put("/resources/{resource_id}/rate", summary="Kilometersatz eines Fahrzeugs ändern")
+def set_vehicle_rate(
+    resource_id: int,
+    data: RateIn,
+    _: Account = Depends(require("finance.edit")),
+    session: Session = Depends(get_session),
+) -> ResourceInfo:
+    return _run(service.set_vehicle_rate, session, resource_id, data.rate_per_km)
 
 
 @router.post("/resources", status_code=201, summary="Fahrzeug oder Maschine anlegen")

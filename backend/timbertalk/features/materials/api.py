@@ -177,7 +177,14 @@ def book_travel(
     show_prices: bool = Depends(can("finance.view")),
     session: Session = Depends(get_session),
 ) -> BookingInfo:
-    booking = _run(service.book_travel, session, data.project_id, data.km, data.booking_date)
+    booking = _run(
+        service.book_travel,
+        session,
+        data.project_id,
+        data.km,
+        data.booking_date,
+        data.vehicle_id,
+    )
     return service.booking_info(session, booking, show_prices)
 
 

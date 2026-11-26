@@ -38,10 +38,33 @@ def test_passwort_wird_nur_als_hash_gespeichert() -> None:
     assert stored != security.hash_password("zimmerei2026")
 
 
-def test_startpasswort_ist_gut_abzutippen() -> None:
-    password = security.new_start_password()
-    assert len(password) == 9 and password[4] == "-"
-    assert not set(password) & set("0O1lI")
+def test_neue_konten_bekommen_das_standardpasswort(session: Session) -> None:
+    account, start = service.create_account(session, "max", "Max", "journeyman")
+    assert start == service.DEFAULT_STANDARD_PASSWORD
+    service.set_standard_password(session, " Zimmerei-2026 ")
+    _, start2 = service.create_account(session, "tom", "Tom", "journeyman")
+    assert start2 == "Zimmerei-2026"
+    assert service.reset_password(session, account.id, None, _admin(session)) == "Zimmerei-2026"
+    with pytest.raises(ValueError, match="mindestens"):
+        service.set_standard_password(session, "kurz")
+    # Als eigenes Passwort ist das Standardpasswort nicht erlaubt.
+    with pytest.raises(ValueError, match="Standardpasswort"):
+        service.change_own_password(session, account, "Zimmerei-2026", "Zimmerei-2026", "")
+
+
+def test_foto_setzen_und_entfernen(session: Session) -> None:
+    admin = _admin(session)
+    max_, _ = service.create_account(session, "max", "Max", "journeyman")
+    foto = "data:image/jpeg;base64,/9j/4AAQSkZJRg=="
+    assert service.info(service.set_photo(session, max_.id, foto)).photo == foto
+    assert service.set_photo(session, max_.id, None, admin).photo is None
+    with pytest.raises(ValueError, match="JPEG"):
+        service.set_photo(session, max_.id, "<svg onload=alert(1)>")
+    with pytest.raises(ValueError, match="zu groß"):
+        service.set_photo(session, max_.id, "data:image/png;base64," + "A" * 500_000)
+    buero = _office_manager(session, admin)
+    with pytest.raises(PermissionError):
+        service.set_photo(session, admin.id, foto, buero)
 
 
 # --- Konten anlegen ------------------------------------------------------------------
@@ -321,7 +344,7 @@ def test_api_konto_aendern_und_zuruecksetzen(client: TestClient) -> None:
 
     reset = client.post(f"/api/accounts/{account_id}/reset-password", json={})
     assert reset.status_code == 200
-    assert len(reset.json()["start_password"]) == 9
+    assert reset.json()["start_password"] == "timbertalk-start"
 
     assert client.put("/api/accounts/999", json=changed.json()).status_code == 404
 
@@ -399,3 +422,24 @@ def test_personenliste_fuer_andere_features_ohne_gesperrte(session: Session) -> 
     people = service.list_people(session)
     assert [p.display_name for p in people] == ["Admin", "Max Berger"]
     assert "role" not in people[0].model_dump_json()  # die Rolle sieht nur der Admin
+
+
+def test_api_standardpasswort_und_foto(
+    client: TestClient, client_as: Callable[[str], TestClient]
+) -> None:
+    assert client.get("/api/accounts/standard-password").json() == {
+        "start_password": "timbertalk-start"
+    }
+    changed = client.put(
+        "/api/accounts/standard-password", json={"start_password": "Zimmerei-2026"}
+    )
+    assert changed.status_code == 200
+    assert client_as("journeyman").get("/api/accounts/standard-password").status_code == 403
+
+    geselle = client_as("journeyman")
+    foto = "data:image/png;base64,iVBORw0KGgo="
+    assert geselle.put("/api/accounts/me/photo", json={"photo": foto}).json()["photo"] == foto
+    assert geselle.get("/api/accounts/me").json()["photo"] == foto
+    # Im Änderungsprotokoll steht das Standardpasswort nicht.
+    event = client.get("/api/audit").json()
+    assert not any("Zimmerei-2026" in e["details"] for e in event)

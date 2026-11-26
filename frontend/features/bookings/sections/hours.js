@@ -65,18 +65,39 @@ export function render(container) {
   const projectInput = el("input", { type: "number", min: "1", step: "1", inputmode: "numeric" });
   const titleInput = el("input", { type: "text", autocomplete: "off", placeholder: "z. B. Aufmaß, Werkstatt" });
   const hoursInput = el("input", { type: "text", inputmode: "decimal", autocomplete: "off", placeholder: "z. B. 2,5" });
-  const noteInput = el("input", { type: "text", autocomplete: "off" });
+  const noteInput = el("textarea", { rows: "1" });
   const bookButton = el("button", { type: "submit", class: "button", disabled: true }, "Stunden buchen");
   const manualMessage = messageBox();
+  // Von Hand bucht man selten – das Formular erscheint erst nach einem Klick.
+  const manualToggle = el(
+    "button",
+    { type: "button", class: "button-quiet hours-toggle", "aria-expanded": "false" },
+    "+ Weitere Stunden buchen",
+  );
   const manualForm = el(
     "form",
-    { class: "form", novalidate: "" },
+    { class: "form", novalidate: "", hidden: true },
     el("h2", {}, "Weitere Stunden"),
     el("div", { class: "form-row" }, field("Projektnummer", projectInput), field("Wofür", titleInput)),
     el("div", { class: "form-row" }, field("Stunden", hoursInput), field("Notiz", noteInput)),
-    el("div", { class: "form-actions" }, bookButton),
-    manualMessage,
+    el(
+      "div",
+      { class: "form-actions" },
+      bookButton,
+      el("button", { type: "button", class: "button-quiet", onclick: () => showManual(false) }, "Abbrechen"),
+    ),
   );
+
+  function showManual(visible) {
+    manualForm.hidden = !visible;
+    manualToggle.hidden = visible;
+    manualToggle.setAttribute("aria-expanded", String(visible));
+    if (visible) {
+      manualMessage.clear();
+      projectInput.focus();
+    }
+  }
+  manualToggle.addEventListener("click", () => showManual(true));
 
   // --- Woche ---
   const whoSelect = el(
@@ -97,7 +118,7 @@ export function render(container) {
   const weekMessage = messageBox();
 
   container.append(
-    el("section", { class: "hours-section" }, nav, dayLabel, fromCalendar, manualForm),
+    el("section", { class: "hours-section" }, nav, dayLabel, fromCalendar, manualToggle, manualForm, manualMessage),
     el("section", { class: "hours-week" }, el("div", { class: "hours-week-head" }, weekTitle, whoSelect), weekMessage, weekEmpty, weekTable),
   );
 
@@ -285,6 +306,7 @@ export function render(container) {
       });
       manualForm.reset();
       updateBook();
+      showManual(false);
       manualMessage.show(`Gebucht: ${hoursText(booked.hours)} h ${booked.title || `Projekt ${booked.project_id}`}.`);
       await loadWeek();
     } catch (error) {

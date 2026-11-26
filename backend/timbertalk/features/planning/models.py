@@ -6,8 +6,25 @@
 # F10 (accounts); hier steht nur ihre Nummer.
 
 from datetime import date, datetime, time
+from decimal import Decimal
 
+from sqlalchemy import Column, String
+from sqlalchemy.types import TypeDecorator
 from sqlmodel import Field, SQLModel
+
+
+class DecimalText(TypeDecorator):
+    """Speichert ein Decimal als Text und liest es als Decimal – SQLite kennt kein Decimal."""
+
+    impl = String
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        return None if value is None else str(Decimal(value))
+
+    def process_result_value(self, value, dialect):
+        return None if value is None else Decimal(value)
+
 
 # Art eines Termins: Schlüssel im Code → Name auf dem Bildschirm. Abwesenheiten (Urlaub, krank,
 # Schule) zählen bei der Prüfung auf Überschneidungen besonders.
@@ -69,6 +86,8 @@ class Resource(SQLModel, table=True):
     name: str  # z. B. „Transporter B-TT 123“ oder „Autokran“
     category: str  # Schlüssel aus RESOURCE_CATEGORIES
     active: bool = True  # False: ausgemustert, erscheint nicht mehr auf der Plantafel
+    # Nur bei Fahrzeugen: Euro netto je km für Fahrtbuchungen (F5). None: noch nicht eingetragen.
+    rate_per_km: Decimal | None = Field(default=None, sa_column=Column(DecimalText, nullable=True))
 
 
 class ResourceAssignment(SQLModel, table=True):
@@ -127,6 +146,13 @@ class ResourceInfo(SQLModel):
     category: str
     category_label: str
     active: bool
+    rate_per_km: Decimal | None  # None: nicht eingetragen – oder man darf Preise nicht sehen
+
+
+class RateIn(SQLModel):
+    """Eingabe: Kilometersatz eines Fahrzeugs in Euro netto (leer = keiner)."""
+
+    rate_per_km: Decimal | None
 
 
 class ResourceIn(SQLModel):

@@ -42,6 +42,16 @@ In gemeinsamen Dateien geändert (mit Peter oder Anton abzustimmen):
 | `POST /api/materials/bookings/travel` | `book_travel()` | Bucht eine Fahrt (km), zählt sofort zu den Kosten. |
 | `GET /api/materials/projects/{id}/costs` | `project_costs()` | Kosten eines Projekts: Stunden, Material, Fahrten, Summe (netto). |
 
+**Fahrten (seit F8):** Der Satz je km kommt vom Fahrzeug (`planning.service.vehicle_rate()`),
+nicht mehr aus den Firmendaten. `book_travel()` und `book_travel_draft()` nehmen eine `vehicle_id`
+(ohne: das einzige Fahrzeug mit Satz). Mit welchem Fahrzeug gefahren wurde, steht in der neuen
+Tabelle `materials_travel_vehicle` (`booking_id`, `vehicle_id`) – eine eigene Tabelle statt einer
+Spalte, damit bestehende Datenbanken ohne Migration weiterlaufen. Die Spalte
+`materials_company.travel_rate_per_km` bleibt aus demselben Grund, wird aber nicht mehr benutzt;
+„Firma und Bank“ zeigt sie nicht mehr. Das Werkzeug `fahrt_buchen` hat die freiwillige Angabe
+`fahrzeug_id` und fragt bei mehreren Fahrzeugen nach. Im Abschnitt „Material und Fahrten“ wählt
+man das Fahrzeug.
+
 **Rechte (seit F10):** Preise, Stundensätze, Firmendaten und Projektkosten sieht nur, wer
 `finance.view` hat, ändern nur `finance.edit`; buchen braucht `bookings.create`. Ohne
 `finance.view` liefern `list_materials()` und `list_bookings()` (Parameter `show_prices=False`)

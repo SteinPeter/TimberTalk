@@ -118,8 +118,8 @@ in `.gitignore`.
 
 | Datei | Wofür |
 | --- | --- |
-| `index.html` | Die einzige Seite – nur das Gerüst: leere Reiterleiste `<nav class="tabs">` und leeres `<main>`. |
-| `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich, schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Zeigt rechts in der Leiste den Namen und „Abmelden“. |
+| `index.html` | Die einzige Seite – nur das Gerüst: Logo mit Schriftzug als Link zur Startseite, leere Reiterleiste `<nav class="tabs">` und leeres `<main>`. |
+| `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich (außer „Start“ – dorthin führt das Logo), schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Rechts in der Leiste: Glocke (Mitteilungen) und Foto mit Nachname als Konto-Menü. Lässt mehrzeilige Felder in älteren Browsern mitwachsen. |
 | `reiter.js` | Liste aller Reiter in der Reihenfolge der Leiste. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
 | `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. |
@@ -338,7 +338,7 @@ ihres Features bauen, ohne die Dateien der anderen anzufassen.
 
 | Reiter | Adresse | Datei | Inhalt |
 | --- | --- | --- | --- |
-| Start | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
+| Start (über das Logo oben links, kein eigener Reiter) | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
 | Kalender | `/#planning` | `features/planning/planning.js` | Plantafel der Woche und persönlicher Kalender (F8) |
 | Projekte | `/#projects` | `features/projects/projects.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Kunden | `/#customers` | `features/customers/customers.js` | noch leer – ein Satz sagt, was hier hinkommt |
@@ -427,6 +427,20 @@ Gestaltung nach dem Skill `apple-design`: `settings.md › Platform consideratio
 Umschalten, zuletzt benutzten wieder öffnen), `sidebars.md › Best practices` (höchstens zwei
 Ebenen, nichts Wichtiges unten) und `segmented-controls.md › Platform considerations` (zum
 Umschalten von Ansichten im Hauptbereich eine Tab-Ansicht statt eines Umschalters).
+
+### Kopfzeile und Textfelder
+
+- **Oben links** steht das Logo mit dem Schriftzug TimberTalk. Es ist ein Link auf `#start` und
+  ersetzt den früheren Reiter „Start“; auf der Startseite ist es unterstrichen wie ein gewählter
+  Reiter.
+- **Oben rechts** stehen die Glocke für Mitteilungen und das Foto (ohne Foto: die Initialen) mit
+  dem Nachnamen darunter. Ein Klick darauf öffnet ein kleines Menü (`menuButton()` aus
+  `shared/dom.js`) mit „Mein Konto“ und „Abmelden“.
+- **Mehrzeilige Felder** (`<textarea>`) wachsen mit dem Text: neuere Browser über CSS
+  `field-sizing: content`, ältere über einen kleinen `input`-Zuhörer in `app.js`.
+- **Übersicht:** Was man selten braucht, steht nicht dauerhaft auf der Seite, sondern hinter einem
+  Knopf („+ Neues Konto“, „+ Weitere Stunden buchen“), in einem Menü („Mehr ▾“) oder in einem
+  Fenster, das nur bei Bedarf aufgeht (offene Urlaubsanträge).
 
 ### Farben, hell und dunkel
 

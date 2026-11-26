@@ -8,6 +8,9 @@
 #
 # Das Projekt selbst liegt in F3 (projects). Solange es dessen Service nicht gibt, ist die
 # Projektnummer nur eine Zahl und wird nicht geprüft.
+#
+# Fahrten: Der Kilometersatz kommt vom Fahrzeug (F8, planning.service.vehicle_rate()). Mit
+# welchem Fahrzeug gefahren wurde, steht in der Tabelle materials_travel_vehicle.
 
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
@@ -28,7 +31,9 @@ from timbertalk.features.materials.models import (
     MaterialItem,
     MaterialPrice,
     ProjectCosts,
+    TravelVehicle,
 )
+from timbertalk.features.planning import service as planning
 
 CENT = Decimal("0.01")
 MAX_LOGO_LENGTH = 500_000  # Zeichen, reicht für ein Logo von rund 350 KB
@@ -288,17 +293,18 @@ def _new_travel_booking(
     booking_date: date,
     status: str,
     draft_id: int | None = None,
+    vehicle_id: int | None = None,
 ) -> Booking:
-    """Baut eine Fahrtbuchung und legt sie in die Sitzung – ohne zu speichern."""
+    """Baut eine Fahrtbuchung und legt sie in die Sitzung – ohne zu speichern.
+
+    Der Satz je km kommt vom Fahrzeug. Ohne vehicle_id nimmt planning das einzige Fahrzeug mit
+    Kilometersatz – gibt es mehrere, muss das Fahrzeug angegeben werden.
+    """
     _require_project(project_id)
     _require_amount(km, "Die Strecke")
     if km == 0:
         raise ValueError("Die Strecke muss größer als 0 km sein.")
-    rate = get_company(session).travel_rate_per_km
-    if rate <= 0:
-        raise ValueError(
-            "Der Satz für Fahrten je km ist noch nicht in den Einstellungen eingetragen."
-        )
+    vehicle_id, _, rate = planning.vehicle_rate(session, vehicle_id)
     booking = Booking(
         project_id=project_id,
         kind=KIND_TRAVEL,
@@ -310,6 +316,8 @@ def _new_travel_booking(
         unit_price=rate,
     )
     session.add(booking)
+    session.flush()  # damit booking.id feststeht
+    session.add(TravelVehicle(booking_id=booking.id, vehicle_id=vehicle_id))
     return booking
 
 
@@ -334,9 +342,17 @@ def book_material(
     return booking
 
 
-def book_travel(session: Session, project_id: int, km: Decimal, booking_date: date) -> Booking:
-    """Bucht eine Fahrt (km) auf ein Projekt. Sie zählt sofort zu den Kosten."""
-    booking = _new_travel_booking(session, project_id, km, booking_date, STATUS_CONFIRMED)
+def book_travel(
+    session: Session,
+    project_id: int,
+    km: Decimal,
+    booking_date: date,
+    vehicle_id: int | None = None,
+) -> Booking:
+    """Bucht eine Fahrt (km mit einem Fahrzeug) auf ein Projekt. Sie zählt sofort zu den Kosten."""
+    booking = _new_travel_booking(
+        session, project_id, km, booking_date, STATUS_CONFIRMED, vehicle_id=vehicle_id
+    )
     _save(session, [booking])
     return booking
 
@@ -394,10 +410,18 @@ def book_material_draft(
     return draft_id
 
 
-def book_travel_draft(session: Session, project_id: int, km: Decimal, booking_date: date) -> int:
+def book_travel_draft(
+    session: Session,
+    project_id: int,
+    km: Decimal,
+    booking_date: date,
+    vehicle_id: int | None = None,
+) -> int:
     """Bucht eine Fahrt als Entwurf und gibt die Nummer des Entwurfs zurück."""
     draft_id = _next_draft_id(session)
-    booking = _new_travel_booking(session, project_id, km, booking_date, STATUS_DRAFT, draft_id)
+    booking = _new_travel_booking(
+        session, project_id, km, booking_date, STATUS_DRAFT, draft_id, vehicle_id=vehicle_id
+    )
     _save(session, [booking])
     return draft_id
 
@@ -421,7 +445,10 @@ def booking_info(session: Session, booking: Booking, show_prices: bool = True) -
     if booking.kind == KIND_MATERIAL:
         description = get_material(session, booking.material_id).name
     else:
-        description = "Fahrt"
+        link = session.get(TravelVehicle, booking.id)
+        description = (
+            f"Fahrt ({planning.resource_name(session, link.vehicle_id)})" if link else "Fahrt"
+        )
     return BookingInfo(
         id=booking.id,
         project_id=booking.project_id,

@@ -15,9 +15,9 @@
 | `backend/timbertalk/features/accounts/test_accounts.py` | Tests für Passwörter, Konten, Anmeldung, Rechte und Endpunkte. |
 | `frontend/shared/session.js` | `loadAccount()`, `currentAccount()`, `can()`, `logout()`. |
 | `frontend/shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()`. |
-| `frontend/shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
-| `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: Name, Anmeldename, Personalnummer, Passwort ändern. Für alle. Die Rolle steht nur in „Benutzerkonten“. |
-| `frontend/features/settings/sections/accounts-manage.js` | Abschnitt „Benutzerkonten“: Liste, anlegen, bearbeiten, sperren, Passwort zurücksetzen. |
+| `frontend/shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`; dazu `avatar()`, `lastName()`, `photoFromFile()`, `menuButton()` (kleines Menü unter einem Knopf) und `openSettings()`. |
+| `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: Foto, Name, Anmeldename, Personalnummer, Passwort ändern. Für alle. Die Rolle steht nur in „Benutzerkonten“. |
+| `frontend/features/settings/sections/accounts-manage.js` | Abschnitt „Benutzerkonten“: Standardpasswort, Liste mit Fotos; „+ Neues Konto“ und „Bearbeiten“ öffnen ein Fenster (anlegen, Foto, sperren, Passwort zurücksetzen). |
 | `frontend/features/settings/sections/accounts-roles.js` | Abschnitt „Rollen und Rechte“: Tabelle mit Häkchen. |
 
 In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
@@ -26,7 +26,7 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | --- | --- |
 | `backend/timbertalk/main.py` | `require_login` an jedem Feature-Router; beim Start `ensure_initial_admin()`. |
 | `backend/conftest.py` | Neue Fixtures `anonymous_client` und `client_as(role)`; `client` ist als Admin angemeldet. |
-| `frontend/app.js` | Prüft beim Start die Anmeldung, zeigt sonst Anmeldung oder „Passwort festlegen“; Name (ohne Rolle) und „Abmelden“ in der Leiste; Reiter mit `permission` nur mit Recht. |
+| `frontend/app.js` | Prüft beim Start die Anmeldung, zeigt sonst Anmeldung oder „Passwort festlegen“; oben rechts Foto/Initialen mit Nachname als Menü („Mein Konto“, „Abmelden“), ohne Rolle; Reiter mit `permission` nur mit Recht. |
 | `frontend/shared/api.js` | `sendJson()` dazu; bei 401 wird die Seite neu geladen (zurück zur Anmeldung); Fehlertext aus `detail`. |
 | `frontend/shared/sections.js` | Abschnitte mit `permission` erscheinen nur mit diesem Recht. |
 | `frontend/features/settings/sections.js` und `settings.js` | Drei Abschnitte eingetragen; Hinweistext ergänzt. |
@@ -42,9 +42,13 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | `GET /api/accounts/me` | angemeldet | `me()` | Eigenes Konto mit Liste der Rechte. |
 | `POST /api/accounts/me/password` | angemeldet | `change_own_password()` | Eigenes Passwort ändern; andere Geräte werden abgemeldet. |
 | `GET /api/accounts` | `accounts.manage` | `list_accounts()` | Alle Konten. |
-| `POST /api/accounts` | `accounts.manage` | `create_account()` | Konto anlegen; Antwort enthält das Startpasswort (einmalig). |
+| `POST /api/accounts` | `accounts.manage` | `create_account()` | Konto anlegen; es bekommt das Standardpasswort (steht in der Antwort). |
 | `PUT /api/accounts/{id}` | `accounts.manage` | `update_account()` | Name, Rolle, Personalnummer, gesperrt. |
-| `POST /api/accounts/{id}/reset-password` | `accounts.manage` | `reset_password()` | Neues Startpasswort, alle Anmeldungen enden. |
+| `POST /api/accounts/{id}/reset-password` | `accounts.manage` | `reset_password()` | Wieder das Standardpasswort, alle Anmeldungen enden, Sperre aufgehoben. |
+| `GET /api/accounts/standard-password` | `accounts.manage` | `standard_password()` | Das aktuelle Standardpasswort. |
+| `PUT /api/accounts/standard-password` | `accounts.manage` | `set_standard_password()` | Anderes Standardpasswort festlegen (mindestens 8 Zeichen). |
+| `PUT /api/accounts/me/photo` | angemeldet | `set_photo()` | Eigenes Foto setzen oder entfernen (`photo: null`). |
+| `PUT /api/accounts/{id}/photo` | `accounts.manage` | `set_photo()` | Foto eines Kontos; das eines Admins nur durch einen Admin. |
 | `GET /api/accounts/roles` | `accounts.manage` | `role_matrix()` | Alle Rollen mit ihren Rechten. |
 | `PUT /api/accounts/roles/{role}/permissions/{permission}` | `accounts.manage` | `set_role_permission()` | Ein Häkchen setzen oder entfernen. |
 
@@ -68,9 +72,10 @@ Rechte an den Endpunkten von F5 (`materials/api.py`):
 
 | Tabelle | Spalten (wichtigste) | Verweist auf |
 | --- | --- | --- |
-| `accounts_account` | `username` (eindeutig, klein), `personnel_number` (eindeutig, freiwillig), `display_name`, `role`, `password_hash`, `must_change_password`, `active`, `failed_logins`, `locked_until`, `last_login_at` | – |
+| `accounts_account` | `username` (eindeutig, klein), `personnel_number` (eindeutig, freiwillig), `display_name`, `role`, `password_hash`, `must_change_password`, `active`, `failed_logins`, `locked_until`, `last_login_at`, `photo` | – |
 | `accounts_session` | `token_hash` (eindeutig), `account_id`, `created_at`, `expires_at` | `accounts_account` |
 | `accounts_role_permission` | `role`, `permission` (zusammen der Schlüssel), `allowed` | – |
+| `accounts_setting` | `key`, `value` – zurzeit nur das Standardpasswort | – |
 
 In `accounts_role_permission` stehen nur **geänderte** Häkchen. Fehlt eine Zeile, gilt `DEFAULTS`
 aus `permissions.py`. So bekommt ein neues Recht seine Voreinstellung, ohne dass jemand die
@@ -100,12 +105,20 @@ Tabelle anfasst.
 5. **Schutz vor dem Aussperren:** Es bleibt immer ein aktives Admin-Konto. Man kann das eigene
    Konto nicht sperren, die eigene Rolle nicht ändern und der eigenen Rolle nicht
    `accounts.manage` nehmen. Admin-Konten bearbeitet nur ein Admin.
-6. **Fehlversuche:** Jedes falsche Passwort erhöht `failed_logins`. Beim fünften
+6. **Standardpasswort:** Neue Konten und `reset_password()` nehmen `standard_password()` – das
+   steht im Klartext in `accounts_setting`, weil es ja allen bekannt sein soll. Geschützt wird es
+   dadurch, dass `must_change_password` die Person vor allem anderen zum eigenen Passwort zwingt,
+   dass `change_own_password()` das Standardpasswort als eigenes ablehnt und dass die Sperre nach
+   fünf Fehlversuchen das Durchprobieren bremst.
+7. **Foto:** Der Browser verkleinert das Bild (`photoFromFile()` in `shared/dom.js`) auf 256 × 256
+   Pixel JPEG. `set_photo()` nimmt nur `data:image/jpeg|png|webp;base64,…` bis 400 000 Zeichen.
+   Die Oberfläche setzt es nur als `src` eines `<img>` ein, nie als HTML.
+8. **Fehlversuche:** Jedes falsche Passwort erhöht `failed_logins`. Beim fünften
    (`MAX_FAILED_LOGINS`) setzt `_count_failed_login()` `locked_until` auf jetzt + 15 Minuten
    (`LOCK_MINUTES`). Solange das in der Zukunft liegt, lehnt `login()` jede Anmeldung ab – auch
    mit richtigem Passwort. Eine erfolgreiche Anmeldung und `reset_password()` setzen beides zurück.
    Nicht existierende Namen werden nicht gezählt (es gibt kein Konto, das man sperren könnte).
-7. **Erster Start:** `lifespan()` in `main.py` ruft `ensure_initial_admin()`. Gibt es noch kein
+9. **Erster Start:** `lifespan()` in `main.py` ruft `ensure_initial_admin()`. Gibt es noch kein
    Konto, entsteht `admin` / `admin` mit `must_change_password=True`. Das steht auch in der Konsole.
 
 ## Weg einer typischen Anfrage
@@ -151,5 +164,6 @@ Ausnahme von der Regel „nur über `service.py`“ und so im Programmaufbau (Ka
 | Recht | `permission`, z. B. `finance.view` |
 | Anmeldung auf einem Gerät | `AccountSession` |
 | Sitzungsschlüssel | `token` (im Cookie), `token_hash` (in der Datenbank) |
-| Startpasswort | `start_password`; danach `must_change_password` |
+| Standardpasswort | `standard_password()`, Tabelle `accounts_setting` (Schlüssel `standard_password`), Voreinstellung `DEFAULT_STANDARD_PASSWORD`; danach `must_change_password` |
+| Foto | `Account.photo` (data:-Text, 256 × 256 JPEG aus dem Browser) |
 | Personalnummer | `personnel_number` |

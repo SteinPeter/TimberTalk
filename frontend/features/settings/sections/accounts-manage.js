@@ -1,12 +1,14 @@
 // Der Abschnitt „Benutzerkonten“ im Reiter „Einstellungen“ (Feature F10):
-// Konten anlegen, ändern, sperren und Passwörter zurücksetzen. Nur mit dem Recht
-// „accounts.manage“ sichtbar (Admin, und wem er dieses Recht gibt). Eingetragen in settings/sections.js.
+// Konten anlegen, ändern, sperren, Fotos setzen und Passwörter zurücksetzen. Nur mit dem Recht
+// „accounts.manage“ sichtbar (Admin, und wem er dieses Recht gibt). Eingetragen in
+// settings/sections.js.
 //
-// Das Startpasswort zeigt die Seite genau einmal – nach dem Anlegen oder Zurücksetzen. Danach
-// kennt es niemand mehr; gespeichert ist nur sein Hash.
+// Auf der Seite steht nur die Liste. Anlegen und Bearbeiten öffnen ein Fenster. Neue Konten und
+// zurückgesetzte Passwörter bekommen immer das Standardpasswort – es steht oben und lässt sich
+// ändern. Bei der ersten Anmeldung muss jede Person es durch ein eigenes ersetzen.
 
 import { getJson, sendJson } from "../../../shared/api.js";
-import { el, field, formatDateTime, messageBox } from "../../../shared/dom.js";
+import { avatar, el, field, formatDateTime, messageBox, photoFromFile } from "../../../shared/dom.js";
 import { currentAccount } from "../../../shared/session.js";
 
 export const id = "accounts-manage";
@@ -17,8 +19,31 @@ export function render(container) {
   const me = currentAccount();
   let roles = [];
   let editing = null; // das Konto, das gerade bearbeitet wird – oder null beim Anlegen
+  let photo; // undefined: Foto unverändert, null: entfernen, Text: neues Foto
+
+  // --- Standardpasswort ---
+  const standardValue = el("strong", { class: "accounts-standard-value" });
+  const standardInput = el("input", { type: "text", autocomplete: "off", spellcheck: "false", "aria-label": "Neues Standardpasswort" });
+  const standardEdit = el(
+    "form",
+    { class: "accounts-standard-edit", hidden: true, novalidate: "" },
+    standardInput,
+    el("button", { type: "submit", class: "button" }, "Speichern"),
+    el("button", { type: "button", class: "button-quiet", onclick: () => toggleStandard(false) }, "Abbrechen"),
+  );
+  const standardButton = el("button", { type: "button", class: "button-quiet", onclick: () => toggleStandard(true) }, "Ändern");
+  const standardMessage = messageBox();
+  const standardBox = el(
+    "div",
+    { class: "accounts-standard" },
+    el("p", {}, "Standardpasswort für neue Konten: ", standardValue, " ", standardButton),
+    standardEdit,
+    el("p", { class: "form-hint" }, "Bei der ersten Anmeldung muss jede Person es durch ein eigenes Passwort ersetzen."),
+    standardMessage,
+  );
 
   // --- Liste ---
+  const newButton = el("button", { type: "button", class: "button" }, "+ Neues Konto");
   const tableBody = el("tbody");
   const table = el(
     "div",
@@ -26,61 +51,43 @@ export function render(container) {
     el(
       "table",
       { class: "table" },
-      el(
-        "thead",
-        {},
-        el(
-          "tr",
-          {},
-          ...["Name", "Rolle", "Status", "Zuletzt angemeldet", ""].map((text) =>
-            el("th", { scope: "col" }, text),
-          ),
-        ),
-      ),
+      el("thead", {}, el("tr", {}, ...["Name", "Rolle", "Status", "Zuletzt angemeldet", ""].map((text) => el("th", { scope: "col" }, text)))),
       tableBody,
     ),
   );
   const listMessage = messageBox();
 
-  // --- Formular: anlegen oder bearbeiten ---
-  const formTitle = el("h2", {}, "Neues Konto");
+  // --- Fenster: anlegen oder bearbeiten ---
+  const formTitle = el("h2", { id: "accounts-dialog-title" });
+  const photoPreview = el("div", { class: "accounts-photo-preview" });
+  const photoInput = el("input", { type: "file", accept: "image/*", class: "accounts-photo-input" });
+  const photoRemove = el("button", { type: "button", class: "button-quiet" }, "Foto entfernen");
+  const photoRow = el(
+    "div",
+    { class: "accounts-photo-row" },
+    photoPreview,
+    el("div", { class: "form-actions" }, el("label", { class: "button-quiet accounts-photo-pick" }, "Foto wählen …", photoInput), photoRemove),
+  );
   const nameInput = el("input", { type: "text", autocomplete: "off", required: "" });
-  const usernameInput = el("input", {
-    type: "text",
-    autocomplete: "off",
-    autocapitalize: "none",
-    spellcheck: "false",
-    required: "",
-  });
+  const usernameInput = el("input", { type: "text", autocomplete: "off", autocapitalize: "none", spellcheck: "false", required: "" });
   const numberInput = el("input", { type: "text", autocomplete: "off", inputmode: "numeric" });
   const roleSelect = el("select", { required: "" });
-  const startInput = el("input", { type: "text", autocomplete: "off", spellcheck: "false" });
-  const startField = field(
-    "Startpasswort",
-    startInput,
-    "Leer lassen: TimberTalk denkt sich eines aus. Bei der ersten Anmeldung wird es ersetzt.",
-  );
   const lockedInput = el("input", { type: "checkbox" });
-  const lockedField = el(
-    "label",
-    { class: "form-check" },
-    lockedInput,
-    el("span", {}, "Konto gesperrt – Anmeldung nicht möglich"),
-  );
+  const lockedField = el("label", { class: "form-check" }, lockedInput, el("span", {}, "Konto gesperrt – Anmeldung nicht möglich"));
   const saveButton = el("button", { type: "submit", class: "button", disabled: true }, "Konto anlegen");
   const resetButton = el("button", { type: "button", class: "button-quiet" }, "Passwort zurücksetzen");
   const cancelButton = el("button", { type: "button", class: "button-quiet" }, "Abbrechen");
   const formMessage = messageBox();
-  const secret = el("div", { class: "accounts-secret", role: "status", hidden: true });
 
   const form = el(
     "form",
-    { class: "form", novalidate: "" },
+    { class: "form accounts-form", novalidate: "" },
     formTitle,
+    photoRow,
     el(
       "div",
       { class: "form-row" },
-      field("Name", nameInput, "Wie er in Listen und im Kalender steht."),
+      field("Name", nameInput, "Vor- und Nachname, z. B. Max Berger."),
       field("Anmeldename", usernameInput, "Kleinbuchstaben, z. B. m.berger"),
     ),
     el(
@@ -89,14 +96,14 @@ export function render(container) {
       field("Personalnummer", numberInput, "Freiwillig. Damit kann man sich auch anmelden."),
       field("Rolle", roleSelect),
     ),
-    startField,
     lockedField,
-    el("div", { class: "form-actions" }, saveButton, resetButton, cancelButton),
     formMessage,
-    secret,
+    el("div", { class: "form-actions" }, saveButton, cancelButton, resetButton),
   );
+  const dialog = el("dialog", { class: "accounts-dialog", "aria-labelledby": "accounts-dialog-title" }, form);
+  cancelButton.addEventListener("click", () => dialog.close());
 
-  container.append(table, listMessage, form);
+  container.append(standardBox, el("div", { class: "form-actions" }, newButton), listMessage, table, dialog);
 
   // --- Anzeigen ---
 
@@ -109,7 +116,7 @@ export function render(container) {
       const until = new Date(account.locked_until).toLocaleTimeString("de-DE", { timeStyle: "short" });
       return `Fehlversuche – gesperrt bis ${until}`;
     }
-    return account.must_change_password ? "Startpasswort" : "Aktiv";
+    return account.must_change_password ? "Standardpasswort" : "Aktiv";
   }
 
   function showAccounts(accounts) {
@@ -118,17 +125,24 @@ export function render(container) {
         el(
           "tr",
           {},
-          // Unter dem Namen klein: womit sich die Person anmeldet.
+          // Foto, Name und darunter klein, womit sich die Person anmeldet.
           el(
             "td",
             {},
-            account.display_name,
             el(
-              "small",
-              { class: "accounts-login" },
-              account.personnel_number
-                ? `${account.username} · Nr. ${account.personnel_number}`
-                : account.username,
+              "div",
+              { class: "accounts-person" },
+              avatar(account, "medium"),
+              el(
+                "span",
+                {},
+                account.display_name,
+                el(
+                  "small",
+                  { class: "accounts-login" },
+                  account.personnel_number ? `${account.username} · Nr. ${account.personnel_number}` : account.username,
+                ),
+              ),
             ),
           ),
           el("td", {}, account.role_label),
@@ -139,12 +153,7 @@ export function render(container) {
             {},
             el(
               "button",
-              {
-                type: "button",
-                class: "button-quiet",
-                "aria-label": `${account.display_name} bearbeiten`,
-                onclick: () => startEditing(account),
-              },
+              { type: "button", class: "button-quiet", "aria-label": `${account.display_name} bearbeiten`, onclick: () => openForm(account) },
               "Bearbeiten",
             ),
           ),
@@ -156,91 +165,56 @@ export function render(container) {
   // Nur ein Admin vergibt die Rolle Admin (das Backend prüft das ebenso).
   function showRoles() {
     roleSelect.replaceChildren(
-      ...roles.map((role) =>
-        el(
-          "option",
-          { value: role.role, disabled: role.role === "admin" && me.role !== "admin" },
-          role.label,
-        ),
-      ),
+      ...roles.map((role) => el("option", { value: role.role, disabled: role.role === "admin" && me.role !== "admin" }, role.label)),
     );
-    roleSelect.value = "journeyman";
   }
 
-  // Zeigt das Startpasswort einmal groß an, damit man es abschreiben oder weitergeben kann.
-  function showSecret(name, password) {
-    secret.replaceChildren(
-      el("p", {}, `Startpasswort für ${name}:`),
-      el("p", { class: "accounts-secret-value" }, password),
-      el(
-        "p",
-        { class: "form-hint" },
-        "Bitte jetzt weitergeben. Es wird nur dieses eine Mal angezeigt und bei der ersten " +
-          "Anmeldung durch ein eigenes Passwort ersetzt.",
-      ),
-    );
-    secret.hidden = false;
+  function showPhoto(person) {
+    photoPreview.replaceChildren(avatar(person, "large"));
+    photoRemove.hidden = !person.photo;
   }
 
-  function startEditing(account) {
+  // Öffnet das Fenster – mit Konto zum Bearbeiten, ohne zum Anlegen.
+  function openForm(account = null) {
     editing = account;
-    formTitle.textContent = `Konto bearbeiten: ${account.display_name}`;
-    nameInput.value = account.display_name;
-    usernameInput.value = account.username;
-    usernameInput.disabled = true;
-    numberInput.value = account.personnel_number ?? "";
-    roleSelect.value = account.role;
-    lockedInput.checked = !account.active;
+    photo = undefined;
+    form.reset();
+    formMessage.clear();
+    formTitle.textContent = account ? `Konto bearbeiten: ${account.display_name}` : "Neues Konto";
+    nameInput.value = account?.display_name ?? "";
+    usernameInput.value = account?.username ?? "";
+    usernameInput.disabled = Boolean(account);
+    numberInput.value = account?.personnel_number ?? "";
+    roleSelect.value = account?.role ?? "journeyman";
+    lockedInput.checked = account ? !account.active : false;
     // Das eigene Konto kann man nicht sperren und seine Rolle nicht ändern.
-    const self = account.id === me.id;
+    const self = account?.id === me.id;
     lockedInput.disabled = self;
     roleSelect.disabled = self;
-    startField.hidden = true;
-    lockedField.hidden = false;
-    resetButton.hidden = false;
-    cancelButton.hidden = false;
-    saveButton.textContent = "Änderungen speichern";
-    formMessage.clear();
-    secret.hidden = true;
+    lockedField.hidden = !account;
+    resetButton.hidden = !account;
+    saveButton.textContent = account ? "Änderungen speichern" : "Konto anlegen";
+    showPhoto(account ?? { display_name: "?", photo: null });
     updateButton();
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
-    nameInput.focus({ preventScroll: true });
-  }
-
-  function startCreating() {
-    editing = null;
-    form.reset();
-    formTitle.textContent = "Neues Konto";
-    usernameInput.disabled = false;
-    roleSelect.disabled = false;
-    roleSelect.value = "journeyman";
-    startField.hidden = false;
-    lockedField.hidden = true;
-    resetButton.hidden = true;
-    cancelButton.hidden = true;
-    saveButton.textContent = "Konto anlegen";
-    updateButton();
+    dialog.showModal();
+    nameInput.focus();
   }
 
   function updateButton() {
-    const ok = nameInput.value.trim() && (editing || usernameInput.value.trim());
-    saveButton.disabled = !ok;
+    saveButton.disabled = !(nameInput.value.trim() && (editing || usernameInput.value.trim()));
   }
 
-  async function load() {
-    try {
-      const [accountList, matrix] = await Promise.all([
-        getJson("/api/accounts"),
-        getJson("/api/accounts/roles"),
-      ]);
-      roles = matrix.roles;
-      showAccounts(accountList);
-    } catch (error) {
-      listMessage.show(error.message, true);
+  function toggleStandard(open) {
+    standardEdit.hidden = !open;
+    standardButton.hidden = open;
+    standardMessage.clear();
+    if (open) {
+      standardInput.value = standardValue.textContent;
+      standardInput.focus();
     }
   }
 
-  async function reloadList() {
+  async function loadList() {
     try {
       showAccounts(await getJson("/api/accounts"));
     } catch (error) {
@@ -250,37 +224,69 @@ export function render(container) {
 
   // --- Bedienen ---
 
+  newButton.addEventListener("click", () => openForm());
   nameInput.addEventListener("input", updateButton);
   usernameInput.addEventListener("input", updateButton);
-  cancelButton.addEventListener("click", startCreating);
+
+  photoInput.addEventListener("change", async () => {
+    const file = photoInput.files[0];
+    if (!file) {
+      return;
+    }
+    try {
+      photo = await photoFromFile(file);
+      showPhoto({ display_name: nameInput.value || "?", photo });
+    } catch (error) {
+      formMessage.show(error.message, true);
+    }
+  });
+  photoRemove.addEventListener("click", () => {
+    photo = null;
+    showPhoto({ display_name: nameInput.value || "?", photo: null });
+  });
+
+  standardEdit.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      const saved = await sendJson("PUT", "/api/accounts/standard-password", { start_password: standardInput.value });
+      standardValue.textContent = saved.start_password;
+      toggleStandard(false);
+      standardMessage.show("Gespeichert. Es gilt für alle Konten, die ab jetzt angelegt oder zurückgesetzt werden.");
+    } catch (error) {
+      standardMessage.show(error.message, true);
+    }
+  });
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     formMessage.clear();
-    secret.hidden = true;
     try {
+      let saved;
+      let text;
       if (editing) {
-        const saved = await sendJson("PUT", `/api/accounts/${editing.id}`, {
+        saved = await sendJson("PUT", `/api/accounts/${editing.id}`, {
           display_name: nameInput.value,
           role: roleSelect.value,
           personnel_number: numberInput.value,
           active: !lockedInput.checked,
         });
-        startCreating();
-        formMessage.show(`Gespeichert: ${saved.display_name}.`);
+        text = `Gespeichert: ${saved.display_name}.`;
       } else {
         const created = await sendJson("POST", "/api/accounts", {
           display_name: nameInput.value,
           username: usernameInput.value,
           role: roleSelect.value,
           personnel_number: numberInput.value,
-          start_password: startInput.value || null,
         });
-        startCreating();
-        formMessage.show(`Konto angelegt: ${created.account.display_name}.`);
-        showSecret(created.account.display_name, created.start_password);
+        saved = created.account;
+        text = `Konto angelegt: ${saved.display_name}. Erste Anmeldung mit „${saved.username}“ und dem Standardpasswort „${created.start_password}“.`;
       }
-      await reloadList();
+      if (photo !== undefined) {
+        await sendJson("PUT", `/api/accounts/${saved.id}/photo`, { photo });
+      }
+      dialog.close();
+      await loadList();
+      listMessage.show(text);
     } catch (error) {
       formMessage.show(error.message, true);
     }
@@ -290,26 +296,27 @@ export function render(container) {
     const account = editing;
     const sure = window.confirm(
       `Passwort von ${account.display_name} zurücksetzen?\n\n` +
-        "Das bisherige Passwort gilt dann nicht mehr, und das Konto wird auf allen Geräten " +
-        "abgemeldet.",
+        "Es gilt dann wieder das Standardpasswort, und das Konto wird auf allen Geräten abgemeldet.",
     );
     if (!sure) {
       return;
     }
-    formMessage.clear();
     try {
       const answer = await sendJson("POST", `/api/accounts/${account.id}/reset-password`, {});
-      startCreating();
-      formMessage.show(`Passwort von ${account.display_name} zurückgesetzt.`);
-      showSecret(account.display_name, answer.start_password);
-      await reloadList();
+      dialog.close();
+      await loadList();
+      listMessage.show(`Passwort von ${account.display_name} zurückgesetzt – jetzt gilt das Standardpasswort „${answer.start_password}“.`);
     } catch (error) {
       formMessage.show(error.message, true);
     }
   });
 
-  return load().then(() => {
-    showRoles();
-    startCreating();
-  });
+  return Promise.all([getJson("/api/accounts/roles"), getJson("/api/accounts/standard-password")])
+    .then(([matrix, standard]) => {
+      roles = matrix.roles;
+      standardValue.textContent = standard.start_password;
+      showRoles();
+    })
+    .then(loadList)
+    .catch((error) => listMessage.show(error.message, true));
 }

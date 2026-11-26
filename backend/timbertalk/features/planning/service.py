@@ -11,6 +11,7 @@
 import hashlib
 import secrets
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 
 from sqlmodel import Session, col, delete, select
 
@@ -378,22 +379,90 @@ def _resource_names(session: Session, include_inactive: bool = False) -> dict[in
     return {resource.id: resource.name for resource in session.exec(statement)}
 
 
-def _resource_info(resource: Resource) -> ResourceInfo:
+def _resource_info(resource: Resource, show_rates: bool = True) -> ResourceInfo:
     return ResourceInfo(
         id=resource.id,
         name=resource.name,
         category=resource.category,
         category_label=RESOURCE_CATEGORIES.get(resource.category, resource.category),
         active=resource.active,
+        rate_per_km=resource.rate_per_km if show_rates else None,
     )
 
 
-def list_resources(session: Session, include_inactive: bool = False) -> list[ResourceInfo]:
-    """Fahrzeuge und Maschinen, erst nach Art, dann nach Namen sortiert."""
+def list_resources(
+    session: Session, include_inactive: bool = False, show_rates: bool = True
+) -> list[ResourceInfo]:
+    """Fahrzeuge und Maschinen, erst nach Art, dann nach Namen sortiert.
+
+    show_rates=False: ohne Kilometersatz – für Konten ohne „finance.view“.
+    """
     statement = select(Resource).order_by(Resource.category.desc(), Resource.name)
     if not include_inactive:
         statement = statement.where(col(Resource.active).is_(True))
-    return [_resource_info(resource) for resource in session.exec(statement)]
+    return [_resource_info(resource, show_rates) for resource in session.exec(statement)]
+
+
+# Höchster erlaubter Kilometersatz in Euro – schützt vor Tippfehlern wie 55 statt 0,55.
+MAX_RATE_PER_KM = Decimal("10")
+
+
+def set_vehicle_rate(session: Session, resource_id: int, rate: Decimal | None) -> ResourceInfo:
+    """Trägt den Kilometersatz eines Fahrzeugs ein (Euro netto je km). None löscht ihn."""
+    resource = session.get(Resource, resource_id)
+    if resource is None:
+        raise LookupError(f"Das Fahrzeug {resource_id} gibt es nicht.")
+    if resource.category != "vehicle":
+        raise ValueError("Einen Kilometersatz haben nur Fahrzeuge, keine Maschinen.")
+    if rate is not None and (not rate.is_finite() or rate <= 0 or rate > MAX_RATE_PER_KM):
+        raise ValueError("Der Kilometersatz muss zwischen 0 und 10 Euro liegen, z. B. 0,55.")
+    resource.rate_per_km = rate
+    session.add(resource)
+    session.commit()
+    session.refresh(resource)
+    return _resource_info(resource)
+
+
+def vehicles_with_rate(session: Session) -> list[ResourceInfo]:
+    """Alle Fahrzeuge im Einsatz mit eingetragenem Kilometersatz – damit bucht F5 Fahrten."""
+    return [
+        info
+        for info in list_resources(session)
+        if info.category == "vehicle" and info.rate_per_km is not None
+    ]
+
+
+def vehicle_rate(session: Session, resource_id: int | None) -> tuple[int, str, Decimal]:
+    """Nummer, Name und Kilometersatz des Fahrzeugs für eine Fahrt (F5).
+
+    Ohne resource_id: Gibt es genau ein Fahrzeug mit Satz, wird es genommen – sonst Fehler.
+    """
+    usable = vehicles_with_rate(session)
+    if resource_id is None:
+        if len(usable) == 1:
+            return usable[0].id, usable[0].name, usable[0].rate_per_km
+        if not usable:
+            raise ValueError(
+                "Für Fahrten fehlt ein Fahrzeug mit Kilometersatz "
+                "(Einstellungen → Fahrzeuge und Maschinen)."
+            )
+        raise ValueError("Bitte angeben, mit welchem Fahrzeug gefahren wurde.")
+    for info in usable:
+        if info.id == resource_id:
+            return info.id, info.name, info.rate_per_km
+    resource = session.get(Resource, resource_id)
+    if resource is None or resource.category != "vehicle" or not resource.active:
+        raise LookupError(f"Das Fahrzeug {resource_id} gibt es nicht (mehr).")
+    raise ValueError(
+        f"Für „{resource.name}“ ist noch kein Kilometersatz eingetragen "
+        "(Einstellungen → Fahrzeuge und Maschinen)."
+    )
+
+
+def resource_name(session: Session, resource_id: int) -> str:
+    """Der Name eines Fahrzeugs oder einer Maschine, auch wenn es ausgemustert ist."""
+    resource = session.get(Resource, resource_id)
+    return resource.name if resource is not None else f"Fahrzeug {resource_id}"
 
 
 def _clean_resource(data: ResourceIn) -> ResourceIn:
