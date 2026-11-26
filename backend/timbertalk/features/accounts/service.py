@@ -22,6 +22,7 @@ from timbertalk.features.accounts.models import (
     AccountSession,
     Me,
     PermissionInfo,
+    Person,
     RoleInfo,
     RoleMatrix,
     RolePermission,
@@ -151,6 +152,20 @@ def list_accounts(session: Session) -> list[AccountInfo]:
     """Alle Konten, nach Namen sortiert – gesperrte stehen mit in der Liste."""
     statement = select(Account).order_by(Account.display_name)
     return [info(account) for account in session.exec(statement)]
+
+
+def list_people(session: Session) -> list[Person]:
+    """Alle aktiven Konten mit Name und Rolle, nach Namen sortiert – für andere Features,
+    z. B. die Plantafel im Kalender (F8). Ohne Anmeldename, Personalnummer und Rechte."""
+    statement = select(Account).where(col(Account.active).is_(True)).order_by(Account.display_name)
+    return [
+        Person(
+            id=account.id,
+            display_name=account.display_name,
+            role_label=ROLES.get(account.role, account.role),
+        )
+        for account in session.exec(statement)
+    ]
 
 
 def get_account(session: Session, account_id: int) -> Account:

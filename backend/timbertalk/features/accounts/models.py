@@ -69,6 +69,14 @@ class AccountInfo(SQLModel):
     last_login_at: datetime | None
 
 
+class Person(SQLModel):
+    """Eine Person für Listen anderer Features (z. B. Zeilen im Kalender): nur Name und Rolle."""
+
+    id: int
+    display_name: str
+    role_label: str
+
+
 class Me(AccountInfo):
     """Das eigene Konto mit der Liste der Rechte, nach denen die Oberfläche sich richtet."""
 

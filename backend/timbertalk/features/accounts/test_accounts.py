@@ -281,7 +281,7 @@ def test_api_erste_anmeldung_erst_passwort_dann_alles_andere(
 def test_api_me_nennt_rolle_und_rechte(client_as: Callable[[str], TestClient]) -> None:
     me = client_as("journeyman").get("/api/accounts/me").json()
     assert me["role_label"] == "Geselle"
-    assert me["permissions"] == ["bookings.create"]
+    assert me["permissions"] == ["bookings.create", "calendar.view_all"]
 
 
 def test_api_kontenverwaltung_nur_mit_recht(client_as: Callable[[str], TestClient]) -> None:
@@ -384,3 +384,14 @@ def test_azubi_bucht_und_sieht_keine_preise(session: Session) -> None:
     assert service.info(azubi).role_label == "Azubi"
     assert service.has_permission(session, azubi, "bookings.create")
     assert not service.has_permission(session, azubi, "finance.view")
+
+
+def test_personenliste_fuer_andere_features_ohne_gesperrte(session: Session) -> None:
+    admin = _admin(session)
+    service.create_account(session, "max", "Max Berger", "journeyman")
+    weg, _ = service.create_account(session, "weg", "Alt Geselle", "journeyman")
+    service.update_account(session, weg.id, "Alt Geselle", "journeyman", None, False, admin)
+    assert [(p.display_name, p.role_label) for p in service.list_people(session)] == [
+        ("Admin", "Admin"),
+        ("Max Berger", "Geselle"),
+    ]

@@ -29,13 +29,28 @@ PERMISSIONS: dict[str, str] = {
     "finance.edit": "Preise, Stundensätze und Firmendaten ändern",
     "materials.edit": "Materialstamm pflegen",
     "bookings.create": "Material und Fahrten buchen",
+    "calendar.view_all": "Kalender aller Mitarbeitenden sehen",  # F8; ohne: nur den eigenen
+    "calendar.dispatch": "Termine für alle planen und ändern",  # F8
 }
 
 # Voreinstellung: welche Rolle welches Recht hat, solange niemand etwas ändert.
 DEFAULTS: dict[str, set[str]] = {
     "admin": set(PERMISSIONS),
-    "master": {"finance.view", "materials.edit", "bookings.create"},
-    "office": {"finance.view", "finance.edit", "materials.edit", "bookings.create"},
-    "journeyman": {"bookings.create"},
-    "apprentice": {"bookings.create"},
+    "master": {
+        "finance.view",
+        "materials.edit",
+        "bookings.create",
+        "calendar.view_all",
+        "calendar.dispatch",
+    },
+    "office": {
+        "finance.view",
+        "finance.edit",
+        "materials.edit",
+        "bookings.create",
+        "calendar.view_all",
+        "calendar.dispatch",
+    },
+    "journeyman": {"bookings.create", "calendar.view_all"},
+    "apprentice": {"bookings.create", "calendar.view_all"},
 }

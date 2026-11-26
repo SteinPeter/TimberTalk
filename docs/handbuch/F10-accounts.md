@@ -48,6 +48,9 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | `GET /api/accounts/roles` | `accounts.manage` | `role_matrix()` | Alle Rollen mit ihren Rechten. |
 | `PUT /api/accounts/roles/{role}/permissions/{permission}` | `accounts.manage` | `set_role_permission()` | Ein Häkchen setzen oder entfernen. |
 
+Für andere Features ohne eigenen Endpunkt: `list_people()` – alle aktiven Konten nur mit Nummer,
+Name und Rolle (z. B. für die Zeilen der Plantafel in F8).
+
 Fehler aus dem Service werden in `_run()` zu Antworten mit deutschem Text: `LoginFailed` → 401,
 `PermissionError` → 403, `LookupError` → 404, `ValueError` → 422.
 
@@ -134,7 +137,8 @@ Anfang an haben sollen. In der Oberfläche erscheint es dann von selbst in „Ro
 
 ## Abhängigkeiten zu anderen Features
 
-Keine. Umgekehrt benutzt F5 (`materials`) `require()` und `can()` aus `deps.py`. Das ist die
+Keine. Umgekehrt benutzen F5 (`materials`) und F8 (`planning`) `require()` und `can()` aus `deps.py`;
+F8 dazu `list_people()`. Das ist die
 Ausnahme von der Regel „nur über `service.py`“ und so im Programmaufbau (Kapitel 10) vorgesehen.
 
 ## Begriffe

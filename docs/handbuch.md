@@ -128,7 +128,7 @@ in `.gitignore`.
 | `shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
 | `shared/sections.js` | `renderSections()`: baut in einem gemeinsamen Reiter die Auswahl der Abschnitte und zeigt immer einen davon – nur die, für die das Konto das Recht hat (Abschnitt 7). |
 | `features/start/start.js` | Reiter „Start“: Überschrift „Übersicht“, „TimberTalk läuft“ und der Status von Backend und Datenbank. |
-| `features/planning/planning.js` | Reiter „Kalender“, noch leer. |
+| `features/planning/planning.js` | Reiter „Kalender“: Plantafel und persönlicher Kalender (F8, Kapitel `handbuch/F08-planning.md`). |
 | `features/projects/projects.js` | Reiter „Projekte“, noch leer. |
 | `features/customers/customers.js` | Reiter „Kunden“, noch leer. |
 | `features/bookings/bookings.js` | Reiter „Buchungen“: zeigt seine Abschnitte als Reiter über dem Inhalt. |
@@ -334,7 +334,7 @@ ihres Features bauen, ohne die Dateien der anderen anzufassen.
 | Reiter | Adresse | Datei | Inhalt |
 | --- | --- | --- | --- |
 | Start | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
-| Kalender | `/#planning` | `features/planning/planning.js` | noch leer – ein Satz sagt, was hier hinkommt |
+| Kalender | `/#planning` | `features/planning/planning.js` | Plantafel der Woche und persönlicher Kalender (F8) |
 | Projekte | `/#projects` | `features/projects/projects.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Kunden | `/#customers` | `features/customers/customers.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Buchungen | `/#bookings` | `features/bookings/bookings.js` | Abschnitte als Reiter über dem Inhalt; noch keiner – ein Satz sagt, was hier hinkommt |

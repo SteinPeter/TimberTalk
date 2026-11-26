@@ -53,6 +53,8 @@ Im Meeting wird genau das vorgeführt:
 | Preise, Stundensätze und Firmendaten ändern | ✓ | – | ✓ | – | – |
 | Materialstamm pflegen | ✓ | ✓ | ✓ | – | – |
 | Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Kalender aller Mitarbeitenden sehen (F8) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Termine für alle planen und ändern (F8) | ✓ | ✓ | ✓ | – | – |
 
 Wer „Konten verwalten“ hat, kann jedes Häkchen außer denen des Admins ändern. Admin-Konten legt,
 ändert und setzt nur ein Admin zurück.
