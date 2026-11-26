@@ -1,5 +1,6 @@
 // Der Abschnitt „Mein Konto“ im Reiter „Einstellungen“ (Feature F10):
-// zeigt das eigene Konto und lässt jeden sein eigenes Passwort ändern.
+// zeigt das eigene Konto und lässt jeden sein eigenes Passwort ändern. Die Rolle steht hier
+// nicht – sie dient nur Chef und Admin zur Einordnung (Abschnitt „Benutzerkonten“).
 // Eingetragen ist der Abschnitt in settings/sections.js.
 
 import { el } from "../../../shared/dom.js";
@@ -15,7 +16,6 @@ export function render(container) {
     ["Name", me.display_name],
     ["Anmeldename", me.username],
     ["Personalnummer", me.personnel_number ?? "–"],
-    ["Rolle", me.role_label],
   ];
   container.append(
     el("dl", { class: "status" }, ...rows.flatMap(([label, value]) => [

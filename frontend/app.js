@@ -42,16 +42,13 @@ if (reachable && account === null) {
   startTabs(REITER.filter((reiter) => !reiter.permission || can(reiter.permission)));
 }
 
-// Rechts in der Leiste: wer angemeldet ist, und „Abmelden“.
+// Rechts in der Leiste: wer angemeldet ist, und „Abmelden“. Die Rolle steht hier bewusst nicht –
+// sie sieht nur, wer Konten verwaltet (Einstellungen → Benutzerkonten).
 function accountBox(me) {
   return el(
     "div",
     { class: "account" },
-    el(
-      "span",
-      { class: "account-name" },
-      me.display_name === me.role_label ? me.display_name : `${me.display_name} · ${me.role_label}`,
-    ),
+    el("span", { class: "account-name" }, me.display_name),
     el("button", { type: "button", class: "button-quiet", onclick: logout }, "Abmelden"),
   );
 }

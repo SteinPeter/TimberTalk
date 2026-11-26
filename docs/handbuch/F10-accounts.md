@@ -16,7 +16,7 @@
 | `frontend/shared/session.js` | `loadAccount()`, `currentAccount()`, `can()`, `logout()`. |
 | `frontend/shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()`. |
 | `frontend/shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
-| `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: eigene Angaben, Passwort ändern. Für alle. |
+| `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: Name, Anmeldename, Personalnummer, Passwort ändern. Für alle. Die Rolle steht nur in „Benutzerkonten“. |
 | `frontend/features/settings/sections/accounts-manage.js` | Abschnitt „Benutzerkonten“: Liste, anlegen, bearbeiten, sperren, Passwort zurücksetzen. |
 | `frontend/features/settings/sections/accounts-roles.js` | Abschnitt „Rollen und Rechte“: Tabelle mit Häkchen. |
 
@@ -26,7 +26,7 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | --- | --- |
 | `backend/timbertalk/main.py` | `require_login` an jedem Feature-Router; beim Start `ensure_initial_admin()`. |
 | `backend/conftest.py` | Neue Fixtures `anonymous_client` und `client_as(role)`; `client` ist als Admin angemeldet. |
-| `frontend/app.js` | Prüft beim Start die Anmeldung, zeigt sonst Anmeldung oder „Passwort festlegen“; Name und „Abmelden“ in der Leiste; Reiter mit `permission` nur mit Recht. |
+| `frontend/app.js` | Prüft beim Start die Anmeldung, zeigt sonst Anmeldung oder „Passwort festlegen“; Name (ohne Rolle) und „Abmelden“ in der Leiste; Reiter mit `permission` nur mit Recht. |
 | `frontend/shared/api.js` | `sendJson()` dazu; bei 401 wird die Seite neu geladen (zurück zur Anmeldung); Fehlertext aus `detail`. |
 | `frontend/shared/sections.js` | Abschnitte mit `permission` erscheinen nur mit diesem Recht. |
 | `frontend/features/settings/sections.js` und `settings.js` | Drei Abschnitte eingetragen; Hinweistext ergänzt. |

@@ -52,6 +52,10 @@ Im Meeting wird genau das vorgeführt:
 Chef und Admin können jedes Häkchen außer denen des Admins ändern. Admin-Konten legt, ändert und
 setzt nur ein Admin zurück.
 
+Die Rolle ist eine Einordnung für Chef und Admin: Sie steht nur im Abschnitt „Benutzerkonten“
+(Recht `accounts.manage`). In der Leiste, in „Mein Konto“ und in anderen Features erscheint nur
+der Name.
+
 ## Nicht dabei
 
 - **Kalender je Mitarbeiter:** eigenes Feature in `planning/` (F8). Es benutzt die Konten und
