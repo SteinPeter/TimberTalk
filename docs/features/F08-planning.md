@@ -36,10 +36,10 @@ Im Meeting wird genau das vorgeführt:
 
 ## Rechte (Voreinstellung, in „Rollen und Rechte“ änderbar)
 
-| Recht | Admin (Chef) | Meister | Verwaltung | Geselle |
-| --- | :-: | :-: | :-: | :-: |
-| Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ |
-| Termine für alle planen und ändern (`calendar.dispatch`) | ✓ | ✓ | ✓ | – |
+| Recht | Admin (Chef) | Meister | Verwaltung | Geselle | Azubi |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Termine für alle planen und ändern (`calendar.dispatch`) | ✓ | ✓ | ✓ | – | – |
 
 Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
 
