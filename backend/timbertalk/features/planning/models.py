@@ -44,6 +44,9 @@ class CalendarEntry(SQLModel, table=True):
     end_time: time | None = None
     location: str = ""
     note: str = ""
+    project_id: int | None = (
+        None  # Projektnummer, freiwillig – damit die Stunden aufs Projekt gehen
+    )
     created_by: int | None = None  # Nummer des Kontos, das den Termin eingetragen hat
     created_at: datetime
 
@@ -154,6 +157,7 @@ class EntryInfo(SQLModel):
     end_time: time | None
     location: str
     note: str
+    project_id: int | None
     people: list[PersonRef]
     resources: list[PersonRef]  # Fahrzeuge und Maschinen: Nummer und Name
 
@@ -184,6 +188,7 @@ class EntryIn(SQLModel):
     end_time: time | None = None
     location: str = ""
     note: str = ""
+    project_id: int | None = None
     people: list[int] = []  # Nummern der Konten
     resources: list[int] = []  # Nummern der Fahrzeuge und Maschinen
 

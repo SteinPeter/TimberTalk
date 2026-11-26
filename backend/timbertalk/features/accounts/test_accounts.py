@@ -285,6 +285,7 @@ def test_api_me_nennt_rolle_und_rechte(client_as: Callable[[str], TestClient]) -
         "bookings.create",
         "calendar.request_absence",
         "calendar.view_all",
+        "hours.book_own",
     ]
 
 

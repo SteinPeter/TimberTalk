@@ -57,7 +57,7 @@ Fehler: `ValueError` → 422, `LookupError` → 404, jeweils mit deutschem Text 
 
 | Tabelle | Spalten (wichtigste) | Verweist auf |
 | --- | --- | --- |
-| `planning_entry` | `title`, `kind`, `start_date`, `end_date` (beide eingeschlossen), `start_time`, `end_time` (beide leer = ganzer Tag), `location`, `note`, `created_by` | – |
+| `planning_entry` | `title`, `kind`, `start_date`, `end_date` (beide eingeschlossen), `start_time`, `end_time` (beide leer = ganzer Tag), `location`, `note`, `project_id` (freiwillig, für F4), `created_by` | – |
 | `planning_assignment` | `entry_id`, `account_id` (zusammen der Schlüssel) | `planning_entry`; `account_id` ist ein Konto aus F10 |
 | `planning_resource` | `name`, `category` (`vehicle`/`machine`), `active` | – |
 | `planning_resource_assignment` | `entry_id`, `resource_id` (zusammen der Schlüssel) | `planning_entry`, `planning_resource` |

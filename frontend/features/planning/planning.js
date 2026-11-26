@@ -162,6 +162,7 @@ export async function render(panel) {
       end_time: entry.end_time ? shortTime(entry.end_time) : null,
       location: entry.location,
       note: entry.note,
+      project_id: entry.project_id,
       people: entry.people.map((person) => person.id),
       resources: entry.resources.map((resource) => resource.id),
     };
@@ -438,6 +439,7 @@ export async function render(panel) {
     const times = el("div", { class: "form-row", hidden: true }, field("Beginn", startTime), field("Ende", endTime));
     const locationInput = el("input", { type: "text", autocomplete: "off", placeholder: "z. B. Potsdam, Lindenstraße 4" });
     const noteInput = el("input", { type: "text", autocomplete: "off" });
+    const projectInput = el("input", { type: "number", min: "1", step: "1", inputmode: "numeric" });
     const peopleBox = el("fieldset", { class: "planning-people" });
     const resourcesBox = el("fieldset", { class: "planning-people" });
     const saveButton = el("button", { type: "submit", class: "button" }, "Speichern");
@@ -454,7 +456,12 @@ export async function render(panel) {
       el("div", { class: "form-row" }, field("Erster Tag", startInput), field("Letzter Tag", endInput)),
       el("label", { class: "form-check" }, allDay, el("span", {}, "Ganzer Tag")),
       times,
-      field("Ort", locationInput),
+      el(
+        "div",
+        { class: "form-row" },
+        field("Ort", locationInput),
+        field("Projektnummer", projectInput, "Freiwillig. Damit landen die Stunden auf dem Projekt."),
+      ),
       field("Notiz", noteInput),
       peopleBox,
       resourcesBox,
@@ -518,6 +525,7 @@ export async function render(panel) {
       endTime.value = shortTime(entry?.end_time) || "16:00";
       locationInput.value = entry?.location ?? "";
       noteInput.value = entry?.note ?? "";
+      projectInput.value = entry?.project_id ?? "";
       fillPeople(entry ? entry.people.map((p) => p.id) : personId ? [personId] : []);
       fillResources(entry ? entry.resources.map((r) => r.id) : resourceId ? [resourceId] : []);
       deleteButton.hidden = !entry;
@@ -539,6 +547,7 @@ export async function render(panel) {
         end_time: allDay.checked ? null : endTime.value,
         location: locationInput.value,
         note: noteInput.value,
+        project_id: projectInput.value ? Number(projectInput.value) : null,
         people: chosen,
         resources: chosenResources,
       };

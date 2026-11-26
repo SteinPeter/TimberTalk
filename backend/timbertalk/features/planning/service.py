@@ -119,6 +119,8 @@ def _clean(session: Session, data: EntryIn) -> EntryIn:
         raise ValueError("Das Ende liegt vor dem Beginn.")
     people = list(dict.fromkeys(data.people))  # doppelte entfernen, Reihenfolge behalten
     resources = list(dict.fromkeys(data.resources))
+    if data.project_id is not None and data.project_id < 1:
+        raise ValueError("Die Projektnummer muss eine positive Zahl sein.")
     if not people and not resources:
         raise ValueError("Bitte mindestens eine Person oder ein Fahrzeug/eine Maschine einplanen.")
     known = _names(session)
@@ -234,6 +236,7 @@ def _info(session: Session, entry: CalendarEntry, names: dict[int, str]) -> Entr
         end_time=entry.end_time,
         location=entry.location,
         note=entry.note,
+        project_id=entry.project_id,
         people=people,
         resources=resources,
     )

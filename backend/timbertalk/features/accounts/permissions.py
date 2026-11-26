@@ -34,6 +34,9 @@ PERMISSIONS: dict[str, str] = {
     "calendar.request_absence": "Urlaub beantragen",  # F8
     "calendar.approve_absence": "Urlaubsanträge genehmigen oder ablehnen",  # F8
     "audit.view": "Änderungsprotokoll sehen",  # F11
+    "hours.book_own": "Eigene Stunden buchen",  # F4
+    "hours.view_all": "Stunden aller Mitarbeitenden sehen",  # F4
+    "hours.manage": "Stunden für andere buchen und löschen",  # F4
 }
 
 # Voreinstellung: welche Rolle welches Recht hat, solange niemand etwas ändert.
@@ -46,6 +49,8 @@ DEFAULTS: dict[str, set[str]] = {
         "calendar.view_all",
         "calendar.dispatch",
         "calendar.request_absence",
+        "hours.book_own",
+        "hours.view_all",
     },
     "office": {
         "finance.view",
@@ -55,7 +60,20 @@ DEFAULTS: dict[str, set[str]] = {
         "calendar.view_all",
         "calendar.dispatch",
         "calendar.request_absence",
+        "hours.book_own",
+        "hours.view_all",
+        "hours.manage",
     },
-    "journeyman": {"bookings.create", "calendar.view_all", "calendar.request_absence"},
-    "apprentice": {"bookings.create", "calendar.view_all", "calendar.request_absence"},
+    "journeyman": {
+        "bookings.create",
+        "calendar.view_all",
+        "calendar.request_absence",
+        "hours.book_own",
+    },
+    "apprentice": {
+        "bookings.create",
+        "calendar.view_all",
+        "calendar.request_absence",
+        "hours.book_own",
+    },
 }

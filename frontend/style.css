@@ -1151,3 +1151,109 @@ button.planning-chip[draggable="true"] {
   color: var(--muted);
   overflow-wrap: anywhere;
 }
+
+/* --- Stunden (features/bookings/sections/hours.js, F4) --- */
+
+.hours-section {
+  margin-top: 2rem;
+}
+
+.hours-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.hours-nav input,
+.hours-week-head select,
+.hours-small-field input {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+
+.hours-day {
+  margin: 1rem 0 0;
+  font-size: 1.125rem;
+}
+
+.hours-suggestion {
+  display: grid;
+  grid-template-columns: 1fr 7rem 6rem;
+  align-items: end;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.hours-suggestion .form-check {
+  margin-top: 0;
+  align-items: flex-start;
+}
+
+.hours-suggestion small {
+  display: block;
+  color: var(--muted);
+}
+
+/* Schon gebucht: zurückgenommen, und es steht „schon gebucht“ dabei. */
+.hours-booked {
+  opacity: 0.7;
+}
+
+.hours-small-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.hours-small-field input {
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--page);
+}
+
+@media (max-width: 30rem) {
+  .hours-suggestion {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .hours-suggestion .form-check {
+    grid-column: 1 / -1;
+  }
+}
+
+.hours-week {
+  margin-top: 2rem;
+}
+
+.hours-week-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.hours-week-head h2 {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.hours-number {
+  text-align: right !important;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.hours-week tfoot th,
+.hours-week tfoot td {
+  font-weight: 700;
+}
