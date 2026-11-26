@@ -13,7 +13,7 @@ const LOGIN_PATH = "/api/accounts/login";
 // Holt path (z. B. "/api/health") und gibt die Antwort als Objekt zurück.
 // Antwortet die API mit einem Fehler, wird eine Ausnahme mit ihrem deutschen Text geworfen.
 export async function getJson(path) {
-  const response = await fetch(`${API_BASE}${path}`);
+  const response = await call(`${API_BASE}${path}`);
   return readAnswer(response, path);
 }
 
@@ -24,8 +24,21 @@ export async function sendJson(method, path, body) {
     options.headers = { "Content-Type": "application/json" };
     options.body = JSON.stringify(body);
   }
-  const response = await fetch(`${API_BASE}${path}`, options);
+  const response = await call(`${API_BASE}${path}`, options);
   return readAnswer(response, path);
+}
+
+// fetch() wirft ohne Verbindung nur „Failed to fetch“ (Englisch, ohne Hinweis). Daraus wird
+// ein deutscher Satz, der sagt, was los ist und was hilft.
+async function call(url, options) {
+  try {
+    return await fetch(url, options);
+  } catch {
+    throw new Error(
+      "Der Server ist nicht erreichbar. Läuft TimberTalk noch (uv run timbertalk)? " +
+        "Dann die Seite neu laden.",
+    );
+  }
 }
 
 async function readAnswer(response, path) {

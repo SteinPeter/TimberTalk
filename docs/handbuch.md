@@ -122,7 +122,7 @@ in `.gitignore`.
 | `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich (außer „Start“ – dorthin führt das Logo), schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Rechts in der Leiste: Glocke (Mitteilungen) und Foto mit Nachname als Konto-Menü. Lässt mehrzeilige Felder in älteren Browsern mitwachsen. |
 | `reiter.js` | Liste aller Reiter in der Reihenfolge der Leiste. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
-| `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. |
+| `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. Ist der Server gar nicht erreichbar, sagen sie das auf Deutsch statt „Failed to fetch“. |
 | `shared/session.js` | Das angemeldete Konto: `loadAccount()`, `currentAccount()`, `can(recht)`, `logout()` (F10). |
 | `shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()` (F10). |
 | `shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
