@@ -249,6 +249,7 @@ das Feature im Frontend zeigt.
 | `backup/` | Datensicherung, Wiederherstellung und Export | `settings` | `/api/backup` |
 | `notifications/` | Mitteilungen an Personen (F8) | Knopf in der Leiste | `/api/notifications` |
 | `audit/` | Änderungsprotokoll (F11) | `settings` | `/api/audit` |
+| `dashboard/` | Dashboard mit Widgets (F12) | `start` | `/api/dashboard` |
 
 Ordnernamen sind englisch (Regel: Bezeichner auf Englisch) – im Backend wie im Frontend. Nur die
 Titel, die man auf der Webseite liest, sind deutsch. Ein Ordner ohne Inhalt schadet nicht: `load_features()`
@@ -338,7 +339,7 @@ ihres Features bauen, ohne die Dateien der anderen anzufassen.
 
 | Reiter | Adresse | Datei | Inhalt |
 | --- | --- | --- | --- |
-| Start (über das Logo oben links, kein eigener Reiter) | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
+| Start = Dashboard (über das Logo oben links, kein eigener Reiter) | `/#start` (auch `/`) | `features/start/start.js` | Überschrift „Übersicht“, darunter „TimberTalk läuft“ und der Status von Backend und Datenbank |
 | Kalender | `/#planning` | `features/planning/planning.js` | Plantafel der Woche und persönlicher Kalender (F8) |
 | Projekte | `/#projects` | `features/projects/projects.js` | noch leer – ein Satz sagt, was hier hinkommt |
 | Kunden | `/#customers` | `features/customers/customers.js` | noch leer – ein Satz sagt, was hier hinkommt |
@@ -428,19 +429,30 @@ Umschalten, zuletzt benutzten wieder öffnen), `sidebars.md › Best practices` 
 Ebenen, nichts Wichtiges unten) und `segmented-controls.md › Platform considerations` (zum
 Umschalten von Ansichten im Hauptbereich eine Tab-Ansicht statt eines Umschalters).
 
+### Dashboard und Widgets
+
+Die Startseite ist das Dashboard (F12, Kapitel `docs/handbuch/F12-dashboard.md`). Ein Widget ist
+eine Datei `features/<ordner>/widgets/<name>.js` im Ordner seines Features; das Backend findet sie
+selbst (`GET /api/dashboard/widgets`), so wie `load_features()` die Feature-Ordner findet. Ein
+neues Widget ändert also weder `start.js` noch eine Liste. Den Bauplan (`title`, `render()`,
+wahlweise `permission`, `order`, `defaultOn`) beschreibt der Kommentar oben in `start.js`.
+
 ### Kopfzeile und Textfelder
 
+- Logo, Reiter, Glocke und Foto stehen **in einer Linie**; wird es eng, scrollen die Reiter
+  seitlich, statt in eine zweite Zeile umzubrechen.
 - **Oben links** steht das Logo mit dem Schriftzug TimberTalk. Es ist ein Link auf `#start` und
   ersetzt den früheren Reiter „Start“; auf der Startseite ist es unterstrichen wie ein gewählter
   Reiter.
 - **Oben rechts** stehen die Glocke für Mitteilungen und das Foto (ohne Foto: die Initialen) mit
-  dem Nachnamen darunter. Ein Klick darauf öffnet ein kleines Menü (`menuButton()` aus
+  dem Nachnamen daneben. Eine Mitteilung kann einen Link haben (z. B. zum Dashboard). Ein Klick darauf öffnet ein kleines Menü (`menuButton()` aus
   `shared/dom.js`) mit „Mein Konto“ und „Abmelden“.
 - **Mehrzeilige Felder** (`<textarea>`) wachsen mit dem Text: neuere Browser über CSS
   `field-sizing: content`, ältere über einen kleinen `input`-Zuhörer in `app.js`.
 - **Übersicht:** Was man selten braucht, steht nicht dauerhaft auf der Seite, sondern hinter einem
   Knopf („+ Neues Konto“, „+ Weitere Stunden buchen“), in einem Menü („Mehr ▾“) oder in einem
-  Fenster, das nur bei Bedarf aufgeht (offene Urlaubsanträge).
+  Fenster. Was jemand erledigen muss (z. B. offene Urlaubsanträge), steht in den Mitteilungen
+  und auf dem Dashboard, nicht als Popup.
 
 ### Farben, hell und dunkel
 

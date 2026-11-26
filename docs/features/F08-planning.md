@@ -18,8 +18,8 @@ Dazu: Fahrzeuge und Maschinen (Transporter, Kran) stehen als eigene Zeilen auf d
 werden wie Personen eingeplant. Termine lassen sich mit der Maus auf einen anderen Tag oder zu
 einer anderen Person ziehen, mit „Rückgängig“. Wer ein-, aus- oder umgeplant wird, bekommt oben
 rechts eine Mitteilung (Glocke). Gesellen beantragen Urlaub über „Mehr ▾ → Urlaub beantragen …“;
-hat jemand Urlaub beantragt, öffnet sich beim Chef auf der Kalenderseite ein Fenster mit den offenen
-Anträgen, und er genehmigt mit einem Klick. Jede Person kann ihren Kalender über „Mehr ▾ → Kalender
+hat jemand Urlaub beantragt, bekommt der Chef eine Mitteilung und sieht den Antrag auf dem
+Dashboard (F12), bis er ihn genehmigt oder ablehnt. Jede Person kann ihren Kalender über „Mehr ▾ → Kalender
 aufs Handy holen …“ in der Kalender-App des Handys abonnieren. Jedes Fahrzeug hat seinen eigenen
 Kilometersatz für Fahrtbuchungen. Was man selten braucht, steht nicht dauerhaft auf der Seite.
 
@@ -52,10 +52,9 @@ Im Meeting wird genau das vorgeführt:
    jetzt Di–Do, mit Hinweis auf Überschneidungen. „Rückgängig“ holt ihn zurück. Auf eine andere
    Person gezogen, tritt diese an die Stelle von Max.
 10. **Urlaubsantrag:** Max beantragt über „Mehr ▾ → Urlaub beantragen …“ Urlaub (das Fenster zeigt
-    auch seine Anträge). Der Chef bekommt eine Mitteilung; beim Öffnen des Kalenders geht das
-    Fenster „Offene Urlaubsanträge“ von selbst auf, dazu der Knopf „Urlaubsanträge (1)“. Er sieht
-    „Achtung: Max Berger ist am … schon eingeplant …“ und genehmigt. Ohne offene Anträge sieht er
-    davon nichts. Der Urlaub steht
+    auch seine Anträge). Der Chef bekommt eine Mitteilung, die per Klick zum Dashboard führt.
+    Dort steht der Antrag im Widget „Offene Urlaubsanträge“ mit „Achtung: Max Berger ist am …
+    schon eingeplant …“, bis der Chef genehmigt oder ablehnt. Der Urlaub steht
     im Kalender, Max bekommt „Urlaub genehmigt: …“. Abgelehnt mit Grund steht der Grund dabei.
 11. **Kalender-Abo:** Max erzeugt über „Mehr ▾ → Kalender aufs Handy holen …“ einen Abo-Link. Die Adresse
     liefert ohne Anmeldung seinen Kalender als iCalendar; ein neuer Link macht den alten ungültig.
@@ -73,7 +72,7 @@ Im Meeting wird genau das vorgeführt:
 | Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Termine für alle planen und ändern, Fahrzeuge pflegen (`calendar.dispatch`) | ✓ | ✓ | ✓ | – | – |
 | Urlaub beantragen (`calendar.request_absence`) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Urlaubsanträge genehmigen oder ablehnen (`calendar.approve_absence`) | ✓ | – | – | – | – |
+| Urlaubsanträge genehmigen oder ablehnen (`calendar.approve_absence`) | – (Chef: ✓) | – | – | – | – |
 
 Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
 

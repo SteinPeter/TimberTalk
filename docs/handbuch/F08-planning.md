@@ -12,7 +12,8 @@
 | `backend/timbertalk/features/planning/test_planning.py` | Tests für Service und Endpunkte. |
 | `frontend/features/planning/planning.js` | Der Reiter „Kalender“: Plantafel mit Personen und Fahrzeugen, Ziehen mit „Rückgängig“, persönlicher Kalender, Dialog „Termin eintragen“. |
 | `frontend/features/planning/dialog.js` | `makeDialog(titel)`: ein Fenster mit Überschrift, Inhalt und „Schließen“. |
-| `frontend/features/planning/requests.js` | `openOwnRequests()`: Fenster „Urlaub beantragen“ mit den eigenen Anträgen (über „Mehr ▾“). `setupApprovals()`: Knopf „Urlaubsanträge (n)“ und Fenster zum Entscheiden – erscheint nur bei offenen Anträgen und öffnet sich dann beim Laden von selbst. |
+| `frontend/features/planning/requests.js` | `openOwnRequests()`: Fenster „Urlaub beantragen“ mit den eigenen Anträgen (über „Mehr ▾“); `card()` und `range()` für die Anzeige eines Antrags. |
+| `frontend/features/planning/widgets/absence-requests.js`, `my-week.js` | Dashboard-Widgets (F12): offene Urlaubsanträge entscheiden; eigene nächste Termine. |
 | `frontend/features/planning/ical.js` | `openIcal()`: Fenster „Kalender aufs Handy holen“ (über „Mehr ▾“): Abo-Link erzeugen, kopieren, ungültig machen. |
 | `frontend/features/settings/sections/planning-resources.js` | Abschnitt „Fahrzeuge und Maschinen“ in den Einstellungen (Recht `calendar.dispatch`). |
 | `backend/timbertalk/features/notifications/` | Eigenes kleines Feature „Mitteilungen“: Tabelle `notifications_message`, `notify()`, `list_notifications()`, `unread_count()`, `mark_all_read()`; Endpunkte `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all` (jeweils nur die eigenen). |
@@ -95,7 +96,8 @@ gehen in der Antwort als `warnings` zurück und stehen in der Oberfläche über 
   Person (das alte Fahrzeug) durch die neue und schickt alles mit `PUT /entries/{id}`. „Rückgängig“
   schickt den alten Stand mit demselben Endpunkt zurück.
 - **Urlaubsanträge:** `request_absence()` speichert den Antrag und benachrichtigt alle Konten mit
-  `calendar.approve_absence` (`accounts.service.people_with_permission()`). `list_requests()`
+  `calendar.approve_absence` (`accounts.service.people_with_permission()`, voreingestellt der Chef)
+  mit dem Link `#start` – ein Klick auf die Mitteilung öffnet das Dashboard. `list_requests()`
   rechnet für offene Anträge mit `_warnings()` aus, was in der Zeit schon eingeplant ist.
   `decide_request()` legt beim Genehmigen mit `create_entry(..., notify=False)` den Termin
   „Urlaub“ an und schickt stattdessen „Urlaub genehmigt: …“.

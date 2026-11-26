@@ -2,9 +2,10 @@
 
 ## Ziel
 
-Jeder Mensch im Betrieb hat ein eigenes Konto mit einer Rolle (Admin, Meister, Verwaltung,
-Geselle, Azubi). Der Chef bekommt ein Admin-Konto – eine eigene Chef-Rolle gibt es nicht. Die Rolle
-bestimmt, was jemand sehen und ändern darf – zuerst bei Preisen und Kosten.
+Jeder Mensch im Betrieb hat ein eigenes Konto mit einer Rolle (Admin, Chef, Meister, Verwaltung,
+Geselle, Azubi). Die Rolle bestimmt, was jemand sehen und ändern darf; für einzelne Personen gibt es
+Ausnahmen. Der Admin ist das technische Konto; Urlaubsanträge entscheidet voreingestellt nur der
+Chef.
 Grundlage: `TimberTalk_Programmaufbau.pdf`, Kapitel 10 „Konten und Rechte“.
 
 ## Was der Zimmerer danach kann
@@ -52,18 +53,20 @@ Im Meeting wird genau das vorgeführt:
 
 ## Rollen und Rechte (Voreinstellung)
 
-| Recht | Admin | Meister | Verwaltung | Geselle | Azubi |
-| --- | :-: | :-: | :-: | :-: | :-: |
-| Konten verwalten, Passwörter zurücksetzen, Rechte ändern | ✓ | – | – | – | – |
-| Preise, Stundensätze und Projektkosten sehen | ✓ | ✓ | ✓ | – | – |
-| Preise, Stundensätze und Firmendaten ändern | ✓ | – | ✓ | – | – |
-| Materialstamm pflegen | ✓ | ✓ | ✓ | – | – |
-| Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Kalender aller Mitarbeitenden sehen (F8) | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Termine für alle planen und ändern (F8) | ✓ | ✓ | ✓ | – | – |
+| Recht | Admin | Chef | Meister | Verwaltung | Geselle | Azubi |
+| --- | :-: | :-: | :-: | :-: | :-: | :-: |
+| Konten verwalten, Passwörter zurücksetzen, Rechte ändern | ✓ | ✓ | – | – | – | – |
+| Preise, Stundensätze und Projektkosten sehen | ✓ | ✓ | ✓ | ✓ | – | – |
+| Preise, Stundensätze und Firmendaten ändern | ✓ | ✓ | – | ✓ | – | – |
+| Materialstamm pflegen | ✓ | ✓ | ✓ | ✓ | – | – |
+| Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Kalender aller Mitarbeitenden sehen (F8) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Termine für alle planen und ändern (F8) | ✓ | ✓ | ✓ | ✓ | – | – |
 
-Wer „Konten verwalten“ hat, kann jedes Häkchen außer denen des Admins ändern. Admin-Konten legt,
-ändert und setzt nur ein Admin zurück.
+Der Chef hat alle Rechte. Der Admin hat alle außer „Urlaubsanträge genehmigen“; „Konten verwalten“
+kann man ihm nie nehmen. Wer „Konten verwalten“ hat, ändert die Häkchen je Rolle („Rollen und
+Rechte“) und Ausnahmen für einzelne Personen („Benutzerkonten → Bearbeiten → Rechte dieser
+Person“). Admin-Konten legt, ändert und setzt nur ein Admin zurück.
 
 Die Rolle ist eine Einordnung für den Admin: Sie steht nur im Abschnitt „Benutzerkonten“
 (Recht `accounts.manage`). In der Leiste, in „Mein Konto“ und in anderen Features erscheint nur

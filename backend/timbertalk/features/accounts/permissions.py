@@ -2,9 +2,10 @@
 #
 # Eine Rolle ist die Art des Kontos (Admin, Meister, Geselle …). Ein Recht ist eine Sache, die man
 # tun oder sehen darf (z. B. „Preise sehen“). Welche Rolle welches Recht hat, steht hier als
-# Voreinstellung. Der Admin (in der Regel der Chef) kann das in den Einstellungen ändern
-# („Rollen und Rechte“) – ebenso jede Rolle, der er das Recht „accounts.manage“ gibt;
-# geänderte Häkchen speichert service.py in der Tabelle accounts_role_permission.
+# Voreinstellung. Wer „accounts.manage“ hat (Admin und Chef), ändert das je Rolle in den
+# Einstellungen („Rollen und Rechte“, Tabelle accounts_role_permission) und für einzelne Konten
+# („Benutzerkonten → Bearbeiten“, Tabelle accounts_user_permission). Für ein Konto gilt:
+# Voreinstellung der Rolle → geänderte Häkchen der Rolle → Ausnahmen für dieses Konto.
 #
 # Ein neues Recht für ein Feature: eine Zeile in PERMISSIONS und das Recht in DEFAULTS bei den
 # Rollen eintragen, die es von Anfang an haben sollen.
@@ -12,15 +13,19 @@
 # Rollen: Schlüssel im Code → Name auf dem Bildschirm. Die Reihenfolge ist die der Anzeige.
 ROLES: dict[str, str] = {
     "admin": "Admin",
+    "owner": "Chef",
     "master": "Meister",
     "office": "Verwaltung",
     "journeyman": "Geselle",
     "apprentice": "Azubi",
 }
 
-# Der Admin hat immer alle Rechte. Seine Häkchen lassen sich nicht abwählen – so kann sich der
-# Betrieb nie selbst aus der Kontenverwaltung aussperren.
+# Der Admin ist das technische Konto (Einrichtung, Konten). Das Recht, Konten zu verwalten, kann
+# man ihm nie nehmen – so sperrt sich der Betrieb nie selbst aus. Alles andere ist änderbar.
 ADMIN_ROLE = "admin"
+
+# Rechte, die eine Rolle immer hat – weder für die Rolle noch für ein einzelnes Konto abwählbar.
+LOCKED: dict[str, set[str]] = {"admin": {"accounts.manage"}}
 
 # Rechte: Schlüssel im Code → Beschreibung auf dem Bildschirm.
 PERMISSIONS: dict[str, str] = {
@@ -40,8 +45,10 @@ PERMISSIONS: dict[str, str] = {
 }
 
 # Voreinstellung: welche Rolle welches Recht hat, solange niemand etwas ändert.
+# Urlaubsanträge entscheidet in der Voreinstellung nur der Chef.
 DEFAULTS: dict[str, set[str]] = {
-    "admin": set(PERMISSIONS),
+    "admin": set(PERMISSIONS) - {"calendar.approve_absence"},
+    "owner": set(PERMISSIONS),
     "master": {
         "finance.view",
         "materials.edit",

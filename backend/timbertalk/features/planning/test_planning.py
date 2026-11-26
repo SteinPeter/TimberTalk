@@ -341,7 +341,8 @@ def test_api_fahrzeuge_pflegt_nur_wer_plant(client_as: Callable[[str], TestClien
 
 
 def test_urlaub_beantragen_genehmigen_landet_im_kalender(session: Session) -> None:
-    chef = _person(session, "chef", "Chef", "admin")
+    chef = _person(session, "chef", "Chef", "owner")
+    _person(session, "admin", "Admin", "admin")  # bekommt keine Mitteilung: entscheidet nicht
     max_ = _person(session, "max", "Max Berger")
     service.create_entry(session, _entry([max_], end_date=TUE), created_by=chef)
 
@@ -349,7 +350,10 @@ def test_urlaub_beantragen_genehmigen_landet_im_kalender(session: Session) -> No
     assert request.status_label == "Offen" and request.days == 6
     # Der Chef sieht beim Antrag gleich, dass Max am Dienstag eingeplant ist.
     assert request.conflicts == ["Max Berger ist am 01.12.2026 schon eingeplant: Carport Berger."]
-    assert _texts(session, chef) == ["Urlaubsantrag von Max Berger: Di 01.12.–So 06.12."]
+    assert _texts(session, chef) == [
+        "Urlaubsantrag von Max Berger: Di 01.12.–So 06.12. – bitte auf dem Dashboard entscheiden."
+    ]
+    assert notifications.list_notifications(session, chef)[0].link == "#start"
 
     decision = service.decide_request(session, request.id, True, chef)
     assert decision.request.status_label == "Genehmigt"
@@ -384,18 +388,20 @@ def test_urlaub_ablehnen_mit_grund_und_zurueckziehen(session: Session) -> None:
         service.request_absence(session, max_, RequestIn(start_date=WED, end_date=MON))
 
 
-def test_api_urlaub_geselle_beantragt_admin_genehmigt(
+def test_api_urlaub_geselle_beantragt_chef_genehmigt(
     client: TestClient, client_as: Callable[[str], TestClient]
 ) -> None:
     geselle = client_as("journeyman")
+    chef = client_as("owner")
     created = geselle.post(
         "/api/planning/requests", json={"start_date": "2026-12-21", "end_date": "2026-12-23"}
     )
     assert created.status_code == 201
     request_id = created.json()["id"]
     assert geselle.post(f"/api/planning/requests/{request_id}/approve", json={}).status_code == 403
-    assert len(client.get("/api/planning/requests").json()) == 1
-    approved = client.post(f"/api/planning/requests/{request_id}/approve", json={})
+    assert client.post(f"/api/planning/requests/{request_id}/approve", json={}).status_code == 403
+    assert len(chef.get("/api/planning/requests").json()) == 1
+    approved = chef.post(f"/api/planning/requests/{request_id}/approve", json={})
     assert approved.json()["request"]["status"] == "approved"
     assert geselle.get("/api/planning/requests").json()[0]["status_label"] == "Genehmigt"
 

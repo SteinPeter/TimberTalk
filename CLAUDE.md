@@ -59,6 +59,8 @@ geändert:
 - Jeder Endpunkt verlangt eine Anmeldung (`main.py`). Braucht er ein Recht, steht es im Endpunkt:
   `Depends(require("finance.view"))` aus `features/accounts/deps.py`; neue Rechte stehen in
   `features/accounts/permissions.py` (F10).
+- Ein Dashboard-Widget ist eine Datei `frontend/features/<ordner>/widgets/<name>.js` im eigenen
+  Ordner (Bauplan oben in `frontend/features/start/start.js`); es wird nirgends eingetragen (F12).
 - Jeder ändernde Endpunkt (POST, PUT, DELETE) bekommt `summary="…"` – das ist sein Name im
   Änderungsprotokoll (F11).
 - Andere Features werden nur über deren `service.py` benutzt, nie über deren Tabellen oder

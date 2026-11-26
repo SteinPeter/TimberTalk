@@ -23,6 +23,7 @@ from timbertalk.features.accounts.models import (
     Account,
     AccountIn,
     AccountInfo,
+    AccountPermission,
     AccountUpdateIn,
     CreatedAccount,
     LoginIn,
@@ -33,6 +34,7 @@ from timbertalk.features.accounts.models import (
     ResetPasswordIn,
     RoleMatrix,
     StartPassword,
+    UserPermissionIn,
 )
 
 router = APIRouter(prefix="/api/accounts", tags=["Benutzerkonten und Rechte"])
@@ -221,3 +223,28 @@ def set_role_permission(
     session: Session = Depends(get_session),
 ) -> RoleMatrix:
     return _run(service.set_role_permission, session, role, permission, data.allowed, acting)
+
+
+# --- Rechte eines einzelnen Kontos (Recht „accounts.manage“) -----------------------------
+
+
+@router.get("/{account_id}/permissions")
+def account_permissions(
+    account_id: int,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> list[AccountPermission]:
+    return _run(service.permissions_of, session, account_id)
+
+
+@router.put("/{account_id}/permissions/{permission}", summary="Recht eines Kontos ändern")
+def set_account_permission(
+    account_id: int,
+    permission: str,
+    data: UserPermissionIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> list[AccountPermission]:
+    return _run(
+        service.set_account_permission, session, account_id, permission, data.allowed, acting
+    )

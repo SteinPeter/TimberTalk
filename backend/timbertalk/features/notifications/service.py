@@ -12,11 +12,14 @@ from timbertalk.features.notifications.models import Notification
 LIST_LIMIT = 30
 
 
-def notify(session: Session, account_ids: Iterable[int], text: str) -> None:
-    """Schickt text an jede Person in account_ids (doppelte nur einmal)."""
+def notify(session: Session, account_ids: Iterable[int], text: str, link: str = "") -> None:
+    """Schickt text an jede Person in account_ids (doppelte nur einmal).
+
+    link: wohin ein Klick auf die Mitteilung führt, z. B. „#start“ für das Dashboard.
+    """
     now = datetime.now(UTC)
     for account_id in dict.fromkeys(account_ids):
-        session.add(Notification(account_id=account_id, text=text, created_at=now))
+        session.add(Notification(account_id=account_id, text=text, link=link, created_at=now))
     session.commit()
 
 

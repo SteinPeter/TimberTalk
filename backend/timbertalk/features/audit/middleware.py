@@ -21,11 +21,13 @@ from timbertalk.features.audit import service
 
 WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
-# Diese Änderungen sind kein Fall fürs Protokoll (an- und abmelden, Mitteilungen gelesen).
+# Diese Änderungen sind kein Fall fürs Protokoll (an- und abmelden, Mitteilungen gelesen,
+# eigenes Dashboard).
 SKIP_PATHS = {
     "/api/accounts/login",
     "/api/accounts/logout",
     "/api/notifications/read-all",
+    "/api/dashboard/layout",  # die eigene Startseite – keine Änderung am Betrieb
 }
 
 

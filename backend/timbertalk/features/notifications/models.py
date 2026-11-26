@@ -14,6 +14,7 @@ class Notification(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     account_id: int = Field(index=True)  # an wen
     text: str
+    link: str = ""  # wohin ein Klick führt, z. B. „#start“ (Dashboard); leer: nirgendwohin
     created_at: datetime
     read_at: datetime | None = None  # None: noch nicht gelesen
 

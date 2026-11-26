@@ -23,8 +23,10 @@ def test_startseite_laedt_das_geruest(client: TestClient) -> None:
     assert '<script type="module" src="app.js">' in response.text
 
 
-def test_reiter_start_zeigt_dass_timbertalk_laeuft(client: TestClient) -> None:
-    response = client.get("/features/start/start.js")
+def test_start_zeigt_dass_timbertalk_laeuft(client: TestClient) -> None:
+    # Die Startseite ist das Dashboard (F12); den Status zeigt sein Widget „Systemstatus“.
+    assert client.get("/features/start/start.js").status_code == 200
+    response = client.get("/features/start/widgets/status.js")
     assert response.status_code == 200
     assert "TimberTalk läuft" in response.text
 

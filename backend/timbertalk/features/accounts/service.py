@@ -19,6 +19,7 @@ from timbertalk.features.accounts import security
 from timbertalk.features.accounts.models import (
     Account,
     AccountInfo,
+    AccountPermission,
     AccountSession,
     Me,
     PermissionInfo,
@@ -27,8 +28,15 @@ from timbertalk.features.accounts.models import (
     RoleMatrix,
     RolePermission,
     Setting,
+    UserPermission,
 )
-from timbertalk.features.accounts.permissions import ADMIN_ROLE, DEFAULTS, PERMISSIONS, ROLES
+from timbertalk.features.accounts.permissions import (
+    ADMIN_ROLE,
+    DEFAULTS,
+    LOCKED,
+    PERMISSIONS,
+    ROLES,
+)
 
 # So lange bleibt man auf einem Gerät angemeldet (z. B. auf dem Handy auf der Baustelle).
 SESSION_DAYS = 30
@@ -155,7 +163,7 @@ def info(account: Account) -> AccountInfo:
 
 def me(session: Session, account: Account) -> Me:
     """Das eigene Konto mit allen Rechten, die es gerade hat."""
-    permissions = sorted(role_permissions(session, account.role))
+    permissions = sorted(account_permissions(session, account))
     return Me(**info(account).model_dump(), permissions=permissions)
 
 
@@ -504,20 +512,30 @@ def _end_sessions(session: Session, account_id: int) -> None:
 
 def role_permissions(session: Session, role: str) -> set[str]:
     """Alle Rechte einer Rolle: die Voreinstellung, darauf die geänderten Häkchen."""
-    if role == ADMIN_ROLE:
-        return set(PERMISSIONS)
     allowed = set(DEFAULTS.get(role, set()))
     for change in session.exec(select(RolePermission).where(RolePermission.role == role)):
         if change.allowed:
             allowed.add(change.permission)
         else:
             allowed.discard(change.permission)
-    return allowed & set(PERMISSIONS)
+    return (allowed | LOCKED.get(role, set())) & set(PERMISSIONS)
+
+
+def account_permissions(session: Session, account: Account) -> set[str]:
+    """Alle Rechte eines Kontos: die der Rolle, darauf die Ausnahmen für genau dieses Konto."""
+    allowed = role_permissions(session, account.role)
+    statement = select(UserPermission).where(UserPermission.account_id == account.id)
+    for change in session.exec(statement):
+        if change.allowed:
+            allowed.add(change.permission)
+        else:
+            allowed.discard(change.permission)
+    return (allowed | LOCKED.get(account.role, set())) & set(PERMISSIONS)
 
 
 def has_permission(session: Session, account: Account, permission: str) -> bool:
     """Darf dieses Konto das? permission ist ein Schlüssel aus permissions.PERMISSIONS."""
-    return permission in role_permissions(session, account.role)
+    return permission in account_permissions(session, account)
 
 
 def role_matrix(session: Session) -> RoleMatrix:
@@ -527,8 +545,9 @@ def role_matrix(session: Session) -> RoleMatrix:
             RoleInfo(
                 role=role,
                 label=label,
-                editable=role != ADMIN_ROLE,
+                editable=True,
                 permissions=sorted(role_permissions(session, role)),
+                locked=sorted(LOCKED.get(role, set())),
             )
             for role, label in ROLES.items()
         ],
@@ -538,14 +557,20 @@ def role_matrix(session: Session) -> RoleMatrix:
     )
 
 
+def _check_not_locked(role: str, permission: str, allowed: bool | None) -> None:
+    if allowed is not True and permission in LOCKED.get(role, set()):
+        raise ValueError(
+            f"Die Rolle {ROLES[role]} behält immer das Recht „{PERMISSIONS[permission]}“."
+        )
+
+
 def set_role_permission(
     session: Session, role: str, permission: str, allowed: bool, acting: Account
 ) -> RoleMatrix:
     """Setzt oder entfernt ein Häkchen. Gibt die ganze Tabelle neu zurück."""
     _check_role(role)
     _check_permission(permission)
-    if role == ADMIN_ROLE:
-        raise ValueError("Der Admin hat immer alle Rechte.")
+    _check_not_locked(role, permission, allowed)
     if role == acting.role and permission == "accounts.manage" and not allowed:
         raise ValueError("Das Recht, Konten zu verwalten, kann man der eigenen Rolle nicht nehmen.")
     change = session.get(RolePermission, (role, permission))
@@ -555,3 +580,52 @@ def set_role_permission(
     session.add(change)
     session.commit()
     return role_matrix(session)
+
+
+def permissions_of(session: Session, account_id: int) -> list[AccountPermission]:
+    """Alle Rechte eines Kontos mit Herkunft – für „Benutzerkonten → Bearbeiten“."""
+    account = get_account(session, account_id)
+    from_role = role_permissions(session, account.role)
+    effective = account_permissions(session, account)
+    overridden = {
+        change.permission
+        for change in session.exec(
+            select(UserPermission).where(UserPermission.account_id == account.id)
+        )
+    }
+    locked = LOCKED.get(account.role, set())
+    return [
+        AccountPermission(
+            permission=key,
+            label=text,
+            from_role=key in from_role,
+            allowed=key in effective,
+            overridden=key in overridden and key not in locked,
+            locked=key in locked,
+        )
+        for key, text in PERMISSIONS.items()
+    ]
+
+
+def set_account_permission(
+    session: Session, account_id: int, permission: str, allowed: bool | None, acting: Account
+) -> list[AccountPermission]:
+    """Setzt eine Ausnahme für ein Konto (True/False) oder entfernt sie (None = wie die Rolle)."""
+    account = get_account(session, account_id)
+    _check_permission(permission)
+    _check_admin_change(acting, account.role)
+    _check_not_locked(account.role, permission, allowed)
+    if account.id == acting.id and permission == "accounts.manage" and allowed is False:
+        raise ValueError("Das Recht, Konten zu verwalten, kann man sich nicht selbst nehmen.")
+    change = session.get(UserPermission, (account.id, permission))
+    if allowed is None:
+        if change is not None:
+            session.delete(change)
+    else:
+        change = change or UserPermission(
+            account_id=account.id, permission=permission, allowed=allowed
+        )
+        change.allowed = allowed
+        session.add(change)
+    session.commit()
+    return permissions_of(session, account.id)

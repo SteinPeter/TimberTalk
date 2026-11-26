@@ -51,6 +51,16 @@ class Setting(SQLModel, table=True):
     value: str
 
 
+class UserPermission(SQLModel, table=True):
+    """Eine Ausnahme für ein einzelnes Konto: dieses Recht ja oder nein, egal was die Rolle sagt."""
+
+    __tablename__ = "accounts_user_permission"
+
+    account_id: int = Field(foreign_key="accounts_account.id", primary_key=True)
+    permission: str = Field(primary_key=True)
+    allowed: bool
+
+
 class RolePermission(SQLModel, table=True):
     """Ein geändertes Häkchen in „Rollen und Rechte“. Fehlt die Zeile, gilt die Voreinstellung."""
 
@@ -114,8 +124,26 @@ class RoleInfo(SQLModel):
 
     role: str
     label: str
-    editable: bool  # False beim Admin: er hat immer alle Rechte
+    editable: bool  # ob sich Häkchen dieser Rolle ändern lassen
     permissions: list[str]
+    locked: list[str]  # Rechte, die diese Rolle immer hat (z. B. Admin: Konten verwalten)
+
+
+class AccountPermission(SQLModel):
+    """Ein Recht eines Kontos: was die Rolle sagt, was gilt, und ob es eine Ausnahme ist."""
+
+    permission: str
+    label: str
+    from_role: bool  # hätte die Person es über ihre Rolle?
+    allowed: bool  # gilt jetzt für sie
+    overridden: bool  # Ausnahme nur für dieses Konto
+    locked: bool  # nicht abwählbar
+
+
+class UserPermissionIn(SQLModel):
+    """Eingabe: Ausnahme setzen (True/False) oder entfernen (None = wie die Rolle)."""
+
+    allowed: bool | None
 
 
 class PermissionInfo(SQLModel):

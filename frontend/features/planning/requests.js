@@ -1,11 +1,8 @@
-// Urlaubsanträge im Reiter „Kalender“ (Feature F8). Nichts davon steht dauerhaft auf der Seite:
-//
-// - openOwnRequests(): Fenster „Urlaub beantragen“ mit dem Formular und den eigenen Anträgen.
-//   planning.js öffnet es über das Menü „Mehr“ (Recht „calendar.request_absence“).
-// - setupApprovals(): Für alle mit „calendar.approve_absence“ (in der Regel der Chef). Gibt es
-//   offene Anträge, erscheint ein Knopf „Urlaubsanträge (n)“ und das Fenster öffnet sich beim
-//   Laden des Kalenders von selbst. Ohne offene Anträge sieht man davon nichts.
-// Genehmigter Urlaub steht danach als Termin im Kalender; onChange() lädt die Woche neu.
+// Urlaubsanträge im Reiter „Kalender“ (Feature F8): openOwnRequests() öffnet das Fenster
+// „Urlaub beantragen“ mit dem Formular und den eigenen Anträgen. planning.js ruft es über das
+// Menü „Mehr“ auf (Recht „calendar.request_absence“).
+// Offene Anträge entscheidet der Chef auf dem Dashboard (widgets/absence-requests.js); dorthin
+// führt auch seine Mitteilung. card() und range() benutzt das Widget mit.
 
 import { getJson, sendJson } from "../../shared/api.js";
 import { el, field, messageBox } from "../../shared/dom.js";
@@ -14,14 +11,14 @@ import { makeDialog } from "./dialog.js";
 const day = (text) =>
   new Date(`${text}T12:00:00`).toLocaleDateString("de-DE", { weekday: "short", day: "numeric", month: "numeric" });
 
-function range(request) {
+export function range(request) {
   return request.start_date === request.end_date
     ? day(request.start_date)
     : `${day(request.start_date)} – ${day(request.end_date)} (${request.days} Tage)`;
 }
 
 // Ein Antrag als Karte; extra = Knöpfe darunter (Zurückziehen bzw. Genehmigen/Ablehnen).
-function card(request, title, ...extra) {
+export function card(request, title, ...extra) {
   const li = el(
     "li",
     { class: `planning-request planning-request-${request.status}` },
@@ -142,78 +139,4 @@ function buildOwnDialog() {
     startInput.focus();
   };
   return dialog;
-}
-
-// --- Anträge entscheiden (Chef) -----------------------------------------------------------
-
-// Baut den Knopf „Urlaubsanträge (n)“ und das Fenster. slot ist die Stelle in der Kopfleiste
-// des Kalenders. Öffnet das Fenster von selbst, wenn beim Laden Anträge offen sind.
-// onMessage(text) zeigt eine Meldung auf der Kalenderseite – wenn das Fenster schon zu ist.
-export async function setupApprovals(slot, { onChange, onMessage }) {
-  const dialog = makeDialog("Offene Urlaubsanträge");
-  const message = messageBox();
-  const list = el("ul", { class: "planning-requests" });
-  dialog.body.append(
-    el("p", { class: "form-hint" }, "Genehmigter Urlaub steht danach im Kalender. Die Person bekommt eine Mitteilung."),
-    list,
-    message,
-  );
-  const button = el("button", { type: "button", class: "button planning-approvals", hidden: true, onclick: () => dialog.open() });
-  slot.append(button);
-
-  async function load() {
-    const pending = (await getJson("/api/planning/requests")).filter((request) => request.status === "pending");
-    button.hidden = pending.length === 0;
-    button.textContent = `Urlaubsanträge (${pending.length})`;
-    list.replaceChildren(...pending.map(item));
-    return pending.length;
-  }
-
-  function item(request) {
-    const reason = el("textarea", {
-      rows: "1",
-      placeholder: "Grund (freiwillig)",
-      "aria-label": `Grund zum Antrag von ${request.person.display_name}`,
-    });
-    const decide = async (approve) => {
-      message.clear();
-      try {
-        const result = await sendJson("POST", `/api/planning/requests/${request.id}/${approve ? "approve" : "reject"}`, {
-          note: reason.value,
-        });
-        const done = `${approve ? "Genehmigt" : "Abgelehnt"}: Urlaub von ${request.person.display_name}.`;
-        message.show(result.warnings.length ? `${done} Achtung: ${result.warnings.join(" ")}` : done);
-        const left = await load();
-        if (approve) {
-          await onChange();
-        }
-        // Alles entschieden und keine Warnung, die man lesen sollte: Fenster schließen.
-        if (left === 0 && !result.warnings.length) {
-          dialog.close();
-          onMessage(done);
-        }
-      } catch (error) {
-        message.show(error.message, true);
-      }
-    };
-    return card(
-      request,
-      `${request.person.display_name}: ${range(request)}`,
-      el(
-        "div",
-        { class: "planning-request-actions" },
-        reason,
-        el("button", { type: "button", class: "button", onclick: () => decide(true) }, "Genehmigen"),
-        el("button", { type: "button", class: "button-quiet", onclick: () => decide(false) }, "Ablehnen"),
-      ),
-    );
-  }
-
-  try {
-    if ((await load()) > 0) {
-      dialog.open();
-    }
-  } catch (error) {
-    console.error("Urlaubsanträge konnten nicht geladen werden:", error);
-  }
 }

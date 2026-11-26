@@ -49,7 +49,9 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | `PUT /api/accounts/standard-password` | `accounts.manage` | `set_standard_password()` | Anderes Standardpasswort festlegen (mindestens 8 Zeichen). |
 | `PUT /api/accounts/me/photo` | angemeldet | `set_photo()` | Eigenes Foto setzen oder entfernen (`photo: null`). |
 | `PUT /api/accounts/{id}/photo` | `accounts.manage` | `set_photo()` | Foto eines Kontos; das eines Admins nur durch einen Admin. |
-| `GET /api/accounts/roles` | `accounts.manage` | `role_matrix()` | Alle Rollen mit ihren Rechten. |
+| `GET /api/accounts/roles` | `accounts.manage` | `role_matrix()` | Alle Rollen mit ihren Rechten und den nicht abwählbaren (`locked`). |
+| `GET /api/accounts/{id}/permissions` | `accounts.manage` | `permissions_of()` | Rechte eines Kontos mit Herkunft (Rolle/Ausnahme). |
+| `PUT /api/accounts/{id}/permissions/{recht}` | `accounts.manage` | `set_account_permission()` | Ausnahme setzen (`allowed: true/false`) oder entfernen (`null`). |
 | `PUT /api/accounts/roles/{role}/permissions/{permission}` | `accounts.manage` | `set_role_permission()` | Ein Häkchen setzen oder entfernen. |
 
 Für andere Features ohne eigenen Endpunkt: `list_people()` – alle aktiven Konten nur mit Nummer,
@@ -75,6 +77,7 @@ Rechte an den Endpunkten von F5 (`materials/api.py`):
 | `accounts_account` | `username` (eindeutig, klein), `personnel_number` (eindeutig, freiwillig), `display_name`, `role`, `password_hash`, `must_change_password`, `active`, `failed_logins`, `locked_until`, `last_login_at`, `photo` | – |
 | `accounts_session` | `token_hash` (eindeutig), `account_id`, `created_at`, `expires_at` | `accounts_account` |
 | `accounts_role_permission` | `role`, `permission` (zusammen der Schlüssel), `allowed` | – |
+| `accounts_user_permission` | `account_id`, `permission` (zusammen der Schlüssel), `allowed` – Ausnahmen für ein Konto | `accounts_account` |
 | `accounts_setting` | `key`, `value` – zurzeit nur das Standardpasswort | – |
 
 In `accounts_role_permission` stehen nur **geänderte** Häkchen. Fehlt eine Zeile, gilt `DEFAULTS`
@@ -99,8 +102,11 @@ Tabelle anfasst.
    `PASSWORD_CHANGE_PATHS` zu (sonst 403). `/api/accounts/login` steht in `PUBLIC_PATHS` und geht
    ohne Anmeldung. `/api/health` hängt direkt an der App und ist ebenfalls frei.
 4. **Rechte:** `require("finance.edit")` holt das Konto über `current_account` und fragt
-   `has_permission()`. Das nimmt `DEFAULTS[rolle]` und legt die geänderten Häkchen darüber. Der
-   Admin hat immer alle Rechte. Ein Tippfehler im Namen eines Rechts fällt schon beim Start auf
+   `has_permission()` → `account_permissions()`: `DEFAULTS[rolle]`, darauf die geänderten
+   Häkchen der Rolle (`accounts_role_permission`), darauf die Ausnahmen für genau dieses Konto
+   (`accounts_user_permission`), dazu immer `LOCKED[rolle]` (der Admin behält „Konten verwalten“).
+   `permissions_of()` liefert je Recht `from_role`, `allowed`, `overridden`, `locked` für das
+   Fenster „Konto bearbeiten“; `set_account_permission(..., None)` entfernt eine Ausnahme. Ein Tippfehler im Namen eines Rechts fällt schon beim Start auf
    (`RuntimeError`), nicht erst bei der ersten Anfrage.
 5. **Schutz vor dem Aussperren:** Es bleibt immer ein aktives Admin-Konto. Man kann das eigene
    Konto nicht sperren, die eigene Rolle nicht ändern und der eigenen Rolle nicht
@@ -159,7 +165,8 @@ Ausnahme von der Regel „nur über `service.py`“ und so im Programmaufbau (Ka
 | Begriff | Im Code |
 | --- | --- |
 | Konto | `Account` |
-| Rolle (Admin, Meister, Verwaltung, Geselle, Azubi; der Chef hat ein Admin-Konto) | `role`: `admin`, `master`, `office`, `journeyman`, `apprentice` |
+| Rolle (Admin, Chef, Meister, Verwaltung, Geselle, Azubi) | `role`: `admin`, `owner`, `master`, `office`, `journeyman`, `apprentice` |
+| Ausnahme für eine Person | `UserPermission` (`accounts_user_permission`) |
 | Sperre nach Fehlversuchen | `failed_logins`, `locked_until` |
 | Recht | `permission`, z. B. `finance.view` |
 | Anmeldung auf einem Gerät | `AccountSession` |

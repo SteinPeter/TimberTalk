@@ -566,7 +566,9 @@ def request_absence(session: Session, account_id: int, data: RequestIn) -> Reque
         session,
         approvers,
         f"Urlaubsantrag von {names.get(account_id, '?')}: "
-        f"{_days_text(request.start_date, request.end_date)}",  # endet schon auf „.“
+        f"{_days_text(request.start_date, request.end_date)} – "
+        "bitte auf dem Dashboard entscheiden.",
+        link="#start",
     )
     return _request_info(session, request, names)
 

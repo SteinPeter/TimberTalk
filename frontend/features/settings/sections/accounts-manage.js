@@ -6,6 +6,7 @@
 // Auf der Seite steht nur die Liste. Anlegen und Bearbeiten öffnen ein Fenster. Neue Konten und
 // zurückgesetzte Passwörter bekommen immer das Standardpasswort – es steht oben und lässt sich
 // ändern. Bei der ersten Anmeldung muss jede Person es durch ein eigenes ersetzen.
+// Beim Bearbeiten lassen sich unter „Rechte dieser Person“ Ausnahmen zur Rolle setzen.
 
 import { getJson, sendJson } from "../../../shared/api.js";
 import { avatar, el, field, formatDateTime, messageBox, photoFromFile } from "../../../shared/dom.js";
@@ -79,6 +80,20 @@ export function render(container) {
   const cancelButton = el("button", { type: "button", class: "button-quiet" }, "Abbrechen");
   const formMessage = messageBox();
 
+  // Rechte dieser Person: zugeklappt, weil man es selten braucht. Nur beim Bearbeiten.
+  const rightsList = el("ul", { class: "accounts-rights-list" });
+  const rights = el(
+    "details",
+    { class: "accounts-rights" },
+    el("summary", {}, "Rechte dieser Person"),
+    el(
+      "p",
+      { class: "form-hint" },
+      "Voreingestellt gilt, was die Rolle darf. Ein abweichendes Häkchen ist eine Ausnahme nur für diese Person und gilt sofort.",
+    ),
+    rightsList,
+  );
+
   const form = el(
     "form",
     { class: "form accounts-form", novalidate: "" },
@@ -97,6 +112,7 @@ export function render(container) {
       field("Rolle", roleSelect),
     ),
     lockedField,
+    rights,
     formMessage,
     el("div", { class: "form-actions" }, saveButton, cancelButton, resetButton),
   );
@@ -195,9 +211,53 @@ export function render(container) {
     resetButton.hidden = !account;
     saveButton.textContent = account ? "Änderungen speichern" : "Konto anlegen";
     showPhoto(account ?? { display_name: "?", photo: null });
+    rights.hidden = !account;
+    rights.open = false;
+    rightsList.replaceChildren();
+    if (account) {
+      loadRights(account);
+    }
     updateButton();
     dialog.showModal();
     nameInput.focus();
+  }
+
+  function showRights(account, list) {
+    rightsList.replaceChildren(
+      ...list.map((right) => {
+        const box = el("input", {
+          type: "checkbox",
+          checked: right.allowed,
+          disabled: right.locked,
+          "aria-label": right.label,
+        });
+        const tag = right.locked ? "immer" : right.overridden ? "Ausnahme" : "wie Rolle";
+        box.addEventListener("change", async () => {
+          // Gleich wie die Rolle → keine Ausnahme speichern (None).
+          const allowed = box.checked === right.from_role ? null : box.checked;
+          try {
+            showRights(account, await sendJson("PUT", `/api/accounts/${account.id}/permissions/${right.permission}`, { allowed }));
+          } catch (error) {
+            box.checked = !box.checked;
+            formMessage.show(error.message, true);
+          }
+        });
+        return el(
+          "li",
+          {},
+          el("label", { class: "form-check" }, box, el("span", {}, right.label)),
+          el("span", { class: `accounts-rights-tag${right.overridden ? " accounts-rights-own" : ""}` }, tag),
+        );
+      }),
+    );
+  }
+
+  async function loadRights(account) {
+    try {
+      showRights(account, await getJson(`/api/accounts/${account.id}/permissions`));
+    } catch (error) {
+      formMessage.show(error.message, true);
+    }
   }
 
   function updateButton() {

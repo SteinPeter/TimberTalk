@@ -66,7 +66,21 @@ export function notificationsButton() {
             el(
               "li",
               { class: message.read_at ? "" : "notify-unread" },
-              el("span", {}, message.text),
+              // Mit Link (z. B. offener Urlaubsantrag → Dashboard) ist die Mitteilung ein Knopf.
+              message.link
+                ? el(
+                    "button",
+                    {
+                      type: "button",
+                      class: "notify-link",
+                      onclick: () => {
+                        close();
+                        window.location.hash = message.link;
+                      },
+                    },
+                    message.text,
+                  )
+                : el("span", {}, message.text),
               el("small", {}, formatDateTime(message.created_at)),
             ),
           )

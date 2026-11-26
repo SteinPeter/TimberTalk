@@ -239,14 +239,38 @@ def test_rechte_einer_rolle_aendern(session: Session) -> None:
     assert not service.has_permission(session, geselle, "bookings.create")
 
 
-def test_admin_hat_immer_alle_rechte(session: Session) -> None:
+def test_admin_behaelt_kontenverwaltung_urlaub_entscheidet_der_chef(session: Session) -> None:
     admin = _admin(session)
-    with pytest.raises(ValueError, match="immer alle"):
-        service.set_role_permission(session, "admin", "finance.view", False, admin)
-    matrix = service.role_matrix(session)
-    admin_row = next(row for row in matrix.roles if row.role == "admin")
-    assert not admin_row.editable
-    assert set(admin_row.permissions) == {p.permission for p in matrix.permissions}
+    chef, _ = service.create_account(session, "chef", "Chef", "owner")
+    assert not service.has_permission(session, admin, "calendar.approve_absence")
+    assert service.has_permission(session, chef, "calendar.approve_absence")
+    with pytest.raises(ValueError, match="behält immer"):
+        service.set_role_permission(session, "admin", "accounts.manage", False, chef)
+    # Andere Häkchen des Admins lassen sich ändern.
+    service.set_role_permission(session, "admin", "audit.view", False, chef)
+    assert not service.has_permission(session, admin, "audit.view")
+    admin_row = next(r for r in service.role_matrix(session).roles if r.role == "admin")
+    assert admin_row.locked == ["accounts.manage"]
+
+
+def test_rechte_je_konto_als_ausnahme_zur_rolle(session: Session) -> None:
+    chef, _ = service.create_account(session, "chef", "Chef", "owner")
+    max_, _ = service.create_account(session, "max", "Max", "journeyman")
+    tom, _ = service.create_account(session, "tom", "Tom", "journeyman")
+    # Max (Vorarbeiter) darf Preise sehen, obwohl Gesellen das nicht dürfen – Tom nicht.
+    rights = service.set_account_permission(session, max_.id, "finance.view", True, chef)
+    entry = next(r for r in rights if r.permission == "finance.view")
+    assert (entry.from_role, entry.allowed, entry.overridden) == (False, True, True)
+    assert service.has_permission(session, max_, "finance.view")
+    assert not service.has_permission(session, tom, "finance.view")
+    # Und umgekehrt: Max darf keinen Urlaub beantragen, obwohl die Rolle es darf.
+    service.set_account_permission(session, max_.id, "calendar.request_absence", False, chef)
+    assert not service.has_permission(session, max_, "calendar.request_absence")
+    # None = wieder wie die Rolle.
+    service.set_account_permission(session, max_.id, "finance.view", None, chef)
+    assert not service.has_permission(session, max_, "finance.view")
+    with pytest.raises(ValueError, match="selbst nehmen"):
+        service.set_account_permission(session, chef.id, "accounts.manage", False, chef)
 
 
 def test_eigene_rolle_verliert_nicht_die_kontenverwaltung(session: Session) -> None:
@@ -363,17 +387,17 @@ def test_api_rollen_und_rechte(client: TestClient, client_as: Callable[[str], Te
     assert falsch.status_code == 422
 
 
-def test_es_gibt_keine_eigene_chef_rolle(session: Session) -> None:
-    # Der Chef bekommt ein Admin-Konto; eine Rolle „owner“ gibt es nicht (mehr).
+def test_rollen_in_der_reihenfolge_der_anzeige(session: Session) -> None:
     assert [row.label for row in service.role_matrix(session).roles] == [
         "Admin",
+        "Chef",
         "Meister",
         "Verwaltung",
         "Geselle",
         "Azubi",
     ]
     with pytest.raises(ValueError, match="Rolle"):
-        service.create_account(session, "chef", "Chef", "owner")
+        service.create_account(session, "x", "X", "zauberer")
 
 
 # --- Sperre nach Fehlversuchen und Azubi -----------------------------------------------
@@ -443,3 +467,17 @@ def test_api_standardpasswort_und_foto(
     # Im Änderungsprotokoll steht das Standardpasswort nicht.
     event = client.get("/api/audit").json()
     assert not any("Zimmerei-2026" in e["details"] for e in event)
+
+
+def test_api_rechte_je_konto(client_as: Callable[[str], TestClient]) -> None:
+    chef = client_as("owner")
+    geselle = client_as("journeyman")
+    geselle_id = geselle.get("/api/accounts/me").json()["id"]
+    assert geselle.get("/api/materials/projects/1/costs").status_code == 403
+    changed = chef.put(
+        f"/api/accounts/{geselle_id}/permissions/finance.view", json={"allowed": True}
+    )
+    assert changed.status_code == 200
+    assert geselle.get("/api/materials/projects/1/costs").status_code == 200
+    assert "finance.view" in geselle.get("/api/accounts/me").json()["permissions"]
+    assert geselle.get(f"/api/accounts/{geselle_id}/permissions").status_code == 403

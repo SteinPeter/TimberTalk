@@ -15,7 +15,7 @@ import { getJson, sendJson } from "../../shared/api.js";
 import { el, field, menuButton, messageBox } from "../../shared/dom.js";
 import { can, currentAccount } from "../../shared/session.js";
 import { openIcal } from "./ical.js";
-import { openOwnRequests, setupApprovals } from "./requests.js";
+import { openOwnRequests } from "./requests.js";
 
 export const id = "planning";
 export const title = "Kalender";
@@ -74,8 +74,6 @@ export async function render(panel) {
   const weekLabel = el("p", { class: "planning-week", "aria-live": "polite" });
   const viewSelect = el("select", { "aria-label": "Ansicht" });
   const newButton = el("button", { type: "button", class: "button", hidden: !mayDispatch }, "Termin eintragen");
-  // Hier erscheint „Urlaubsanträge (n)“ – nur wenn Anträge offen sind (requests.js).
-  const approvalsSlot = el("span", { class: "planning-approvals-slot" });
 
   // Was man selten braucht, steht im Menü „Mehr“ statt dauerhaft auf der Seite.
   function moreMenu() {
@@ -97,7 +95,7 @@ export async function render(panel) {
       el("button", { type: "button", class: "button-quiet", onclick: () => move(7) }, "Nächste ›"),
     ),
     weekLabel,
-    el("div", { class: "planning-actions" }, approvalsSlot, viewSelect, newButton, moreMenu()),
+    el("div", { class: "planning-actions" }, viewSelect, newButton, moreMenu()),
   );
   const message = messageBox();
   const content = el("div", { class: "planning-content" });
@@ -602,8 +600,4 @@ export async function render(panel) {
   ]);
   fillViewSelect();
   await loadWeek();
-  // Offene Urlaubsanträge: Knopf in der Kopfleiste, und das Fenster öffnet sich von selbst.
-  if (can("calendar.approve_absence")) {
-    await setupApprovals(approvalsSlot, { onChange: loadWeek, onMessage: (text) => message.show(text) });
-  }
 }
