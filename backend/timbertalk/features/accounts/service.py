@@ -37,6 +37,11 @@ INITIAL_ADMIN_PASSWORD = "admin"
 
 MIN_PASSWORD_LENGTH = 8
 
+# Nach so vielen falschen Passwörtern hintereinander ist das Konto so lange gesperrt. Das bremst
+# jemanden, der Passwörter durchprobiert. Der Admin kann die Sperre durch Zurücksetzen aufheben.
+MAX_FAILED_LOGINS = 5
+LOCK_MINUTES = 15
+
 # Erlaubte Zeichen im Anmeldenamen: Kleinbuchstaben, Ziffern, Punkt, Bindestrich, Unterstrich.
 _USERNAME_PATTERN = re.compile(r"[a-z0-9._-]+")
 
@@ -131,6 +136,7 @@ def info(account: Account) -> AccountInfo:
         role_label=ROLES.get(account.role, account.role),
         active=account.active,
         must_change_password=account.must_change_password,
+        locked_until=account.locked_until,
         last_login_at=account.last_login_at,
     )
 
@@ -242,6 +248,8 @@ def reset_password(
     _check_new_password(start_password, account.username)
     account.password_hash = security.hash_password(start_password)
     account.must_change_password = True
+    account.failed_logins = 0
+    account.locked_until = None  # Zurücksetzen hebt auch eine Sperre wegen Fehlversuchen auf
     session.add(account)
     _end_sessions(session, account.id)
     session.commit()
@@ -304,13 +312,21 @@ def login(session: Session, identifier: str, password: str) -> tuple[Account, st
     if account is None:
         security.verify_password(password, _DUMMY_HASH)  # gleich lange rechnen, siehe oben
         raise LoginFailed(LOGIN_FAILED_TEXT)
-    if not security.verify_password(password, account.password_hash):
+    now = _now()
+    password_ok = security.verify_password(password, account.password_hash)
+    if _is_locked(account, now):
+        raise LoginFailed(_locked_text(account))
+    if not password_ok:
+        _count_failed_login(session, account, now)
+        if _is_locked(account, now):
+            raise LoginFailed(_locked_text(account))
         raise LoginFailed(LOGIN_FAILED_TEXT)
     if not account.active:
         raise LoginFailed("Dieses Konto ist gesperrt. Bitte beim Admin melden.")
 
     token = security.new_session_token()
-    now = _now()
+    account.failed_logins = 0
+    account.locked_until = None
     session.add(
         AccountSession(
             token_hash=security.token_hash(token),
@@ -324,6 +340,34 @@ def login(session: Session, identifier: str, password: str) -> tuple[Account, st
     session.commit()
     session.refresh(account)
     return account, token
+
+
+def _is_locked(account: Account, now: datetime) -> bool:
+    return account.locked_until is not None and _aware(account.locked_until) > now
+
+
+def _aware(moment: datetime) -> datetime:
+    """SQLite liefert Zeiten je nach Weg mit oder ohne Zeitzone; gespeichert ist immer UTC."""
+    return moment if moment.tzinfo else moment.replace(tzinfo=UTC)
+
+
+def _locked_text(account: Account) -> str:
+    until = _aware(account.locked_until).astimezone().strftime("%H:%M")
+    return (
+        f"Zu viele falsche Passwörter. Das Konto ist bis {until} Uhr gesperrt – "
+        "oder der Admin setzt das Passwort zurück."
+    )
+
+
+def _count_failed_login(session: Session, account: Account, now: datetime) -> None:
+    """Zählt ein falsches Passwort. Beim MAX_FAILED_LOGINS-ten wird das Konto kurz gesperrt."""
+    account.failed_logins += 1
+    if account.failed_logins >= MAX_FAILED_LOGINS:
+        account.locked_until = now + timedelta(minutes=LOCK_MINUTES)
+        account.failed_logins = 0
+    session.add(account)
+    session.commit()
+    session.refresh(account)
 
 
 def logout(session: Session, token: str) -> None:

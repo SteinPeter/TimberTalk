@@ -15,6 +15,7 @@ ROLES: dict[str, str] = {
     "master": "Meister",
     "office": "Verwaltung",
     "journeyman": "Geselle",
+    "apprentice": "Azubi",
 }
 
 # Der Admin hat immer alle Rechte. Seine Häkchen lassen sich nicht abwählen – so kann sich der
@@ -36,4 +37,5 @@ DEFAULTS: dict[str, set[str]] = {
     "master": {"finance.view", "materials.edit", "bookings.create"},
     "office": {"finance.view", "finance.edit", "materials.edit", "bookings.create"},
     "journeyman": {"bookings.create"},
+    "apprentice": {"bookings.create"},
 }

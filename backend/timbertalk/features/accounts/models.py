@@ -23,6 +23,8 @@ class Account(SQLModel, table=True):
     password_hash: str  # nie das Passwort selbst, siehe security.py
     must_change_password: bool = True  # True: bei der nächsten Anmeldung eigenes Passwort setzen
     active: bool = True  # False: gesperrt, Anmeldung nicht möglich
+    failed_logins: int = 0  # falsche Passwörter hintereinander, siehe service.MAX_FAILED_LOGINS
+    locked_until: datetime | None = None  # nach zu vielen Fehlversuchen kurz gesperrt bis dahin
     created_at: datetime
     last_login_at: datetime | None = None
 
@@ -63,6 +65,7 @@ class AccountInfo(SQLModel):
     role_label: str
     active: bool
     must_change_password: bool
+    locked_until: datetime | None  # gesetzt und in der Zukunft: wegen Fehlversuchen kurz gesperrt
     last_login_at: datetime | None
 
 

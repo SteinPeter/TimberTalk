@@ -104,6 +104,11 @@ export function render(container) {
     if (!account.active) {
       return "Gesperrt";
     }
+    // Kurz gesperrt nach zu vielen falschen Passwörtern; „Passwort zurücksetzen“ hebt das auf.
+    if (account.locked_until && new Date(account.locked_until) > new Date()) {
+      const until = new Date(account.locked_until).toLocaleTimeString("de-DE", { timeStyle: "short" });
+      return `Fehlversuche – gesperrt bis ${until}`;
+    }
     return account.must_change_password ? "Startpasswort" : "Aktiv";
   }
 

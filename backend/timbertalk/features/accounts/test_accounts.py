@@ -342,6 +342,45 @@ def test_es_gibt_keine_eigene_chef_rolle(session: Session) -> None:
         "Meister",
         "Verwaltung",
         "Geselle",
+        "Azubi",
     ]
     with pytest.raises(ValueError, match="Rolle"):
         service.create_account(session, "chef", "Chef", "owner")
+
+
+# --- Sperre nach Fehlversuchen und Azubi -----------------------------------------------
+
+
+def test_nach_fuenf_falschen_passwoertern_kurz_gesperrt(session: Session) -> None:
+    admin = _admin(session)
+    max_, _ = service.create_account(session, "max", "Max", "journeyman", None, "geheim123")
+    for _ in range(service.MAX_FAILED_LOGINS - 1):
+        with pytest.raises(service.LoginFailed, match="stimmen nicht"):
+            service.login(session, "max", "falsch!!")
+    with pytest.raises(service.LoginFailed, match="Zu viele"):
+        service.login(session, "max", "falsch!!")
+    # Auch mit dem richtigen Passwort geht es jetzt nicht.
+    with pytest.raises(service.LoginFailed, match="gesperrt"):
+        service.login(session, "max", "geheim123")
+    assert service.info(max_).locked_until is not None
+
+    # Der Admin setzt das Passwort zurück – damit ist die Sperre aufgehoben.
+    start = service.reset_password(session, max_.id, None, admin)
+    service.login(session, "max", start)
+
+
+def test_sperre_endet_von_selbst_und_erfolg_setzt_den_zaehler_zurueck(session: Session) -> None:
+    max_, _ = service.create_account(session, "max", "Max", "journeyman", None, "geheim123")
+    max_.locked_until = datetime.now(UTC) - timedelta(seconds=1)  # Sperre gerade abgelaufen
+    max_.failed_logins = 3
+    session.add(max_)
+    session.commit()
+    account, _ = service.login(session, "max", "geheim123")
+    assert account.failed_logins == 0 and account.locked_until is None
+
+
+def test_azubi_bucht_und_sieht_keine_preise(session: Session) -> None:
+    azubi, _ = service.create_account(session, "lena", "Lena", "apprentice")
+    assert service.info(azubi).role_label == "Azubi"
+    assert service.has_permission(session, azubi, "bookings.create")
+    assert not service.has_permission(session, azubi, "finance.view")

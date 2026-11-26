@@ -65,7 +65,7 @@ Rechte an den Endpunkten von F5 (`materials/api.py`):
 
 | Tabelle | Spalten (wichtigste) | Verweist auf |
 | --- | --- | --- |
-| `accounts_account` | `username` (eindeutig, klein), `personnel_number` (eindeutig, freiwillig), `display_name`, `role`, `password_hash`, `must_change_password`, `active`, `last_login_at` | – |
+| `accounts_account` | `username` (eindeutig, klein), `personnel_number` (eindeutig, freiwillig), `display_name`, `role`, `password_hash`, `must_change_password`, `active`, `failed_logins`, `locked_until`, `last_login_at` | – |
 | `accounts_session` | `token_hash` (eindeutig), `account_id`, `created_at`, `expires_at` | `accounts_account` |
 | `accounts_role_permission` | `role`, `permission` (zusammen der Schlüssel), `allowed` | – |
 
@@ -97,7 +97,12 @@ Tabelle anfasst.
 5. **Schutz vor dem Aussperren:** Es bleibt immer ein aktives Admin-Konto. Man kann das eigene
    Konto nicht sperren, die eigene Rolle nicht ändern und der eigenen Rolle nicht
    `accounts.manage` nehmen. Admin-Konten bearbeitet nur ein Admin.
-6. **Erster Start:** `lifespan()` in `main.py` ruft `ensure_initial_admin()`. Gibt es noch kein
+6. **Fehlversuche:** Jedes falsche Passwort erhöht `failed_logins`. Beim fünften
+   (`MAX_FAILED_LOGINS`) setzt `_count_failed_login()` `locked_until` auf jetzt + 15 Minuten
+   (`LOCK_MINUTES`). Solange das in der Zukunft liegt, lehnt `login()` jede Anmeldung ab – auch
+   mit richtigem Passwort. Eine erfolgreiche Anmeldung und `reset_password()` setzen beides zurück.
+   Nicht existierende Namen werden nicht gezählt (es gibt kein Konto, das man sperren könnte).
+7. **Erster Start:** `lifespan()` in `main.py` ruft `ensure_initial_admin()`. Gibt es noch kein
    Konto, entsteht `admin` / `admin` mit `must_change_password=True`. Das steht auch in der Konsole.
 
 ## Weg einer typischen Anfrage
@@ -137,7 +142,8 @@ Ausnahme von der Regel „nur über `service.py`“ und so im Programmaufbau (Ka
 | Begriff | Im Code |
 | --- | --- |
 | Konto | `Account` |
-| Rolle (Admin, Meister, Verwaltung, Geselle; der Chef hat ein Admin-Konto) | `role`: `admin`, `master`, `office`, `journeyman` |
+| Rolle (Admin, Meister, Verwaltung, Geselle, Azubi; der Chef hat ein Admin-Konto) | `role`: `admin`, `master`, `office`, `journeyman`, `apprentice` |
+| Sperre nach Fehlversuchen | `failed_logins`, `locked_until` |
 | Recht | `permission`, z. B. `finance.view` |
 | Anmeldung auf einem Gerät | `AccountSession` |
 | Sitzungsschlüssel | `token` (im Cookie), `token_hash` (in der Datenbank) |

@@ -3,7 +3,7 @@
 ## Ziel
 
 Jeder Mensch im Betrieb hat ein eigenes Konto mit einer Rolle (Admin, Meister, Verwaltung,
-Geselle). Der Chef bekommt ein Admin-Konto – eine eigene Chef-Rolle gibt es nicht. Die Rolle
+Geselle, Azubi). Der Chef bekommt ein Admin-Konto – eine eigene Chef-Rolle gibt es nicht. Die Rolle
 bestimmt, was jemand sehen und ändern darf – zuerst bei Preisen und Kosten.
 Grundlage: `TimberTalk_Programmaufbau.pdf`, Kapitel 10 „Konten und Rechte“.
 
@@ -36,19 +36,23 @@ Im Meeting wird genau das vorgeführt:
    abgemeldet und meldet sich mit dem neuen Startpasswort an.
 6. **Rechte ändern:** In „Rollen und Rechte“ bekommt der Geselle ein Häkchen bei „Preise … sehen“.
    Nach dem Neuladen sieht Max die Preise. Häkchen beim Admin lassen sich nicht abwählen.
-7. **Sperren:** Ein gesperrtes Konto wird sofort abgemeldet und kann sich nicht mehr anmelden.
+7. **Fehlversuche:** Nach fünf falschen Passwörtern hintereinander ist das Konto 15 Minuten
+   gesperrt, auch für das richtige Passwort. In „Benutzerkonten“ steht dann „Fehlversuche –
+   gesperrt bis …“; „Passwort zurücksetzen“ hebt die Sperre sofort auf.
+8. **Azubi:** Ein Konto mit der Rolle Azubi bucht Material und sieht keine Preise.
+9. **Sperren:** Ein gesperrtes Konto wird sofort abgemeldet und kann sich nicht mehr anmelden.
    Das eigene Konto und das letzte Admin-Konto lassen sich nicht sperren.
-8. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
+10. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün.
 
 ## Rollen und Rechte (Voreinstellung)
 
-| Recht | Admin | Meister | Verwaltung | Geselle |
-| --- | :-: | :-: | :-: | :-: |
-| Konten verwalten, Passwörter zurücksetzen, Rechte ändern | ✓ | – | – | – |
-| Preise, Stundensätze und Projektkosten sehen | ✓ | ✓ | ✓ | – |
-| Preise, Stundensätze und Firmendaten ändern | ✓ | – | ✓ | – |
-| Materialstamm pflegen | ✓ | ✓ | ✓ | – |
-| Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ |
+| Recht | Admin | Meister | Verwaltung | Geselle | Azubi |
+| --- | :-: | :-: | :-: | :-: | :-: |
+| Konten verwalten, Passwörter zurücksetzen, Rechte ändern | ✓ | – | – | – | – |
+| Preise, Stundensätze und Projektkosten sehen | ✓ | ✓ | ✓ | – | – |
+| Preise, Stundensätze und Firmendaten ändern | ✓ | – | ✓ | – | – |
+| Materialstamm pflegen | ✓ | ✓ | ✓ | – | – |
+| Material und Fahrten buchen | ✓ | ✓ | ✓ | ✓ | ✓ |
 
 Wer „Konten verwalten“ hat, kann jedes Häkchen außer denen des Admins ändern. Admin-Konten legt,
 ändert und setzt nur ein Admin zurück.
@@ -64,8 +68,7 @@ der Name.
 - **Verknüpfung mit `employees/`:** Stundensatz und Stammdaten eines Mitarbeiters kommen mit dem
   Feature Mitarbeitende. Dort verweist der Eintrag auf sein Konto.
 - **Konten löschen:** Konten werden gesperrt, nicht gelöscht, damit Buchungen ihre Person behalten.
-- **Sperre nach vielen falschen Passwörtern, Anmeldeprotokoll, Zwei-Faktor:** später, wenn
-  TimberTalk von außerhalb des Betriebs erreichbar ist.
+- **Zwei-Faktor-Anmeldung:** später, wenn TimberTalk von außerhalb des Betriebs erreichbar ist.
 - **Rechte für Kunden, Projekte, Stunden, Rechnungen:** Jedes dieser Features trägt seine Rechte
   in `permissions.py` ein, sobald es gebaut wird.
 
