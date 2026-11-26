@@ -12,7 +12,7 @@ from sqlmodel import Session
 from timbertalk.features.accounts import service as accounts
 from timbertalk.features.notifications import service as notifications
 from timbertalk.features.planning import service
-from timbertalk.features.planning.models import EntryIn
+from timbertalk.features.planning.models import EntryIn, ResourceIn
 
 MON = date(2026, 11, 30)
 TUE = date(2026, 12, 1)
@@ -275,3 +275,63 @@ def test_beschreibung_mit_uhrzeit(session: Session) -> None:
     )
     entry = service.get_entry(session, saved.entry.id)
     assert service.describe(entry) == "Carport Berger, Mo 30.11., 07:00–12:30 Uhr"
+
+
+# --- Fahrzeuge und Maschinen ---------------------------------------------------------
+
+
+def _resource(session: Session, name: str, category: str = "vehicle") -> int:
+    return service.create_resource(session, ResourceIn(name=name, category=category)).id
+
+
+def test_kran_einplanen_und_doppelt_verplant_melden(session: Session) -> None:
+    max_ = _person(session, "max", "Max")
+    kran = _resource(session, "Autokran", "machine")
+    first = service.create_entry(session, _entry([max_], resources=[kran], end_date=TUE), None)
+    assert [r.display_name for r in first.entry.resources] == ["Autokran"]
+
+    # Nur der Kran, ohne Person – z. B. gemietet mit Fahrer.
+    second = service.create_entry(
+        session, _entry([], title="Dachstuhl Weber", resources=[kran], start_date=TUE), None
+    )
+    assert second.warnings == ["Autokran ist am 01.12.2026 schon verplant: Carport Berger."]
+
+
+def test_ausgemustertes_fahrzeug_kann_man_nicht_mehr_einplanen(session: Session) -> None:
+    max_ = _person(session, "max", "Max")
+    alt = _resource(session, "Alter Transporter")
+    saved = service.create_entry(session, _entry([max_], resources=[alt]), None)
+    service.update_resource(
+        session, alt, ResourceIn(name="Alter Transporter", category="vehicle", active=False)
+    )
+    assert [r.name for r in service.list_resources(session)] == []
+    assert [r.name for r in service.list_resources(session, include_inactive=True)] == [
+        "Alter Transporter"
+    ]
+    # Der alte Termin behält ihn, ein neuer nicht.
+    week = service.list_entries(session, MON, SUN, max_, True)
+    assert week[0].resources[0].display_name == "Alter Transporter"
+    assert saved.entry.id == week[0].id
+    with pytest.raises(ValueError, match="nicht"):
+        service.create_entry(session, _entry([max_], resources=[alt]), None)
+
+
+@pytest.mark.parametrize(
+    ("name", "category", "text"), [(" ", "vehicle", "Namen"), ("X", "boot", "Art")]
+)
+def test_fahrzeug_eingaben_werden_geprueft(
+    session: Session, name: str, category: str, text: str
+) -> None:
+    with pytest.raises(ValueError, match=text):
+        service.create_resource(session, ResourceIn(name=name, category=category))
+
+
+def test_api_fahrzeuge_pflegt_nur_wer_plant(client_as: Callable[[str], TestClient]) -> None:
+    geselle = client_as("journeyman")
+    meister = client_as("master")
+    body = {"name": "Transporter", "category": "vehicle"}
+    assert geselle.post("/api/planning/resources", json=body).status_code == 403
+    created = meister.post("/api/planning/resources", json=body)
+    assert created.status_code == 201
+    assert created.json()["category_label"] == "Fahrzeug"
+    assert [r["name"] for r in geselle.get("/api/planning/resources").json()] == ["Transporter"]

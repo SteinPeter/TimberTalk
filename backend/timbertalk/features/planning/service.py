@@ -18,12 +18,17 @@ from timbertalk.features.notifications import service as notifications
 from timbertalk.features.planning.models import (
     ABSENCE_KINDS,
     KINDS,
+    RESOURCE_CATEGORIES,
     CalendarAssignment,
     CalendarEntry,
     EntryIn,
     EntryInfo,
     KindInfo,
     PersonRef,
+    Resource,
+    ResourceAssignment,
+    ResourceIn,
+    ResourceInfo,
     SavedEntry,
 )
 
@@ -104,12 +109,17 @@ def _clean(session: Session, data: EntryIn) -> EntryIn:
     ):
         raise ValueError("Das Ende liegt vor dem Beginn.")
     people = list(dict.fromkeys(data.people))  # doppelte entfernen, Reihenfolge behalten
-    if not people:
-        raise ValueError("Bitte mindestens eine Person einplanen.")
+    resources = list(dict.fromkeys(data.resources))
+    if not people and not resources:
+        raise ValueError("Bitte mindestens eine Person oder ein Fahrzeug/eine Maschine einplanen.")
     known = _names(session)
     for account_id in people:
         if account_id not in known:
             raise ValueError(f"Die Person {account_id} gibt es nicht oder sie ist gesperrt.")
+    usable = _resource_names(session)
+    for resource_id in resources:
+        if resource_id not in usable:
+            raise ValueError(f"Das Fahrzeug/die Maschine {resource_id} gibt es nicht (mehr).")
     return data.model_copy(
         update={
             "title": title,
@@ -117,6 +127,7 @@ def _clean(session: Session, data: EntryIn) -> EntryIn:
             "location": data.location.strip(),
             "note": data.note.strip(),
             "people": people,
+            "resources": resources,
         }
     )
 
@@ -162,6 +173,25 @@ def _warnings(session: Session, data: EntryIn, except_id: int | None) -> list[st
             warnings.append(f"{name} ist ab {day} abwesend: {KINDS[entry.kind]}.")
         else:
             warnings.append(f"{name} ist am {day} schon eingeplant: {entry.title}.")
+
+    # Dasselbe für Fahrzeuge und Maschinen: ein Kran kann nicht auf zwei Baustellen stehen.
+    resource_names = _resource_names(session)
+    statement = (
+        select(CalendarEntry, ResourceAssignment.resource_id)
+        .join(ResourceAssignment, ResourceAssignment.entry_id == CalendarEntry.id)
+        .where(
+            col(ResourceAssignment.resource_id).in_(data.resources),
+            CalendarEntry.start_date <= data.end_date,
+            CalendarEntry.end_date >= data.start_date,
+        )
+        .order_by(CalendarEntry.start_date)
+    )
+    for entry, resource_id in session.exec(statement):
+        if entry.id == except_id or not _overlaps(entry, data):
+            continue
+        day = _format_date(max(entry.start_date, data.start_date))
+        name = resource_names.get(resource_id, f"Fahrzeug {resource_id}")
+        warnings.append(f"{name} ist am {day} schon verplant: {entry.title}.")
     return warnings
 
 
@@ -175,6 +205,15 @@ def _info(session: Session, entry: CalendarEntry, names: dict[int, str]) -> Entr
         for account_id in session.exec(statement)
     ]
     people.sort(key=lambda person: person.display_name)
+    resource_names = _resource_names(session, include_inactive=True)
+    statement = select(ResourceAssignment.resource_id).where(
+        ResourceAssignment.entry_id == entry.id
+    )
+    resources = [
+        PersonRef(id=resource_id, display_name=resource_names.get(resource_id, "?"))
+        for resource_id in session.exec(statement)
+    ]
+    resources.sort(key=lambda resource: resource.display_name)
     return EntryInfo(
         id=entry.id,
         title=entry.title,
@@ -187,6 +226,7 @@ def _info(session: Session, entry: CalendarEntry, names: dict[int, str]) -> Entr
         location=entry.location,
         note=entry.note,
         people=people,
+        resources=resources,
     )
 
 
@@ -237,10 +277,14 @@ def _assigned(session: Session, entry_id: int) -> list[int]:
     return list(session.exec(statement))
 
 
-def _assign(session: Session, entry_id: int, people: list[int]) -> None:
+def _assign(session: Session, entry_id: int, data: EntryIn) -> None:
+    """Speichert, wer und was zu einem Termin eingeplant ist (ersetzt die bisherige Liste)."""
     session.exec(delete(CalendarAssignment).where(CalendarAssignment.entry_id == entry_id))
-    for account_id in people:
+    session.exec(delete(ResourceAssignment).where(ResourceAssignment.entry_id == entry_id))
+    for account_id in data.people:
         session.add(CalendarAssignment(entry_id=entry_id, account_id=account_id))
+    for resource_id in data.resources:
+        session.add(ResourceAssignment(entry_id=entry_id, resource_id=resource_id))
 
 
 def create_entry(session: Session, data: EntryIn, created_by: int | None) -> SavedEntry:
@@ -248,13 +292,13 @@ def create_entry(session: Session, data: EntryIn, created_by: int | None) -> Sav
     data = _clean(session, data)
     warnings = _warnings(session, data, except_id=None)
     entry = CalendarEntry(
-        **data.model_dump(exclude={"people"}),
+        **data.model_dump(exclude={"people", "resources"}),
         created_by=created_by,
         created_at=datetime.now(UTC),
     )
     session.add(entry)
     session.flush()  # damit entry.id feststeht
-    _assign(session, entry.id, data.people)
+    _assign(session, entry.id, data)
     session.commit()
     session.refresh(entry)
     others = [p for p in data.people if p != created_by]
@@ -275,10 +319,10 @@ def update_entry(
     warnings = _warnings(session, data, except_id=entry_id)
     before = describe(entry)
     old_people = _assigned(session, entry_id)
-    for key, value in data.model_dump(exclude={"people"}).items():
+    for key, value in data.model_dump(exclude={"people", "resources"}).items():
         setattr(entry, key, value)
     session.add(entry)
-    _assign(session, entry.id, data.people)
+    _assign(session, entry.id, data)
     session.commit()
     session.refresh(entry)
 
@@ -299,6 +343,68 @@ def delete_entry(session: Session, entry_id: int, acting_id: int | None = None) 
     text = f"Abgesagt: {describe(entry)}."
     people = [p for p in _assigned(session, entry_id) if p != acting_id]
     session.exec(delete(CalendarAssignment).where(CalendarAssignment.entry_id == entry_id))
+    session.exec(delete(ResourceAssignment).where(ResourceAssignment.entry_id == entry_id))
     session.delete(entry)
     session.commit()
     notifications.notify(session, people, text)
+
+
+# --- Fahrzeuge und Maschinen ------------------------------------------------------
+
+
+def _resource_names(session: Session, include_inactive: bool = False) -> dict[int, str]:
+    statement = select(Resource)
+    if not include_inactive:
+        statement = statement.where(col(Resource.active).is_(True))
+    return {resource.id: resource.name for resource in session.exec(statement)}
+
+
+def _resource_info(resource: Resource) -> ResourceInfo:
+    return ResourceInfo(
+        id=resource.id,
+        name=resource.name,
+        category=resource.category,
+        category_label=RESOURCE_CATEGORIES.get(resource.category, resource.category),
+        active=resource.active,
+    )
+
+
+def list_resources(session: Session, include_inactive: bool = False) -> list[ResourceInfo]:
+    """Fahrzeuge und Maschinen, erst nach Art, dann nach Namen sortiert."""
+    statement = select(Resource).order_by(Resource.category.desc(), Resource.name)
+    if not include_inactive:
+        statement = statement.where(col(Resource.active).is_(True))
+    return [_resource_info(resource) for resource in session.exec(statement)]
+
+
+def _clean_resource(data: ResourceIn) -> ResourceIn:
+    name = data.name.strip()
+    if not name:
+        raise ValueError("Bitte einen Namen angeben, z. B. „Transporter“ oder „Autokran“.")
+    if data.category not in RESOURCE_CATEGORIES:
+        raise ValueError(f"Die Art „{data.category}“ gibt es nicht.")
+    return data.model_copy(update={"name": name})
+
+
+def create_resource(session: Session, data: ResourceIn) -> ResourceInfo:
+    """Legt ein Fahrzeug oder eine Maschine an."""
+    data = _clean_resource(data)
+    resource = Resource(**data.model_dump())
+    session.add(resource)
+    session.commit()
+    session.refresh(resource)
+    return _resource_info(resource)
+
+
+def update_resource(session: Session, resource_id: int, data: ResourceIn) -> ResourceInfo:
+    """Ändert Name, Art oder ob es ausgemustert ist. Bisherige Termine behalten es."""
+    resource = session.get(Resource, resource_id)
+    if resource is None:
+        raise LookupError(f"Das Fahrzeug/die Maschine {resource_id} gibt es nicht.")
+    data = _clean_resource(data)
+    for key, value in data.model_dump().items():
+        setattr(resource, key, value)
+    session.add(resource)
+    session.commit()
+    session.refresh(resource)
+    return _resource_info(resource)

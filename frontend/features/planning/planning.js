@@ -6,6 +6,10 @@
 // Mit dem Recht „calendar.dispatch“ trägt man Termine ein (Klick auf + in einer Zelle oder
 // „Termin eintragen“) und ändert sie (Klick auf den Termin). Wer „calendar.view_all“ nicht hat,
 // sieht nur den eigenen Kalender. Alles aus der API kommt mit textContent in die Seite.
+//
+// Fahrzeuge und Maschinen stehen als eigene Zeilen unter den Personen. Wer planen darf, zieht
+// einen Termin mit der Maus auf einen anderen Tag oder eine andere Zeile; „Rückgängig“ holt ihn
+// zurück. Auf dem Handy (ohne Ziehen) geht dasselbe über den Dialog.
 
 import { getJson, sendJson } from "../../shared/api.js";
 import { el, field, messageBox } from "../../shared/dom.js";
@@ -59,6 +63,7 @@ export async function render(panel) {
 
   let monday = mondayOf(today);
   let people = [];
+  let resources = [];
   let kinds = [];
   let entries = [];
   let view = BOARD;
@@ -126,13 +131,89 @@ export async function render(panel) {
     return Array.from({ length: 7 }, (_, i) => addDays(monday, i));
   }
 
-  function entriesOn(day, personId) {
+  // Eine Zeile der Plantafel: eine Person ("p:3") oder ein Fahrzeug/eine Maschine ("r:2").
+  const rowKey = (type, rowId) => `${type}:${rowId}`;
+  const parseRow = (key) => ({ type: key[0], id: Number(key.slice(2)) });
+
+  function inRow(entry, key) {
+    const row = parseRow(key);
+    const list = row.type === "p" ? entry.people : entry.resources;
+    return list.some((item) => item.id === row.id);
+  }
+
+  function entriesOn(day, key) {
     return entries.filter(
-      (entry) =>
-        entry.start_date <= day &&
-        entry.end_date >= day &&
-        (personId === undefined || entry.people.some((person) => person.id === personId)),
+      (entry) => entry.start_date <= day && entry.end_date >= day && (key === undefined || inRow(entry, key)),
     );
+  }
+
+  // Ein Termin als Eingabe für die API (für Verschieben und Rückgängig).
+  function toBody(entry) {
+    return {
+      title: entry.title,
+      kind: entry.kind,
+      start_date: entry.start_date,
+      end_date: entry.end_date,
+      start_time: entry.start_time ? shortTime(entry.start_time) : null,
+      end_time: entry.end_time ? shortTime(entry.end_time) : null,
+      location: entry.location,
+      note: entry.note,
+      people: entry.people.map((person) => person.id),
+      resources: entry.resources.map((resource) => resource.id),
+    };
+  }
+
+  // --- Verschieben per Ziehen ---
+
+  // Zieht man einen Termin von Tag/Zeile A nach Tag/Zeile B, rücken erster und letzter Tag um
+  // denselben Abstand. Wechselt die Zeile, tritt die neue Person (das neue Fahrzeug) an die Stelle
+  // der alten; alle anderen Eingeplanten bleiben.
+  async function moveEntry(entryId, fromKey, fromDay, toKey, toDay) {
+    const entry = entries.find((item) => item.id === entryId);
+    if (!entry || (fromKey === toKey && fromDay === toDay)) {
+      return;
+    }
+    const from = parseRow(fromKey);
+    const to = parseRow(toKey);
+    if (from.type !== to.type) {
+      message.show("Termine lassen sich nur von Person zu Person oder von Fahrzeug zu Fahrzeug ziehen.", true);
+      return;
+    }
+    const before = toBody(entry);
+    const after = toBody(entry);
+    const shift = Math.round((parseDate(toDay) - parseDate(fromDay)) / 86400000);
+    after.start_date = addDays(entry.start_date, shift);
+    after.end_date = addDays(entry.end_date, shift);
+    const listName = from.type === "p" ? "people" : "resources";
+    if (from.id !== to.id) {
+      after[listName] = [...new Set(after[listName].map((id) => (id === from.id ? to.id : id)))];
+    }
+    await saveMove(entry.id, after, before, `Verschoben: ${entry.title}`);
+  }
+
+  async function saveMove(entryId, body, undoBody, text) {
+    try {
+      const saved = await sendJson("PUT", `/api/planning/entries/${entryId}`, body);
+      await loadWeek();
+      const warning = saved.warnings.length ? ` Achtung: ${saved.warnings.join(" ")}` : "";
+      message.show(`${text}.${warning}`);
+      if (undoBody) {
+        message.append(
+          " ",
+          el(
+            "button",
+            {
+              type: "button",
+              class: "button-quiet planning-undo",
+              onclick: () => saveMove(entryId, undoBody, null, `Zurückgeholt: ${body.title}`),
+            },
+            "Rückgängig",
+          ),
+        );
+      }
+    } catch (error) {
+      message.show(error.message, true);
+    }
   }
 
   // --- Anzeigen ---
@@ -141,8 +222,9 @@ export async function render(panel) {
     content.replaceChildren(view === BOARD ? board() : personalList(Number(view)));
   }
 
-  // Ein Termin als kleines Kärtchen. Mit Planungsrecht ist es ein Knopf zum Ändern.
-  function chip(entry, { withPeople = false } = {}) {
+  // Ein Termin als kleines Kärtchen. Mit Planungsrecht ist es ein Knopf zum Ändern und lässt
+  // sich auf der Plantafel ziehen (drag = { key, day }: woher er gezogen wird).
+  function chip(entry, { withPeople = false, drag = null } = {}) {
     const time = entry.start_time ? `${shortTime(entry.start_time)}–${shortTime(entry.end_time)}` : "";
     // Heißt der Termin wie seine Art (z. B. „Urlaub“), steht er nur einmal da.
     const parts = [el("span", { class: "planning-chip-title" }, entry.title)];
@@ -153,15 +235,16 @@ export async function render(panel) {
     if (details) {
       parts.push(el("span", { class: "planning-chip-detail" }, details));
     }
-    if (withPeople) {
-      parts.push(el("span", { class: "planning-chip-detail" }, entry.people.map((p) => p.display_name).join(", ")));
+    const together = withPeople ? [...entry.people, ...entry.resources] : entry.resources;
+    if (together.length) {
+      parts.push(el("span", { class: "planning-chip-detail" }, together.map((p) => p.display_name).join(", ")));
     }
     const absent = kinds.find((kind) => kind.kind === entry.kind)?.absence;
     const className = `planning-chip${absent ? " planning-chip-absence" : ""}`;
     if (!mayDispatch) {
       return el("div", { class: className }, ...parts);
     }
-    return el(
+    const button = el(
       "button",
       {
         type: "button",
@@ -171,6 +254,56 @@ export async function render(panel) {
       },
       ...parts,
     );
+    if (drag) {
+      button.draggable = true;
+      button.addEventListener("dragstart", (event) => {
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("text/plain", JSON.stringify({ id: entry.id, ...drag }));
+      });
+    }
+    return button;
+  }
+
+  // Eine Zelle der Plantafel: Termine dieser Zeile an diesem Tag, dazu „+“ und Ablegen.
+  function cell(key, label, day, dayIndex) {
+    const td = el(
+      "td",
+      { class: day === today ? "planning-today" : "" },
+      ...entriesOn(day, key).map((entry) => chip(entry, { drag: mayDispatch ? { key, day } : null })),
+    );
+    if (!mayDispatch) {
+      return td;
+    }
+    const row = parseRow(key);
+    td.append(
+      el(
+        "button",
+        {
+          type: "button",
+          class: "planning-add",
+          "aria-label": `Termin für ${label} am ${DAY_NAMES[dayIndex]} ${shortDate(day)} eintragen`,
+          onclick: () =>
+            dialog.open(null, row.type === "p" ? { day, personId: row.id } : { day, resourceId: row.id }),
+        },
+        "+",
+      ),
+    );
+    td.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      td.classList.add("planning-drop");
+    });
+    td.addEventListener("dragleave", () => td.classList.remove("planning-drop"));
+    td.addEventListener("drop", (event) => {
+      event.preventDefault();
+      td.classList.remove("planning-drop");
+      try {
+        const data = JSON.parse(event.dataTransfer.getData("text/plain"));
+        moveEntry(data.id, data.key, data.day, key, day);
+      } catch {
+        // Etwas anderes als ein Termin wurde abgelegt – nichts zu tun.
+      }
+    });
+    return td;
   }
 
   function board() {
@@ -198,26 +331,27 @@ export async function render(panel) {
           { scope: "row", class: "planning-person" },
           el("button", { type: "button", class: "planning-person-link", onclick: () => setView(String(person.id)) }, person.display_name),
         ),
-        ...days().map((day, i) => {
-          const cell = el("td", { class: day === today ? "planning-today" : "" }, ...entriesOn(day, person.id).map((entry) => chip(entry)));
-          if (mayDispatch) {
-            cell.append(
-              el(
-                "button",
-                {
-                  type: "button",
-                  class: "planning-add",
-                  "aria-label": `Termin für ${person.display_name} am ${DAY_NAMES[i]} ${shortDate(day)} eintragen`,
-                  onclick: () => dialog.open(null, { day, personId: person.id }),
-                },
-                "+",
-              ),
-            );
-          }
-          return cell;
-        }),
+        ...days().map((day, i) => cell(rowKey("p", person.id), person.display_name, day, i)),
       ),
     );
+    if (resources.length) {
+      rows.push(
+        el("tr", { class: "planning-group" }, el("th", { scope: "rowgroup", colspan: "8" }, "Fahrzeuge und Maschinen")),
+        ...resources.map((resource) =>
+          el(
+            "tr",
+            {},
+            el(
+              "th",
+              { scope: "row", class: "planning-person" },
+              resource.name,
+              el("small", { class: "planning-resource-kind" }, resource.category_label),
+            ),
+            ...days().map((day, i) => cell(rowKey("r", resource.id), resource.name, day, i)),
+          ),
+        ),
+      );
+    }
     return el("div", { class: "table-scroll planning-board-wrap" }, el("table", { class: "planning-board" }, el("thead", {}, head), el("tbody", {}, ...rows)));
   }
 
@@ -228,7 +362,7 @@ export async function render(panel) {
       list.append(el("h2", {}, person.id === me.id ? "Meine Woche" : `Woche von ${person.display_name}`));
     }
     for (const day of days()) {
-      const dayEntries = entriesOn(day, personId);
+      const dayEntries = entriesOn(day, rowKey("p", personId));
       list.append(
         el(
           "section",
@@ -301,6 +435,7 @@ export async function render(panel) {
     const locationInput = el("input", { type: "text", autocomplete: "off", placeholder: "z. B. Potsdam, Lindenstraße 4" });
     const noteInput = el("input", { type: "text", autocomplete: "off" });
     const peopleBox = el("fieldset", { class: "planning-people" });
+    const resourcesBox = el("fieldset", { class: "planning-people" });
     const saveButton = el("button", { type: "submit", class: "button" }, "Speichern");
     const deleteButton = el("button", { type: "button", class: "button-quiet planning-delete" }, "Löschen");
     const cancelButton = el("button", { type: "button", class: "button-quiet" }, "Abbrechen");
@@ -318,6 +453,7 @@ export async function render(panel) {
       field("Ort", locationInput),
       field("Notiz", noteInput),
       peopleBox,
+      resourcesBox,
       formMessage,
       el("div", { class: "form-actions" }, saveButton, cancelButton, deleteButton),
     );
@@ -348,7 +484,22 @@ export async function render(panel) {
       );
     }
 
-    function open(entry, { day = today, personId = null } = {}) {
+    function fillResources(selected) {
+      resourcesBox.hidden = resources.length === 0;
+      resourcesBox.replaceChildren(
+        el("legend", {}, "Fahrzeuge und Maschinen"),
+        ...resources.map((resource) =>
+          el(
+            "label",
+            { class: "form-check" },
+            el("input", { type: "checkbox", value: String(resource.id), checked: selected.includes(resource.id) }),
+            el("span", {}, `${resource.name} (${resource.category_label})`),
+          ),
+        ),
+      );
+    }
+
+    function open(entry, { day = today, personId = null, resourceId = null } = {}) {
       editing = entry;
       formMessage.clear();
       kindSelect.replaceChildren(...kinds.map((kind) => el("option", { value: kind.kind }, kind.label)));
@@ -364,6 +515,7 @@ export async function render(panel) {
       locationInput.value = entry?.location ?? "";
       noteInput.value = entry?.note ?? "";
       fillPeople(entry ? entry.people.map((p) => p.id) : personId ? [personId] : []);
+      fillResources(entry ? entry.resources.map((r) => r.id) : resourceId ? [resourceId] : []);
       deleteButton.hidden = !entry;
       node.showModal();
       titleInput.focus();
@@ -373,6 +525,7 @@ export async function render(panel) {
       event.preventDefault();
       formMessage.clear();
       const chosen = [...peopleBox.querySelectorAll("input:checked")].map((box) => Number(box.value));
+      const chosenResources = [...resourcesBox.querySelectorAll("input:checked")].map((box) => Number(box.value));
       const body = {
         title: titleInput.value,
         kind: kindSelect.value,
@@ -383,6 +536,7 @@ export async function render(panel) {
         location: locationInput.value,
         note: noteInput.value,
         people: chosen,
+        resources: chosenResources,
       };
       try {
         const saved = editing
@@ -418,7 +572,11 @@ export async function render(panel) {
   }
 
   // --- Start ---
-  [people, kinds] = await Promise.all([getJson("/api/planning/people"), getJson("/api/planning/kinds")]);
+  [people, resources, kinds] = await Promise.all([
+    getJson("/api/planning/people"),
+    getJson("/api/planning/resources"),
+    getJson("/api/planning/kinds"),
+  ]);
   fillViewSelect();
   await loadWeek();
 }

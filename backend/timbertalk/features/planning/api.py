@@ -18,7 +18,14 @@ from timbertalk.db import get_session
 from timbertalk.features.accounts.deps import can, current_account, require
 from timbertalk.features.accounts.models import Account, Person
 from timbertalk.features.planning import service
-from timbertalk.features.planning.models import EntryIn, EntryInfo, KindInfo, SavedEntry
+from timbertalk.features.planning.models import (
+    EntryIn,
+    EntryInfo,
+    KindInfo,
+    ResourceIn,
+    ResourceInfo,
+    SavedEntry,
+)
 
 router = APIRouter(prefix="/api/planning", tags=["Planung: Kalender je Mitarbeiter"])
 
@@ -85,3 +92,32 @@ def delete_entry(
     session: Session = Depends(get_session),
 ) -> None:
     _run(service.delete_entry, session, entry_id, account.id)
+
+
+# --- Fahrzeuge und Maschinen: sehen darf jeder, pflegen wer plant ---------------------
+
+
+@router.get("/resources")
+def list_resources(
+    include_inactive: bool = False, session: Session = Depends(get_session)
+) -> list[ResourceInfo]:
+    return service.list_resources(session, include_inactive)
+
+
+@router.post("/resources", status_code=201, summary="Fahrzeug oder Maschine anlegen")
+def create_resource(
+    data: ResourceIn,
+    _: Account = Depends(require("calendar.dispatch")),
+    session: Session = Depends(get_session),
+) -> ResourceInfo:
+    return _run(service.create_resource, session, data)
+
+
+@router.put("/resources/{resource_id}", summary="Fahrzeug oder Maschine ändern")
+def update_resource(
+    resource_id: int,
+    data: ResourceIn,
+    _: Account = Depends(require("calendar.dispatch")),
+    session: Session = Depends(get_session),
+) -> ResourceInfo:
+    return _run(service.update_resource, session, resource_id, data)

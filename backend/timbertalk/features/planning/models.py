@@ -21,6 +21,12 @@ KINDS: dict[str, str] = {
 }
 ABSENCE_KINDS = {"vacation", "sick", "school"}
 
+# Arten von Fahrzeugen und Maschinen, die man mit einplanen kann (Kran, Transporter …).
+RESOURCE_CATEGORIES: dict[str, str] = {
+    "vehicle": "Fahrzeug",
+    "machine": "Maschine",
+}
+
 # --- Tabellen -------------------------------------------------------------------
 
 
@@ -51,7 +57,45 @@ class CalendarAssignment(SQLModel, table=True):
     account_id: int = Field(primary_key=True, index=True)  # Konto aus F10
 
 
+class Resource(SQLModel, table=True):
+    """Ein Fahrzeug oder eine Maschine, die man wie eine Person einplanen kann."""
+
+    __tablename__ = "planning_resource"
+
+    id: int | None = Field(default=None, primary_key=True)
+    name: str  # z. B. „Transporter B-TT 123“ oder „Autokran“
+    category: str  # Schlüssel aus RESOURCE_CATEGORIES
+    active: bool = True  # False: ausgemustert, erscheint nicht mehr auf der Plantafel
+
+
+class ResourceAssignment(SQLModel, table=True):
+    """Welches Fahrzeug, welche Maschine zu einem Termin gebraucht wird."""
+
+    __tablename__ = "planning_resource_assignment"
+
+    entry_id: int = Field(foreign_key="planning_entry.id", primary_key=True)
+    resource_id: int = Field(foreign_key="planning_resource.id", primary_key=True, index=True)
+
+
 # --- Antworten und Eingaben (keine Tabellen) -------------------------------------
+
+
+class ResourceInfo(SQLModel):
+    """Ein Fahrzeug oder eine Maschine für die Anzeige."""
+
+    id: int
+    name: str
+    category: str
+    category_label: str
+    active: bool
+
+
+class ResourceIn(SQLModel):
+    """Eingabe: ein neues oder geändertes Fahrzeug, eine Maschine."""
+
+    name: str
+    category: str = "vehicle"
+    active: bool = True
 
 
 class PersonRef(SQLModel):
@@ -75,6 +119,7 @@ class EntryInfo(SQLModel):
     location: str
     note: str
     people: list[PersonRef]
+    resources: list[PersonRef]  # Fahrzeuge und Maschinen: Nummer und Name
 
 
 class SavedEntry(SQLModel):
@@ -103,4 +148,5 @@ class EntryIn(SQLModel):
     end_time: time | None = None
     location: str = ""
     note: str = ""
-    people: list[int]  # Nummern der Konten
+    people: list[int] = []  # Nummern der Konten
+    resources: list[int] = []  # Nummern der Fahrzeuge und Maschinen
