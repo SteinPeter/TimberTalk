@@ -155,15 +155,11 @@ def list_accounts(session: Session) -> list[AccountInfo]:
 
 
 def list_people(session: Session) -> list[Person]:
-    """Alle aktiven Konten mit Name und Rolle, nach Namen sortiert – für andere Features,
-    z. B. die Plantafel im Kalender (F8). Ohne Anmeldename, Personalnummer und Rechte."""
+    """Alle aktiven Konten mit Nummer und Name, nach Namen sortiert – für andere Features,
+    z. B. die Plantafel im Kalender (F8). Ohne Rolle, Anmeldename, Personalnummer und Rechte."""
     statement = select(Account).where(col(Account.active).is_(True)).order_by(Account.display_name)
     return [
-        Person(
-            id=account.id,
-            display_name=account.display_name,
-            role_label=ROLES.get(account.role, account.role),
-        )
+        Person(id=account.id, display_name=account.display_name)
         for account in session.exec(statement)
     ]
 

@@ -391,7 +391,6 @@ def test_personenliste_fuer_andere_features_ohne_gesperrte(session: Session) -> 
     service.create_account(session, "max", "Max Berger", "journeyman")
     weg, _ = service.create_account(session, "weg", "Alt Geselle", "journeyman")
     service.update_account(session, weg.id, "Alt Geselle", "journeyman", None, False, admin)
-    assert [(p.display_name, p.role_label) for p in service.list_people(session)] == [
-        ("Admin", "Admin"),
-        ("Max Berger", "Geselle"),
-    ]
+    people = service.list_people(session)
+    assert [p.display_name for p in people] == ["Admin", "Max Berger"]
+    assert "role" not in people[0].model_dump_json()  # die Rolle sehen nur Chef und Admin

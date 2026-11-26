@@ -197,7 +197,6 @@ export async function render(panel) {
           "th",
           { scope: "row", class: "planning-person" },
           el("button", { type: "button", class: "planning-person-link", onclick: () => setView(String(person.id)) }, person.display_name),
-          el("small", {}, person.role_label),
         ),
         ...days().map((day, i) => {
           const cell = el("td", { class: day === today ? "planning-today" : "" }, ...entriesOn(day, person.id).map((entry) => chip(entry)));
@@ -343,7 +342,7 @@ export async function render(panel) {
             "label",
             { class: "form-check" },
             el("input", { type: "checkbox", value: String(person.id), checked: selected.includes(person.id) }),
-            el("span", {}, `${person.display_name} (${person.role_label})`),
+            el("span", {}, person.display_name),
           ),
         ),
       );

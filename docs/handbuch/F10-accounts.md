@@ -49,7 +49,7 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | `PUT /api/accounts/roles/{role}/permissions/{permission}` | `accounts.manage` | `set_role_permission()` | Ein Häkchen setzen oder entfernen. |
 
 Für andere Features ohne eigenen Endpunkt: `list_people()` – alle aktiven Konten nur mit Nummer,
-Name und Rolle (z. B. für die Zeilen der Plantafel in F8).
+Name (z. B. für die Zeilen der Plantafel in F8). Die Rolle gibt es bewusst nur über `GET /api/accounts`.
 
 Fehler aus dem Service werden in `_run()` zu Antworten mit deutschem Text: `LoginFailed` → 401,
 `PermissionError` → 403, `LookupError` → 404, `ValueError` → 422.

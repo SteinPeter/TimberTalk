@@ -70,11 +70,13 @@ class AccountInfo(SQLModel):
 
 
 class Person(SQLModel):
-    """Eine Person für Listen anderer Features (z. B. Zeilen im Kalender): nur Name und Rolle."""
+    """Eine Person für Listen anderer Features (z. B. Zeilen im Kalender): nur Nummer und Name.
+
+    Die Rolle steht absichtlich nicht dabei – sie sehen nur Chef und Admin in der Kontenverwaltung.
+    """
 
     id: int
     display_name: str
-    role_label: str
 
 
 class Me(AccountInfo):

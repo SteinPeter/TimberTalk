@@ -749,12 +749,6 @@ h1 {
   background: var(--card) !important;
 }
 
-.planning-person small {
-  display: block;
-  font-weight: 400;
-  color: var(--muted);
-}
-
 .planning-person-link {
   padding: 0;
   font: inherit;
