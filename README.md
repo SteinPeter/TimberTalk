@@ -18,6 +18,15 @@ Beim allerersten Start gibt es ein Konto: Anmeldename `admin`, Passwort `admin`.
 Anmeldung muss man ein eigenes Passwort festlegen; danach legt man in „Einstellungen →
 Benutzerkonten“ die Konten für den Betrieb an.
 
+Passwort des einzigen Admin-Kontos vergessen? Direkt am Rechner im Betrieb (im Ordner `backend/`):
+
+```bash
+uv run python -m timbertalk.features.accounts.cli admin
+```
+
+Das Konto bekommt wieder das Standardpasswort (`timbertalk-start`, falls nicht geändert); bei der
+nächsten Anmeldung legt man ein eigenes fest.
+
 ## Aufbau
 
 ```

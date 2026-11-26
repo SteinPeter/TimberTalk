@@ -10,6 +10,7 @@
 | `backend/timbertalk/features/accounts/security.py` | Passwort-Hash mit `scrypt`, Startpasswörter, Sitzungsschlüssel und deren Hash. |
 | `backend/timbertalk/features/accounts/models.py` | Die drei Tabellen und die Antwort- und Eingabeklassen. |
 | `backend/timbertalk/features/accounts/service.py` | Die Logik: Konten, Anmelden, Passwörter, Rechte, erstes Admin-Konto. |
+| `backend/timbertalk/features/accounts/cli.py` | Notfall-Befehl am Rechner: `uv run python -m timbertalk.features.accounts.cli <anmeldename>` setzt ein Konto auf das Standardpasswort zurück (entsperrt, alle Anmeldungen enden) – auch das einzige Admin-Konto. |
 | `backend/timbertalk/features/accounts/deps.py` | Bausteine für alle Endpunkte: `require_login`, `current_account`, `require()`, `can()`. |
 | `backend/timbertalk/features/accounts/api.py` | Die Endpunkte unter `/api/accounts`, setzt und löscht das Cookie. |
 | `backend/timbertalk/features/accounts/test_accounts.py` | Tests für Passwörter, Konten, Anmeldung, Rechte und Endpunkte. |

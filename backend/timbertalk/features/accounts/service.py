@@ -284,7 +284,7 @@ def update_account(
 
 
 def reset_password(
-    session: Session, account_id: int, start_password: str | None, acting: Account
+    session: Session, account_id: int, start_password: str | None, acting: Account | None
 ) -> str:
     """Vergibt ein neues Startpasswort (z. B. wenn jemand seines vergessen hat).
 

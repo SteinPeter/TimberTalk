@@ -530,3 +530,22 @@ def test_api_demo_modus(client: TestClient, anonymous_client: TestClient) -> Non
     assert (
         anonymous_client.put("/api/accounts/demo-mode", json={"enabled": False}).status_code == 403
     )
+
+
+def test_notfall_befehl_setzt_vergessenes_admin_passwort_zurueck(
+    session: Session, engine, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from timbertalk.features.accounts import cli
+
+    admin = _admin(session)
+    service.change_own_password(session, admin, "geheim123", "vergessen-123", "")
+    for _ in range(service.MAX_FAILED_LOGINS):  # ausgesperrt
+        with pytest.raises(service.LoginFailed):
+            service.login(session, "chef.admin", "falsch!!")
+    monkeypatch.setattr(cli, "get_engine", lambda: engine)
+    assert cli.reset("chef.admin") == "chef.admin"
+    session.expire_all()
+    account, _ = service.login(session, "chef.admin", service.DEFAULT_STANDARD_PASSWORD)
+    assert account.must_change_password
+    with pytest.raises(LookupError):
+        cli.reset("gibt-es-nicht")
