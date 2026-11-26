@@ -2,6 +2,7 @@
 # Fixtures aus backend/conftest.py: `session` für service.py, `client` für api.py.
 # Jeder Test bekommt eine eigene, leere Datenbank.
 
+from collections.abc import Callable
 from datetime import date
 from decimal import Decimal
 
@@ -568,3 +569,83 @@ def test_doppelter_werkzeugname_bricht_ab() -> None:
             schema_aus={},
             beispiel={},
         )(lambda session: None)
+
+
+# --- Rechte (F10) ------------------------------------------------------------------
+
+
+def _material_mit_preis(client: TestClient) -> int:
+    material_id = client.post("/api/materials/items", json={"name": "Brett", "unit": "m"}).json()[
+        "id"
+    ]
+    client.post(
+        f"/api/materials/items/{material_id}/prices",
+        json={"unit_price": "12.50", "valid_from": "2026-01-01"},
+    )
+    return material_id
+
+
+def test_geselle_bucht_material_sieht_aber_keine_preise(
+    client: TestClient, client_as: Callable[[str], TestClient]
+) -> None:
+    material_id = _material_mit_preis(client)
+    geselle = client_as("journeyman")
+
+    items = geselle.get("/api/materials/items").json()
+    assert items[0]["name"] == "Brett"
+    assert items[0]["preis"] is None
+
+    gebucht = geselle.post(
+        "/api/materials/bookings/material",
+        json={
+            "project_id": 12,
+            "material_id": material_id,
+            "quantity": "4",
+            "booking_date": "2026-12-03",
+        },
+    )
+    assert gebucht.status_code == 201
+    assert gebucht.json()["unit_price"] is None
+    assert gebucht.json()["amount"] is None
+
+    liste = geselle.get("/api/materials/bookings", params={"project_id": 12}).json()
+    assert [(b["description"], b["quantity"], b["amount"]) for b in liste] == [("Brett", "4", None)]
+    # Der Chef sieht dieselbe Buchung mit Betrag.
+    assert (
+        client.get("/api/materials/bookings", params={"project_id": 12}).json()[0]["amount"]
+        == "50.00"
+    )
+
+
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("GET", "/api/materials/projects/12/costs"),
+        ("GET", "/api/materials/company"),
+        ("GET", "/api/materials/hourly-rates"),
+        ("GET", "/api/materials/items/1/prices"),
+        ("POST", "/api/materials/items/1/prices"),
+        ("PUT", "/api/materials/company"),
+        ("POST", "/api/materials/items"),
+    ],
+)
+def test_geselle_kommt_nicht_an_geld_und_stammdaten(
+    client_as: Callable[[str], TestClient], method: str, path: str
+) -> None:
+    response = client_as("journeyman").request(method, path, json={})
+    assert response.status_code == 403
+
+
+def test_verwaltung_aendert_preise_meister_sieht_sie_nur(
+    client: TestClient, client_as: Callable[[str], TestClient]
+) -> None:
+    material_id = _material_mit_preis(client)
+    preis = {"unit_price": "13.00", "valid_from": "2026-02-01"}
+    meister = client_as("master")
+    verwaltung = client_as("office")
+
+    assert meister.get("/api/materials/projects/12/costs").status_code == 200
+    assert meister.post(f"/api/materials/items/{material_id}/prices", json=preis).status_code == 403
+    assert (
+        verwaltung.post(f"/api/materials/items/{material_id}/prices", json=preis).status_code == 201
+    )

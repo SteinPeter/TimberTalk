@@ -13,8 +13,10 @@ uv sync
 uv run timbertalk
 ```
 
-Der Server läuft dann auf <http://127.0.0.1:8000> und der Browser öffnet sich mit der Seite
-„TimberTalk läuft“. Sie zeigt, ob Backend und Datenbank antworten.
+Der Server läuft dann auf <http://127.0.0.1:8000> und der Browser öffnet sich mit der Anmeldung.
+Beim allerersten Start gibt es ein Konto: Anmeldename `admin`, Passwort `admin`. Bei der ersten
+Anmeldung muss man ein eigenes Passwort festlegen; danach legt man in „Einstellungen →
+Benutzerkonten“ die Konten für den Betrieb an.
 
 ## Aufbau
 
@@ -37,6 +39,9 @@ dazu ein eigenes Kapitel unter `docs/handbuch/`.
 | Projekt | `project` |
 | Buchung | `booking` |
 | Kostenart | `cost_type` |
+| Konto | `account` |
+| Rolle (Chef, Meister, Verwaltung, Geselle) | `role` (`owner`, `master`, `office`, `journeyman`) |
+| Recht | `permission` |
 
 ## Den alten Code ansehen
 

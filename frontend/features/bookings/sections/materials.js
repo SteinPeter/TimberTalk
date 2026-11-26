@@ -1,8 +1,11 @@
 // Der Abschnitt „Material und Fahrten“ im Reiter „Buchungen“ (Feature F5):
 // Man wählt ein Projekt, bucht Material und Fahrten darauf und sieht die Gesamtkosten.
 // Eingetragen ist der Abschnitt in bookings/sections.js.
+// Ohne das Recht „finance.view“ (z. B. Gesellen, F10) bleiben Preise, Beträge und Gesamtkosten
+// ausgeblendet; buchen geht trotzdem – den Preis setzt das Backend.
 
 import { getJson } from "../../../shared/api.js";
+import { can } from "../../../shared/session.js";
 import {
   el,
   field,
@@ -23,6 +26,7 @@ export const title = "Material und Fahrten";
 
 // Baut den Abschnitt in `container` auf.
 export function render(container) {
+  const showPrices = can("finance.view");
   let projectId = null;
   let materials = [];
 
@@ -39,7 +43,7 @@ export function render(container) {
   );
 
   // --- Kosten ---
-  const costs = el("dl", { class: "materials-costs" });
+  const costs = el("dl", { class: "materials-costs", hidden: !showPrices });
 
   // --- Material buchen ---
   const materialSelect = el("select", { required: "" });
@@ -113,9 +117,11 @@ export function render(container) {
       el(
         "tr",
         {},
-        ...["Datum", "Art", "Beschreibung", "Menge", "Preis", "Betrag", "Status"].map((text, i) =>
-          el("th", { scope: "col", class: i >= 3 && i <= 5 ? "materials-number" : "" }, text),
-        ),
+        ...["Datum", "Art", "Beschreibung", "Menge", "Preis", "Betrag", "Status"]
+          .map((text, i) =>
+            el("th", { scope: "col", class: i >= 3 && i <= 5 ? "materials-number" : "" }, text),
+          )
+          .filter((_, i) => showPrices || (i !== 4 && i !== 5)),
       ),
     ),
     bookingsBody,
@@ -125,7 +131,7 @@ export function render(container) {
   const work = el(
     "div",
     { hidden: true },
-    el("h2", {}, "Gesamtkosten"),
+    el("h2", { hidden: !showPrices }, "Gesamtkosten"),
     costs,
     materialForm,
     travelForm,
@@ -172,8 +178,12 @@ export function render(container) {
           el("td", {}, KIND_LABEL[booking.kind] ?? booking.kind),
           el("td", {}, booking.description),
           el("td", { class: "materials-number" }, `${formatNumber(booking.quantity)} ${booking.unit}`),
-          el("td", { class: "materials-number" }, formatEuro(booking.unit_price)),
-          el("td", { class: "materials-number" }, formatEuro(booking.amount)),
+          ...(showPrices
+            ? [
+                el("td", { class: "materials-number" }, formatEuro(booking.unit_price)),
+                el("td", { class: "materials-number" }, formatEuro(booking.amount)),
+              ]
+            : []),
           el("td", {}, STATUS_LABEL[booking.status] ?? booking.status),
         ),
       ),
@@ -184,6 +194,8 @@ export function render(container) {
     const material = materials.find((m) => String(m.id) === materialSelect.value);
     if (!material) {
       priceHint.textContent = "Im Materialstamm (Einstellungen) ist noch kein Material angelegt.";
+    } else if (!showPrices) {
+      priceHint.textContent = "Der Preis wird beim Buchen automatisch übernommen.";
     } else if (material.preis === null) {
       priceHint.textContent =
         "Für dieses Material ist noch kein Preis eingetragen. Das geht unter Einstellungen.";
@@ -199,7 +211,8 @@ export function render(container) {
   function updateButtons() {
     const material = materials.find((m) => String(m.id) === materialSelect.value);
     const quantityOk = toDecimalText(materialQuantity.value) !== null;
-    materialButton.disabled = !(material && material.preis !== null && quantityOk);
+    const priceOk = !showPrices || material?.preis !== null;
+    materialButton.disabled = !(material && priceOk && quantityOk);
     travelButton.disabled = toDecimalText(travelKm.value) === null;
   }
 
@@ -210,12 +223,11 @@ export function render(container) {
       return;
     }
     try {
-      const [costsData, bookings] = await Promise.all([
-        getJson(`/api/materials/projects/${projectId}/costs`),
-        getJson(`/api/materials/bookings?project_id=${projectId}`),
-      ]);
-      showCosts(costsData);
+      const bookings = await getJson(`/api/materials/bookings?project_id=${projectId}`);
       showBookings(bookings);
+      if (showPrices) {
+        showCosts(await getJson(`/api/materials/projects/${projectId}/costs`));
+      }
     } catch (error) {
       message.show(error.message, true);
     }
