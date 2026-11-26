@@ -21,6 +21,10 @@ from timbertalk.features.accounts.models import (
     AccountInfo,
     AccountPermission,
     AccountSession,
+    DemoModeIn,
+    DemoPerson,
+    LoginHint,
+    LoginInfo,
     Me,
     PermissionInfo,
     Person,
@@ -162,9 +166,14 @@ def info(account: Account) -> AccountInfo:
 
 
 def me(session: Session, account: Account) -> Me:
-    """Das eigene Konto mit allen Rechten, die es gerade hat."""
+    """Das eigene Konto mit allen Rechten, die es gerade hat.
+
+    Im Demo-Modus muss niemand zuerst ein eigenes Passwort festlegen.
+    """
     permissions = sorted(account_permissions(session, account))
-    return Me(**info(account).model_dump(), permissions=permissions)
+    data = info(account).model_dump()
+    data["must_change_password"] = account.must_change_password and not demo_mode(session)
+    return Me(**data, permissions=permissions)
 
 
 def list_accounts(session: Session) -> list[AccountInfo]:
@@ -373,6 +382,99 @@ def set_photo(
     return account
 
 
+# --- Demo-Modus und Anmeldedaten für die Entwicklung ---------------------------------
+#
+# Im Demo-Modus meldet man sich ohne Passwort an: automatisch als das voreingestellte Konto oder
+# mit einem Klick als irgendein aktives Konto – praktisch, um im Meeting Chef- und Gesellen-Sicht
+# zu zeigen. Dann kommt JEDER ins Programm, der die Seite erreicht. Nur für Vorführungen.
+
+DEMO_MODE_KEY = "demo_mode"
+DEMO_ACCOUNT_KEY = "demo_account_id"
+
+
+def _setting(session: Session, key: str) -> str | None:
+    stored = session.get(Setting, key)
+    return stored.value if stored is not None else None
+
+
+def _set_setting(session: Session, key: str, value: str | None) -> None:
+    stored = session.get(Setting, key)
+    if value is None:
+        if stored is not None:
+            session.delete(stored)
+        return
+    stored = stored or Setting(key=key, value=value)
+    stored.value = value
+    session.add(stored)
+
+
+def demo_mode(session: Session) -> bool:
+    return _setting(session, DEMO_MODE_KEY) == "on"
+
+
+def demo_settings(session: Session) -> DemoModeIn:
+    account_id = _setting(session, DEMO_ACCOUNT_KEY)
+    return DemoModeIn(
+        enabled=demo_mode(session), account_id=int(account_id) if account_id else None
+    )
+
+
+def set_demo_mode(session: Session, enabled: bool, account_id: int | None) -> DemoModeIn:
+    """Schaltet den Demo-Modus an oder aus und legt fest, als wen automatisch angemeldet wird."""
+    if account_id is not None:
+        account = get_account(session, account_id)
+        if not account.active:
+            raise ValueError("Ein gesperrtes Konto kann nicht das Demo-Konto sein.")
+    _set_setting(session, DEMO_MODE_KEY, "on" if enabled else None)
+    _set_setting(session, DEMO_ACCOUNT_KEY, str(account_id) if account_id else None)
+    session.commit()
+    return demo_settings(session)
+
+
+def demo_login(session: Session, account_id: int | None) -> tuple[Account, str]:
+    """Meldet im Demo-Modus ohne Passwort an. Ohne account_id: das voreingestellte Konto."""
+    if not demo_mode(session):
+        raise PermissionError("Der Demo-Modus ist aus. Bitte mit Passwort anmelden.")
+    account_id = account_id or demo_settings(session).account_id
+    if account_id is None:
+        raise ValueError("Für den Demo-Modus ist kein Konto voreingestellt.")
+    account = get_account(session, account_id)
+    if not account.active:
+        raise LoginFailed("Dieses Konto ist gesperrt.")
+    return account, _start_session(session, account)
+
+
+def login_info(session: Session, show_hint: bool) -> LoginInfo:
+    """Für die Anmeldeseite: Demo-Modus mit Konten zum Anklicken, Anmeldedaten für Entwickler."""
+    demo = demo_settings(session)
+    people = []
+    if demo.enabled:
+        statement = (
+            select(Account).where(col(Account.active).is_(True)).order_by(Account.display_name)
+        )
+        people = [
+            DemoPerson(id=a.id, display_name=a.display_name, role_label=ROLES.get(a.role, a.role))
+            for a in session.exec(statement)
+        ]
+    hint = None
+    if show_hint:
+        admin = session.exec(
+            select(Account).where(Account.username == INITIAL_ADMIN_USERNAME)
+        ).first()
+        initial = (
+            admin is not None
+            and admin.must_change_password
+            and security.verify_password(INITIAL_ADMIN_PASSWORD, admin.password_hash)
+        )
+        hint = LoginHint(initial_admin=initial, standard_password=standard_password(session))
+    return LoginInfo(
+        demo_mode=demo.enabled,
+        demo_account_id=demo.account_id if demo.enabled else None,
+        demo_people=people,
+        hint=hint,
+    )
+
+
 # --- Anmelden und Passwort ----------------------------------------------------------
 
 
@@ -406,9 +508,15 @@ def login(session: Session, identifier: str, password: str) -> tuple[Account, st
     if not account.active:
         raise LoginFailed("Dieses Konto ist gesperrt. Bitte beim Admin melden.")
 
-    token = security.new_session_token()
     account.failed_logins = 0
     account.locked_until = None
+    return account, _start_session(session, account)
+
+
+def _start_session(session: Session, account: Account) -> str:
+    """Legt eine Anmeldung an und gibt den Sitzungsschlüssel für den Browser zurück."""
+    token = security.new_session_token()
+    now = _now()
     session.add(
         AccountSession(
             token_hash=security.token_hash(token),
@@ -421,7 +529,7 @@ def login(session: Session, identifier: str, password: str) -> tuple[Account, st
     session.add(account)
     session.commit()
     session.refresh(account)
-    return account, token
+    return token
 
 
 def _is_locked(account: Account, now: datetime) -> bool:

@@ -26,7 +26,10 @@ from timbertalk.features.accounts.models import (
     AccountPermission,
     AccountUpdateIn,
     CreatedAccount,
+    DemoLoginIn,
+    DemoModeIn,
     LoginIn,
+    LoginInfo,
     Me,
     PasswordChangeIn,
     PermissionIn,
@@ -36,6 +39,7 @@ from timbertalk.features.accounts.models import (
     StartPassword,
     UserPermissionIn,
 )
+from timbertalk.settings import get_settings
 
 router = APIRouter(prefix="/api/accounts", tags=["Benutzerkonten und Rechte"])
 
@@ -54,12 +58,7 @@ def _run(function: Callable, *args):
         raise HTTPException(status_code=422, detail=str(error)) from error
 
 
-# --- Anmelden und eigenes Konto -------------------------------------------------------
-
-
-@router.post("/login")
-def login(data: LoginIn, response: Response, session: Session = Depends(get_session)) -> Me:
-    account, token = _run(service.login, session, data.identifier, data.password)
+def _set_cookie(response: Response, token: str) -> None:
     # httponly: JavaScript kommt nicht an den Schlüssel. samesite=strict: fremde Seiten können
     # keine Anfragen mit diesem Cookie schicken.
     response.set_cookie(
@@ -70,6 +69,29 @@ def login(data: LoginIn, response: Response, session: Session = Depends(get_sess
         samesite="strict",
         path="/",
     )
+
+
+# --- Anmelden und eigenes Konto -------------------------------------------------------
+
+
+@router.get("/login-info")
+def login_info(session: Session = Depends(get_session)) -> LoginInfo:
+    return service.login_info(session, get_settings().dev_login_hint)
+
+
+@router.post("/demo-login")
+def demo_login(
+    data: DemoLoginIn, response: Response, session: Session = Depends(get_session)
+) -> Me:
+    account, token = _run(service.demo_login, session, data.account_id)
+    _set_cookie(response, token)
+    return service.me(session, account)
+
+
+@router.post("/login")
+def login(data: LoginIn, response: Response, session: Session = Depends(get_session)) -> Me:
+    account, token = _run(service.login, session, data.identifier, data.password)
+    _set_cookie(response, token)
     return service.me(session, account)
 
 
@@ -116,6 +138,26 @@ def set_own_photo(
     return service.me(session, account)
 
 
+# --- Demo-Modus (Recht „accounts.manage“) ----------------------------------------------
+
+
+@router.get("/demo-mode")
+def get_demo_mode(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> DemoModeIn:
+    return service.demo_settings(session)
+
+
+@router.put("/demo-mode", summary="Demo-Modus ändern")
+def set_demo_mode(
+    data: DemoModeIn,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> DemoModeIn:
+    return _run(service.set_demo_mode, session, data.enabled, data.account_id)
+
+
+# Achtung Reihenfolge: Feste Adressen wie /demo-mode stehen vor /{account_id}.
 # --- Konten verwalten (Recht „accounts.manage“) ------------------------------------------
 
 

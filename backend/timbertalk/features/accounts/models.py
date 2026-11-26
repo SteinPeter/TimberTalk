@@ -140,6 +140,43 @@ class AccountPermission(SQLModel):
     locked: bool  # nicht abwählbar
 
 
+class DemoPerson(SQLModel):
+    """Ein Konto, als das man sich im Demo-Modus mit einem Klick anmelden kann."""
+
+    id: int
+    display_name: str
+    role_label: str
+
+
+class LoginHint(SQLModel):
+    """Anmeldedaten für die Entwicklung – nur mit TIMBERTALK_DEV_LOGIN_HINT."""
+
+    initial_admin: bool  # gilt noch admin / admin?
+    standard_password: str  # damit melden sich neue Konten das erste Mal an
+
+
+class LoginInfo(SQLModel):
+    """Was die Anmeldeseite vorher wissen muss (ohne Anmeldung abrufbar)."""
+
+    demo_mode: bool
+    demo_account_id: int | None  # als wer man automatisch angemeldet wird
+    demo_people: list[DemoPerson]  # nur im Demo-Modus gefüllt
+    hint: LoginHint | None  # nur während der Entwicklung
+
+
+class DemoModeIn(SQLModel):
+    """Eingabe und Antwort: Demo-Modus an/aus und als wen automatisch angemeldet wird."""
+
+    enabled: bool
+    account_id: int | None = None
+
+
+class DemoLoginIn(SQLModel):
+    """Eingabe: im Demo-Modus anmelden – ohne account_id als das voreingestellte Konto."""
+
+    account_id: int | None = None
+
+
 class UserPermissionIn(SQLModel):
     """Eingabe: Ausnahme setzen (True/False) oder entfernen (None = wie die Rolle)."""
 

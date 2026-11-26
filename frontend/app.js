@@ -7,8 +7,9 @@
 // erscheint nur, wenn das Konto dieses Recht hat.
 
 import { REITER } from "./reiter.js";
+import { sendJson } from "./shared/api.js";
 import { avatar, el, lastName, menuButton, openSettings } from "./shared/dom.js";
-import { renderFirstPassword, renderLogin } from "./shared/login.js";
+import { loadLoginInfo, renderFirstPassword, renderLogin } from "./shared/login.js";
 import { notificationsButton } from "./shared/notifications.js";
 import { can, loadAccount, logout } from "./shared/session.js";
 
@@ -31,8 +32,19 @@ try {
 }
 
 if (reachable && account === null) {
-  nav.hidden = true;
-  renderLogin(main);
+  // Demo-Modus: automatisch als das voreingestellte Konto anmelden – außer man hat sich gerade
+  // abgemeldet (dann soll man ein anderes Konto wählen können).
+  const info = await loadLoginInfo();
+  if (info?.demo_mode && info.demo_account_id && !justLoggedOut()) {
+    try {
+      await sendJson("POST", "/api/accounts/demo-login", {});
+      window.location.reload();
+    } catch {
+      showLogin(info);
+    }
+  } else {
+    showLogin(info);
+  }
 } else if (account?.must_change_password) {
   nav.hidden = true;
   header.append(accountBox(account));
@@ -43,6 +55,19 @@ if (reachable && account === null) {
     header.querySelector(".account").prepend(notificationsButton());
   }
   startTabs(REITER.filter((reiter) => !reiter.permission || can(reiter.permission)));
+}
+
+function showLogin(info) {
+  nav.hidden = true;
+  renderLogin(main, info);
+}
+
+function justLoggedOut() {
+  try {
+    return sessionStorage.getItem("timbertalk.loggedOut") === "1";
+  } catch {
+    return false;
+  }
 }
 
 // Rechts in der Leiste: Foto (oder Initialen) mit dem Nachnamen darunter. Ein Klick öffnet ein

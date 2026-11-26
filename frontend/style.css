@@ -1736,3 +1736,43 @@ textarea {
   font-weight: 700;
   color: var(--accent);
 }
+
+/* --- Demo-Modus und Anmeldedaten (shared/login.js, accounts-demo.js) --- */
+
+.login-demo {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--line);
+}
+
+.login-demo h2 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.login-demo-people {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.login-hint-link {
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  background: none;
+  border: 0;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Warnung: fett und mit Balken – nicht nur Farbe. */
+.accounts-demo-warning {
+  margin: 1rem 0 0;
+  padding: 0.6rem 0.9rem;
+  font-weight: 600;
+  border-left: 4px solid var(--accent);
+  background: var(--page);
+  border-radius: 0.375rem;
+}

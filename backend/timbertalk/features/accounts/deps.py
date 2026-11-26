@@ -29,7 +29,11 @@ from timbertalk.features.accounts.permissions import PERMISSIONS
 COOKIE_NAME = "timbertalk_session"
 
 # Diese Adressen gehen ohne Anmeldung.
-PUBLIC_PATHS = {"/api/accounts/login"}
+PUBLIC_PATHS = {
+    "/api/accounts/login",
+    "/api/accounts/login-info",  # Demo-Modus? Anmeldedaten für die Entwicklung?
+    "/api/accounts/demo-login",  # geht nur, wenn der Demo-Modus an ist
+}
 
 # Adressen, die mit diesem Anfang ohne Anmeldung gehen. Der Kalender-Abo-Link (F8) muss von der
 # Kalender-App des Handys abrufbar sein, die sich nicht anmelden kann; dort schützt ein geheimer,
@@ -75,7 +79,12 @@ def require_login(request: Request, session: Session = Depends(get_session)) -> 
     if path in PUBLIC_PATHS or path.startswith(PUBLIC_PREFIXES):
         return
     account = _account_or_401(request, session)
-    if account.must_change_password and request.url.path not in PASSWORD_CHANGE_PATHS:
+    # Im Demo-Modus muss niemand zuerst ein eigenes Passwort festlegen.
+    if (
+        account.must_change_password
+        and request.url.path not in PASSWORD_CHANGE_PATHS
+        and not service.demo_mode(session)
+    ):
         raise HTTPException(status_code=403, detail="Bitte zuerst ein eigenes Passwort festlegen.")
 
 

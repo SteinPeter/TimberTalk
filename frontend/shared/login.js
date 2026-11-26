@@ -2,14 +2,19 @@
 // app.js zeigt renderLogin(), solange niemand angemeldet ist, und renderFirstPassword(), solange
 // das Konto noch ein Startpasswort hat. passwordForm() benutzt auch der Abschnitt „Mein Konto“.
 
-import { sendJson } from "./api.js";
+import { getJson, sendJson } from "./api.js";
 import { el, field, messageBox } from "./dom.js";
 
 // So lang muss ein Passwort mindestens sein (wie MIN_PASSWORD_LENGTH im Backend).
 const MIN_LENGTH = 8;
 
+// Merkt sich im Browser, dass das Fenster mit den Anmeldedaten schon einmal gezeigt wurde.
+const HINT_SEEN_KEY = "timbertalk.devhint.seen";
+
 // Die Anmeldeseite. Nach erfolgreicher Anmeldung wird die Seite neu geladen.
-export function renderLogin(container) {
+// info kommt von GET /api/accounts/login-info: Demo-Modus (Knöpfe „Anmelden als …“) und – während
+// der Entwicklung – die Anmeldedaten, die vor der ersten Anmeldung in einem Fenster erscheinen.
+export function renderLogin(container, info = null) {
   const identifier = el("input", {
     type: "text",
     name: "username",
@@ -62,7 +67,124 @@ export function renderLogin(container) {
   });
 
   container.replaceChildren(form);
+  if (info?.demo_mode) {
+    form.append(demoChooser(info));
+  }
+  if (info?.hint) {
+    const dialog = hintDialog(info.hint);
+    form.append(
+      el("p", { class: "form-hint" }, el("button", { type: "button", class: "login-hint-link", onclick: () => dialog.showModal() }, "Anmeldedaten für die Entwicklung anzeigen")),
+      dialog,
+    );
+    // Vor der ersten Anmeldung in diesem Browser: von selbst öffnen.
+    if (!recall(HINT_SEEN_KEY)) {
+      remember(HINT_SEEN_KEY, "1");
+      dialog.showModal();
+      return;
+    }
+  }
   identifier.focus();
+}
+
+// Demo-Modus: mit einem Klick ohne Passwort als ein Konto anmelden.
+function demoChooser(info) {
+  const message = messageBox();
+  return el(
+    "section",
+    { class: "login-demo" },
+    el("h2", {}, "Demo-Modus"),
+    el("p", { class: "form-hint" }, "Ohne Passwort anmelden als:"),
+    el(
+      "div",
+      { class: "login-demo-people" },
+      ...info.demo_people.map((person) =>
+        el(
+          "button",
+          {
+            type: "button",
+            class: person.id === info.demo_account_id ? "button" : "button-quiet",
+            onclick: async () => {
+              try {
+                await sendJson("POST", "/api/accounts/demo-login", { account_id: person.id });
+                window.location.reload();
+              } catch (error) {
+                message.show(error.message, true);
+              }
+            },
+          },
+          `${person.display_name} (${person.role_label})`,
+        ),
+      ),
+    ),
+    message,
+  );
+}
+
+// Fenster mit den Anmeldedaten – nur während der Entwicklung (TIMBERTALK_DEV_LOGIN_HINT).
+function hintDialog(hint) {
+  const rows = [];
+  if (hint.initial_admin) {
+    rows.push(["Erstes Konto", "admin", "admin"]);
+  }
+  rows.push(["Neue Konten", "ihr Anmeldename", hint.standard_password]);
+  const close = el("button", { type: "button", class: "button" }, "Verstanden");
+  const dialog = el(
+    "dialog",
+    { class: "accounts-dialog", "aria-labelledby": "login-hint-title" },
+    el(
+      "div",
+      { class: "form accounts-form" },
+      el("h2", { id: "login-hint-title" }, "Anmeldedaten (Entwicklung)"),
+      el(
+        "table",
+        { class: "table" },
+        el("thead", {}, el("tr", {}, ...["", "Anmeldename", "Passwort"].map((t) => el("th", { scope: "col" }, t)))),
+        el(
+          "tbody",
+          {},
+          ...rows.map(([label, user, password]) =>
+            el("tr", {}, el("th", { scope: "row" }, label), el("td", {}, user), el("td", { class: "accounts-standard-value" }, password)),
+          ),
+        ),
+      ),
+      el(
+        "p",
+        { class: "form-hint" },
+        "Bei der ersten Anmeldung muss man ein eigenes Passwort festlegen (außer im Demo-Modus). " +
+          "Dieses Fenster gibt es nur während der Entwicklung; im Betrieb schaltet " +
+          "TIMBERTALK_DEV_LOGIN_HINT=false es aus.",
+      ),
+      el("div", { class: "form-actions" }, close),
+    ),
+  );
+  close.addEventListener("click", () => dialog.close());
+  return dialog;
+}
+
+// Merken im Browser kann scheitern (z. B. im privaten Fenster) – dann eben nicht.
+function remember(key, value) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // nichts zu tun
+  }
+}
+
+function recall(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+// Was die Anmeldeseite vorher wissen muss. Fehler sind nicht schlimm: dann normale Anmeldung.
+export async function loadLoginInfo() {
+  try {
+    return await getJson("/api/accounts/login-info");
+  } catch {
+    return null;
+  }
 }
 
 // Erste Anmeldung mit Startpasswort: erst ein eigenes Passwort festlegen, dann geht es weiter.

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
 
+    # Während der Entwicklung: Vor der ersten Anmeldung zeigt die Anmeldeseite ein Fenster mit den
+    # Anmeldedaten (Erst-Konto admin/admin, Standardpasswort). Im Betrieb ausschalten:
+    # TIMBERTALK_DEV_LOGIN_HINT=false in backend/.env.
+    dev_login_hint: bool = True
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

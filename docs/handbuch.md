@@ -197,6 +197,7 @@ in `.gitignore`.
 | `database_url` | `TIMBERTALK_DATABASE_URL` | `sqlite:///…/backend/data/timbertalk.db` |
 | `host` | `TIMBERTALK_HOST` | `127.0.0.1` |
 | `port` | `TIMBERTALK_PORT` | `8000` |
+| `dev_login_hint` | `TIMBERTALK_DEV_LOGIN_HINT` | `true` – Fenster mit Anmeldedaten vor der ersten Anmeldung (F10); im Betrieb `false` |
 
 ### `db.py` – die Datenbank
 
