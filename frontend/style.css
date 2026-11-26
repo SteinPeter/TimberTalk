@@ -1110,3 +1110,44 @@ button.planning-chip[draggable="true"] {
 .planning-ical-link a {
   color: var(--accent);
 }
+
+/* --- Änderungsprotokoll (features/settings/sections/audit.js, F11) --- */
+
+.audit-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.audit-toolbar p {
+  margin: 0;
+}
+
+.audit-toolbar select {
+  min-height: 2.75rem;
+  padding: 0.35rem 0.6rem;
+  font: inherit;
+  color: var(--text);
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.375rem;
+}
+
+.audit-when {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.audit-area {
+  display: block;
+  color: var(--muted);
+}
+
+.audit-details {
+  font-size: 0.8125rem;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}

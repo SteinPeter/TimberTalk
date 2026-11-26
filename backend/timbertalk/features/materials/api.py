@@ -9,6 +9,7 @@
 # nur „finance.edit“. Material und Fahrten buchen braucht „bookings.create“ – wer keine Preise
 # sehen darf, bekommt Materialliste und Buchungen ohne Preis und Betrag.
 # Das Objekt `router` muss bleiben: load_features() hängt es an die App.
+# `summary` an den ändernden Endpunkten ist der Name im Änderungsprotokoll (F11).
 
 # ruff meldet B008 bei jedem `Depends(...)` im Parameter. Genau so schreibt es CLAUDE.md aber vor
 # (und FastAPI erwartet es), deshalb ist die Regel in dieser Datei ausgeschaltet.
@@ -66,7 +67,7 @@ def list_materials(
     return service.list_materials(session, category, on_date, show_prices)
 
 
-@router.post("/items", status_code=201)
+@router.post("/items", status_code=201, summary="Material anlegen")
 def create_material(
     data: MaterialIn,
     _: Account = Depends(require("materials.edit")),
@@ -84,7 +85,7 @@ def list_prices(
     return _run(service.list_prices, session, material_id)
 
 
-@router.post("/items/{material_id}/prices", status_code=201)
+@router.post("/items/{material_id}/prices", status_code=201, summary="Preis eintragen")
 def add_price(
     material_id: int,
     data: PriceIn,
@@ -104,7 +105,7 @@ def get_company(
     return service.get_company(session)
 
 
-@router.put("/company")
+@router.put("/company", summary="Firmendaten speichern")
 def save_company(
     data: CompanyIn,
     _: Account = Depends(require("finance.edit")),
@@ -120,7 +121,7 @@ def list_hourly_rates(
     return service.list_hourly_rates(session)
 
 
-@router.put("/hourly-rates")
+@router.put("/hourly-rates", summary="Stundensatz speichern")
 def save_hourly_rate(
     data: HourlyRateIn,
     _: Account = Depends(require("finance.edit")),
@@ -129,7 +130,7 @@ def save_hourly_rate(
     return _run(service.save_hourly_rate, session, data.name, data.rate)
 
 
-@router.delete("/hourly-rates/{hourly_rate_id}", status_code=204)
+@router.delete("/hourly-rates/{hourly_rate_id}", status_code=204, summary="Stundensatz löschen")
 def delete_hourly_rate(
     hourly_rate_id: int,
     _: Account = Depends(require("finance.edit")),
@@ -150,7 +151,7 @@ def list_bookings(
     return _run(service.list_bookings, session, project_id, show_prices)
 
 
-@router.post("/bookings/material", status_code=201)
+@router.post("/bookings/material", status_code=201, summary="Material buchen")
 def book_material(
     data: MaterialBookingIn,
     _: Account = Depends(require("bookings.create")),
@@ -169,7 +170,7 @@ def book_material(
     return service.booking_info(session, booking, show_prices)
 
 
-@router.post("/bookings/travel", status_code=201)
+@router.post("/bookings/travel", status_code=201, summary="Fahrt buchen")
 def book_travel(
     data: TravelBookingIn,
     _: Account = Depends(require("bookings.create")),

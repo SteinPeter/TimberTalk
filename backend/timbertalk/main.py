@@ -14,6 +14,7 @@ from timbertalk.db import create_tables, database_ok, get_engine
 from timbertalk.features import load_features
 from timbertalk.features.accounts import service as accounts
 from timbertalk.features.accounts.deps import require_login
+from timbertalk.features.audit.middleware import AuditMiddleware
 from timbertalk.settings import BACKEND_DIR, get_settings
 
 # Der Ordner frontend/ liegt neben backend/ im Hauptordner des Projekts.
@@ -34,6 +35,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="TimberTalk", lifespan=lifespan)
+
+# Das Änderungsprotokoll (F11) schreibt jede erfolgreiche Änderung über die API mit.
+app.add_middleware(AuditMiddleware)
 
 
 @app.get("/api/health")

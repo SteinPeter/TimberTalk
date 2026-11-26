@@ -73,7 +73,7 @@ def list_entries(
     return _run(service.list_entries, session, start, end, account.id, view_all, account_id)
 
 
-@router.post("/entries", status_code=201)
+@router.post("/entries", status_code=201, summary="Termin eintragen")
 def create_entry(
     data: EntryIn,
     account: Account = Depends(require("calendar.dispatch")),
@@ -82,7 +82,7 @@ def create_entry(
     return _run(service.create_entry, session, data, account.id)
 
 
-@router.put("/entries/{entry_id}")
+@router.put("/entries/{entry_id}", summary="Termin ändern")
 def update_entry(
     entry_id: int,
     data: EntryIn,
@@ -92,7 +92,7 @@ def update_entry(
     return _run(service.update_entry, session, entry_id, data, account.id)
 
 
-@router.delete("/entries/{entry_id}", status_code=204)
+@router.delete("/entries/{entry_id}", status_code=204, summary="Termin löschen")
 def delete_entry(
     entry_id: int,
     account: Account = Depends(require("calendar.dispatch")),

@@ -33,6 +33,7 @@ PERMISSIONS: dict[str, str] = {
     "calendar.dispatch": "Termine für alle planen und ändern",  # F8
     "calendar.request_absence": "Urlaub beantragen",  # F8
     "calendar.approve_absence": "Urlaubsanträge genehmigen oder ablehnen",  # F8
+    "audit.view": "Änderungsprotokoll sehen",  # F11
 }
 
 # Voreinstellung: welche Rolle welches Recht hat, solange niemand etwas ändert.

@@ -170,6 +170,9 @@ in `.gitignore`.
 - **Features einbinden**: `for router in load_features(): app.include_router(router, ...)`. Jedes
   Feature bringt seine Endpunkte als `router` in seiner `api.py` mit; `main.py` kennt die
   Features nicht mit Namen und wird für ein neues Feature nicht geändert.
+- **Änderungsprotokoll** (F11): `app.add_middleware(AuditMiddleware)` schreibt jede erfolgreiche
+  Änderung über die API mit (Kapitel `docs/handbuch/F11-audit.md`). Ein ändernder Endpunkt
+  bekommt dafür einen lesbaren Namen: `@router.post(..., summary="Preis eintragen")`.
 - **Anmeldung für alle Features**: Jeder Router bekommt dabei `dependencies=[Depends(require_login)]`
   aus `features/accounts/deps.py`. Ohne gültige Anmeldung antwortet jeder Feature-Endpunkt mit
   401; nur die Anmeldung selbst ist frei. Ein Feature muss dafür nichts tun. Welche **Rechte** ein
@@ -536,6 +539,7 @@ damit parallele Pull Requests nicht dieselbe Tabelle ändern. Die Liste ist der 
 | Dunkelmodus | Dunkle Darstellung, die das Betriebssystem einschaltet. Die Seite folgt ihr über `prefers-color-scheme`. |
 | Fixture | Eine Test-Hilfe aus `backend/conftest.py` (`engine`, `session`, `client`, `client_as`, `anonymous_client`). Ein Test bekommt sie, indem er ihren Namen als Parameter nennt. |
 | Anmeldung | Ein Konto meldet sich mit Name oder Personalnummer und Passwort an; der Browser hält danach einen Sitzungsschlüssel im Cookie (F10). |
+| Middleware | Code, der jede Anfrage auf dem Weg hinein und jede Antwort auf dem Weg hinaus sieht – z. B. `AuditMiddleware` (F11). |
 | Recht | Was ein Konto sehen oder tun darf, z. B. `finance.view`. Welche Rolle welches Recht hat, steht in `accounts/permissions.py` und ist in den Einstellungen änderbar (F10). |
 | Handbuch-Kapitel | Die Datei `docs/handbuch/F<nr>-<name>.md` eines Features: wie sein Code aufgebaut ist. |
 | Router | Das Objekt `router` in der `api.py` eines Features. Es sammelt dessen Endpunkte; `load_features()` hängt es an die App. |

@@ -85,7 +85,7 @@ def get_me(
     return service.me(session, account)
 
 
-@router.post("/me/password")
+@router.post("/me/password", summary="Eigenes Passwort ändern")
 def change_password(
     data: PasswordChangeIn,
     request: Request,
@@ -113,7 +113,7 @@ def list_accounts(
     return service.list_accounts(session)
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, summary="Konto anlegen")
 def create_account(
     data: AccountIn,
     acting: Account = Depends(require("accounts.manage")),
@@ -132,7 +132,7 @@ def create_account(
     return CreatedAccount(account=service.info(account), start_password=start_password)
 
 
-@router.put("/{account_id}")
+@router.put("/{account_id}", summary="Konto ändern")
 def update_account(
     account_id: int,
     data: AccountUpdateIn,
@@ -152,7 +152,7 @@ def update_account(
     return service.info(account)
 
 
-@router.post("/{account_id}/reset-password")
+@router.post("/{account_id}/reset-password", summary="Passwort zurücksetzen")
 def reset_password(
     account_id: int,
     data: ResetPasswordIn,
@@ -173,7 +173,7 @@ def role_matrix(
     return service.role_matrix(session)
 
 
-@router.put("/roles/{role}/permissions/{permission}")
+@router.put("/roles/{role}/permissions/{permission}", summary="Recht einer Rolle ändern")
 def set_role_permission(
     role: str,
     permission: str,
