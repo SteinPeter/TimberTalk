@@ -7,6 +7,8 @@ import * as planning from "./features/planning/planning.js";
 import * as projects from "./features/projects/projects.js";
 import * as customers from "./features/customers/customers.js";
 import * as bookings from "./features/bookings/bookings.js";
+import * as employees from "./features/employees/employees.js";
+import * as timeaccount from "./features/timeaccount/timeaccount.js";
 import * as settings from "./features/settings/settings.js";
 
 export const REITER = [
@@ -15,5 +17,7 @@ export const REITER = [
   projects,
   customers,
   bookings,
+  timeaccount,
+  employees,
   settings,
 ];

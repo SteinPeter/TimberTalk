@@ -282,6 +282,31 @@ def list_entries(
     return [_info(session, entry, names) for entry in session.exec(statement)]
 
 
+def absence_days(session: Session, account_id: int, start: date, end: date) -> dict[date, str]:
+    """An welchen Tagen von start bis end eine Person abwesend ist und warum („vacation“, „sick“,
+    „school“) – für Stunden- und Urlaubskonto (employees). Ohne Höchstdauer, gerechnet wird über
+    ein ganzes Jahr. Überschneiden sich zwei Abwesenheiten, zählt die früher eingetragene.
+    """
+    statement = (
+        select(CalendarEntry)
+        .join(CalendarAssignment, CalendarAssignment.entry_id == CalendarEntry.id)
+        .where(
+            CalendarAssignment.account_id == account_id,
+            col(CalendarEntry.kind).in_(ABSENCE_KINDS),
+            CalendarEntry.start_date <= end,
+            CalendarEntry.end_date >= start,
+        )
+        .order_by(CalendarEntry.id)
+    )
+    days: dict[date, str] = {}
+    for entry in session.exec(statement):
+        day = max(entry.start_date, start)
+        while day <= min(entry.end_date, end):
+            days.setdefault(day, entry.kind)
+            day += timedelta(days=1)
+    return days
+
+
 # --- Schreiben ------------------------------------------------------------------
 
 
@@ -569,8 +594,14 @@ def request_absence(session: Session, account_id: int, data: RequestIn) -> Reque
         f"{_days_text(request.start_date, request.end_date)} – "
         "bitte auf dem Dashboard entscheiden.",
         link="#start",
+        topic=_request_topic(request.id),
     )
     return _request_info(session, request, names)
+
+
+def _request_topic(request_id: int) -> str:
+    """Thema der Mitteilung „bitte entscheiden“ – sie verschwindet, sobald entschieden ist."""
+    return f"absence-request:{request_id}"
 
 
 def list_requests(session: Session, viewer_id: int, may_approve: bool) -> list[RequestInfo]:
@@ -620,6 +651,7 @@ def decide_request(
     text = f"Urlaub {'genehmigt' if approve else 'abgelehnt'}: {days}"  # endet auf „.“
     if request.decision_note:
         text += f" {request.decision_note}"
+    notifications.resolve(session, _request_topic(request.id))
     notifications.notify(session, [request.account_id], text)
     info = _request_info(session, request, _names(session))
     return Decision(request=info, warnings=warnings)
@@ -632,6 +664,7 @@ def withdraw_request(session: Session, request_id: int, account_id: int) -> None
         raise LookupError(f"Den Antrag {request_id} gibt es nicht.")
     session.delete(request)
     session.commit()
+    notifications.resolve(session, _request_topic(request_id))
 
 
 # --- Kalender-Abo (iCal) ------------------------------------------------------------

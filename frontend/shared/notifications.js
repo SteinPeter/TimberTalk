@@ -1,11 +1,17 @@
 // Der Knopf „Mitteilungen“ oben rechts in der Leiste (Feature notifications, F8).
 // Er zeigt, wie viele Mitteilungen ungelesen sind, und öffnet darunter eine Liste. Beim Öffnen
-// gelten alle als gelesen. Die Zahl wird jede Minute neu geholt, solange die Seite sichtbar ist.
+// gelten alle als gelesen. Aufgaben („bitte Urlaubsantrag entscheiden“) verschwinden von selbst,
+// sobald sie erledigt sind; jede andere Mitteilung entfernt man mit ✕. Die Zahl wird jede
+// Minute neu geholt, solange die Seite sichtbar ist, und sofort nach jeder Änderung in
+// TimberTalk (CHANGED_EVENT aus api.js).
+// Auf dem Handy (unter 40rem) liegt die Liste über die volle Bildschirmbreite direkt unter der
+// Leiste (style.css); dafür setzt open() ihre Oberkante.
 
-import { getJson, sendJson } from "./api.js";
+import { CHANGED_EVENT, getJson, sendJson } from "./api.js";
 import { el, formatDateTime } from "./dom.js";
 
 const REFRESH_MS = 60_000;
+const PHONE = window.matchMedia("(max-width: 40rem)");
 
 export function notificationsButton() {
   const badge = el("span", { class: "notify-badge", hidden: true });
@@ -58,34 +64,67 @@ export function notificationsButton() {
     }
   }
 
+  function row(message) {
+    const remove = el(
+      "button",
+      {
+        type: "button",
+        class: "notify-remove",
+        title: "Entfernen",
+        "aria-label": `Mitteilung entfernen: ${message.text}`,
+      },
+      "✕",
+    );
+    const item = el(
+      "li",
+      { class: message.read_at ? "" : "notify-unread" },
+      el(
+        "div",
+        { class: "notify-text" },
+        // Mit Link (z. B. offener Urlaubsantrag → Dashboard) ist die Mitteilung ein Knopf.
+        message.link
+          ? el(
+              "button",
+              {
+                type: "button",
+                class: "notify-link",
+                onclick: () => {
+                  close();
+                  window.location.hash = message.link;
+                },
+              },
+              message.text,
+            )
+          : el("span", {}, message.text),
+        el("small", {}, formatDateTime(message.created_at)),
+      ),
+      remove,
+    );
+    remove.addEventListener("click", async (event) => {
+      event.stopPropagation(); // sonst schließt der Klick „daneben“ die Liste
+      try {
+        await sendJson("DELETE", `/api/notifications/${message.id}`);
+      } catch {
+        return; // schon weg oder keine Verbindung – die Liste bleibt, wie sie ist
+      }
+      item.remove();
+      if (!list.children.length) {
+        list.append(el("li", { class: "notify-empty" }, "Keine Mitteilungen."));
+      }
+    });
+    return item;
+  }
+
   async function open() {
     const messages = await getJson("/api/notifications");
     list.replaceChildren(
       ...(messages.length
-        ? messages.map((message) =>
-            el(
-              "li",
-              { class: message.read_at ? "" : "notify-unread" },
-              // Mit Link (z. B. offener Urlaubsantrag → Dashboard) ist die Mitteilung ein Knopf.
-              message.link
-                ? el(
-                    "button",
-                    {
-                      type: "button",
-                      class: "notify-link",
-                      onclick: () => {
-                        close();
-                        window.location.hash = message.link;
-                      },
-                    },
-                    message.text,
-                  )
-                : el("span", {}, message.text),
-              el("small", {}, formatDateTime(message.created_at)),
-            ),
-          )
+        ? messages.map(row)
         : [el("li", { class: "notify-empty" }, "Keine Mitteilungen.")]),
     );
+    // Handy: direkt unter der Leiste, volle Breite (style.css, .notify-panel in @media 40rem).
+    const header = box.closest(".topbar");
+    panel.style.top = header && PHONE.matches ? `${Math.max(0, header.getBoundingClientRect().bottom)}px` : "";
     panel.hidden = false;
     button.setAttribute("aria-expanded", "true");
     if (messages.some((message) => !message.read_at)) {
@@ -113,6 +152,7 @@ export function notificationsButton() {
     }
   });
   document.addEventListener("visibilitychange", refresh);
+  window.addEventListener(CHANGED_EVENT, refresh);
 
   refresh();
   setInterval(refresh, REFRESH_MS);

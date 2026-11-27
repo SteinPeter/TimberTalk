@@ -1,7 +1,8 @@
 // Widget „Offene Urlaubsanträge“ für das Dashboard (Feature F8/F12). Nur mit dem Recht
 // „calendar.approve_absence“ (Voreinstellung: Chef). Hierhin führt auch die Mitteilung über einen
 // neuen Antrag. Genehmigen oder ablehnen geht direkt hier; der Antrag bleibt stehen, bis er
-// entschieden ist. Bauplan eines Widgets: siehe frontend/features/start/start.js.
+// entschieden ist. Ohne offenen Antrag erscheint die Karte gar nicht.
+// Bauplan eines Widgets: siehe frontend/features/start/start.js.
 
 import { getJson, sendJson } from "../../../shared/api.js";
 import { el, messageBox } from "../../../shared/dom.js";
@@ -11,6 +12,7 @@ export const title = "Offene Urlaubsanträge";
 export const permission = "calendar.approve_absence";
 export const order = 10;
 export const defaultOn = true;
+export const showsWhen = "wenn Anträge offen sind";
 
 export async function render(container) {
   const list = el("ul", { class: "planning-requests" });
@@ -51,12 +53,17 @@ export async function render(container) {
     );
   }
 
+  // Gibt zurück, wie viele Anträge offen sind. Ist der letzte entschieden, bleibt die Karte bis
+  // zum nächsten Öffnen des Dashboards stehen – mit der Bestätigung darunter.
   async function load() {
     const pending = (await getJson("/api/planning/requests")).filter((r) => r.status === "pending");
     list.replaceChildren(
       ...(pending.length ? pending.map(item) : [el("li", { class: "planning-free" }, "Keine offenen Anträge.")]),
     );
+    return pending.length;
   }
 
-  await load();
+  if ((await load()) === 0) {
+    return false; // nichts zu entscheiden: keine Karte
+  }
 }

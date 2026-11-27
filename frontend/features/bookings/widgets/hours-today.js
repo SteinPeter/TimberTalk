@@ -1,5 +1,6 @@
 // Widget „Stunden heute“ für das Dashboard (Feature F4/F12): was heute laut Kalender gearbeitet
 // wurde und ob es schon gebucht ist. Bestätigt wird im Reiter „Buchungen → Stunden“.
+// Die Karte erscheint nur, solange heute noch etwas zu bestätigen ist.
 // Bauplan eines Widgets: siehe frontend/features/start/start.js.
 
 import { getJson } from "../../../shared/api.js";
@@ -9,6 +10,7 @@ export const title = "Stunden heute";
 export const permission = "hours.book_own";
 export const order = 30;
 export const defaultOn = true;
+export const showsWhen = "wenn heute noch Stunden zu bestätigen sind";
 
 const hours = (value) => Number(value).toLocaleString("de-DE", { maximumFractionDigits: 2 });
 
@@ -16,6 +18,9 @@ export async function render(container) {
   const today = new Date().toLocaleDateString("sv-SE");
   const suggestions = await getJson(`/api/hours/suggestions?day=${today}`);
   const open = suggestions.filter((item) => !item.booked);
+  if (open.length === 0) {
+    return false; // nichts im Kalender oder schon alles gebucht: keine Karte
+  }
   const link = el(
     "a",
     {
@@ -28,12 +33,8 @@ export async function render(container) {
         }
       },
     },
-    open.length ? "Jetzt bestätigen" : "Zu den Stunden",
+    "Jetzt bestätigen",
   );
-  if (suggestions.length === 0) {
-    container.append(el("p", { class: "planning-free" }, "Heute steht nichts im Kalender."), el("p", {}, link));
-    return;
-  }
   container.append(
     el(
       "ul",

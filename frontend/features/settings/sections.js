@@ -8,6 +8,8 @@ import * as accountsManage from "./sections/accounts-manage.js";
 import * as accountsOwn from "./sections/accounts-own.js";
 import * as accountsRoles from "./sections/accounts-roles.js";
 import * as audit from "./sections/audit.js";
+import * as backup from "./sections/backup.js";
+import * as holidays from "./sections/holidays.js";
 import * as materialsCompany from "./sections/materials-company.js";
 import * as materialsMaster from "./sections/materials-master.js";
 import * as planningResources from "./sections/planning-resources.js";
@@ -15,10 +17,12 @@ import * as planningResources from "./sections/planning-resources.js";
 export const SECTIONS = [
   accountsOwn,
   materialsCompany,
+  holidays,
   materialsMaster,
   planningResources,
   accountsManage,
   accountsRoles,
   accountsDemo,
   audit,
+  backup,
 ];

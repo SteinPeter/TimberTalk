@@ -127,9 +127,10 @@ def test_api_geselle_sieht_nur_eigene_stunden(
     geselle = client_as("journeyman")
     body = {"work_date": "2026-11-30", "hours": "8", "project_id": 17}
     assert geselle.post("/api/hours", json=body).status_code == 201
-    assert client.post("/api/hours", json=body).status_code == 201  # der Admin für sich
+    chef = client_as("owner")
+    assert chef.post("/api/hours", json=body).status_code == 201  # der Chef für sich
 
     params = {"start": "2026-11-30", "end": "2026-12-06"}
     assert len(geselle.get("/api/hours", params=params).json()) == 1
-    assert len(client.get("/api/hours", params=params).json()) == 2
+    assert len(client.get("/api/hours", params=params).json()) == 2  # der Admin sieht alle
     assert geselle.get("/api/hours/suggestions", params={"day": "2026-11-30"}).json() == []

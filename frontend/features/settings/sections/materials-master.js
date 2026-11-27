@@ -42,8 +42,13 @@ export function render(container) {
         el(
           "tr",
           {},
+          // Wird es eng (Handy), fallen zuerst Kategorie, dann „Gültig ab“ weg (shared/tables.js).
           ...["Name", "Kategorie", "Einheit", "Preis (netto)", "Gültig ab"].map((text, i) =>
-            el("th", { scope: "col", class: i === 3 ? "materials-number" : "" }, text),
+            el(
+              "th",
+              { scope: "col", class: i === 3 ? "materials-number" : "", ...({ 1: { "data-priority": "3" }, 4: { "data-priority": "2" } }[i] ?? {}) },
+              text,
+            ),
           ),
         ),
       ),

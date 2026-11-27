@@ -23,12 +23,19 @@ def test_startseite_laedt_das_geruest(client: TestClient) -> None:
     assert '<script type="module" src="app.js">' in response.text
 
 
+def test_frontend_dateien_werden_nach_einem_update_neu_geholt(client: TestClient) -> None:
+    # Ohne „no-cache“ zeigt der Browser nach einem Update alte Dateien, z. B. ohne neuen Reiter.
+    for path in ["/", "/reiter.js", "/style.css"]:
+        assert client.get(path).headers["cache-control"] == "no-cache"
+
+
 def test_start_zeigt_dass_timbertalk_laeuft(client: TestClient) -> None:
-    # Die Startseite ist das Dashboard (F12); den Status zeigt sein Widget „Systemstatus“.
+    # Die Startseite ist das Dashboard (F12). Sein Widget „Systemstatus“ fragt /api/health und
+    # erscheint nur, wenn etwas nicht läuft.
     assert client.get("/features/start/start.js").status_code == 200
     response = client.get("/features/start/widgets/status.js")
     assert response.status_code == 200
-    assert "TimberTalk läuft" in response.text
+    assert "/api/health" in response.text
 
 
 def test_jeder_reiter_ordner_steht_in_reiter_js(client: TestClient) -> None:

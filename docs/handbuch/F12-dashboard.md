@@ -11,10 +11,10 @@
 | `backend/timbertalk/features/dashboard/api.py` | Endpunkte unter `/api/dashboard`. |
 | `backend/timbertalk/features/dashboard/test_dashboard.py` | Tests, auch: jedes Widget hat `title` und `render`. |
 | `frontend/features/start/start.js` | Das Dashboard: lädt die Widgets, zeigt sie als Karten, „Anpassen“. Bauplan eines Widgets steht oben in der Datei. |
-| `frontend/features/start/widgets/status.js` | Widget „Systemstatus“ (vorher der Inhalt von `start.js`). |
-| `frontend/features/planning/widgets/absence-requests.js` | Widget „Offene Urlaubsanträge“ (Recht `calendar.approve_absence`). |
+| `frontend/features/start/widgets/status.js` | Widget „Systemstatus“; erscheint nur, wenn Backend oder Datenbank nicht antworten. |
+| `frontend/features/planning/widgets/absence-requests.js` | Widget „Offene Urlaubsanträge“ (Recht `calendar.approve_absence`); nur, wenn Anträge offen sind. |
 | `frontend/features/planning/widgets/my-week.js` | Widget „Meine nächsten Termine“. |
-| `frontend/features/bookings/widgets/hours-today.js` | Widget „Stunden heute“ (Recht `hours.book_own`). |
+| `frontend/features/bookings/widgets/hours-today.js` | Widget „Stunden heute“ (Recht `hours.book_own`); nur, solange heute etwas zu bestätigen ist. |
 
 Geändert: `backend/tests/test_health.py` (der Text „TimberTalk läuft“ steht jetzt im Widget),
 `audit/middleware.py` (`/api/dashboard/layout` wird nicht protokolliert), `frontend/style.css`
@@ -42,10 +42,15 @@ Geändert: `backend/tests/test_health.py` (der Text „TimberTalk läuft“ steh
    weg (`can()`); der Rest wird nach `order` sortiert.
 3. Ohne eigene Auswahl zeigt es die Widgets mit `defaultOn`; sonst die gespeicherte Liste.
 4. Je Widget eine Karte mit `title`; `render(container)` füllt sie. Ein Fehler in einem Widget
-   zeigt nur in dieser Karte eine Meldung.
-5. „Anpassen“ zeigt alle erlaubten Widgets mit Häkchen und ↑/↓ und speichert mit
-   `PUT /api/dashboard/layout`.
-6. Antwortet das Backend nicht, zeigt das Dashboard nur den Systemstatus.
+   zeigt nur in dieser Karte eine Meldung. Gibt `render()` `false` zurück, hat das Widget gerade
+   nichts zu zeigen und die Karte entfällt. Bleibt keine übrig: „Gerade gibt es nichts zu erledigen.“
+5. **Größe:** Das Raster (`.dashboard-grid`) hat Spalten, die die Breite füllen (`auto-fit`), und
+   nur 0,25rem hohe Zeilen. Ein `ResizeObserver` in `start.js` misst jede Karte und setzt
+   `grid-row-end: span n` – so viele Zeilen, wie die Karte samt Abstand hoch ist. Ändert sich der
+   Inhalt, misst er neu; die Karten darunter rücken ohne Lücke nach.
+6. „Anpassen“ zeigt alle erlaubten Widgets mit Häkchen und ↑/↓ und speichert mit
+   `PUT /api/dashboard/layout`. Hat ein Widget `showsWhen`, steht darunter „Erscheint nur, …“.
+7. Antwortet das Backend nicht, zeigt das Dashboard nur den Systemstatus.
 
 ## Abhängigkeiten zu anderen Features
 

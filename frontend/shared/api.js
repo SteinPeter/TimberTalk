@@ -17,6 +17,11 @@ export async function getJson(path) {
   return readAnswer(response, path);
 }
 
+// Name des Ereignisses, das nach jeder erfolgreichen Änderung auf `window` ausgelöst wird.
+// Die Glocke (notifications.js) holt dann ihre Zahl neu – z. B. verschwindet „bitte Urlaubsantrag
+// entscheiden“ sofort, wenn der Antrag entschieden ist.
+export const CHANGED_EVENT = "timbertalk:changed";
+
 // Schickt Daten an die API (POST, PUT, DELETE) und gibt die Antwort als Objekt zurück.
 export async function sendJson(method, path, body) {
   const options = { method };
@@ -25,7 +30,9 @@ export async function sendJson(method, path, body) {
     options.body = JSON.stringify(body);
   }
   const response = await call(`${API_BASE}${path}`, options);
-  return readAnswer(response, path);
+  const answer = await readAnswer(response, path);
+  window.dispatchEvent(new Event(CHANGED_EVENT));
+  return answer;
 }
 
 // fetch() wirft ohne Verbindung nur „Failed to fetch“ (Englisch, ohne Hinweis). Daraus wird

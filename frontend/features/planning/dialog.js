@@ -1,6 +1,6 @@
 // Ein kleines Fenster (<dialog>) für den Reiter „Kalender“: Überschrift, Inhalt und unten
-// „Schließen“. So erscheinen Dinge, die man nicht ständig braucht (Urlaub beantragen,
-// Urlaubsanträge entscheiden, Kalender-Abo), erst wenn man sie aufruft.
+// „Schließen“. So erscheinen Dinge, die man nicht ständig braucht (Kalender-Abo), erst wenn
+// man sie aufruft.
 
 import { el } from "../../shared/dom.js";
 

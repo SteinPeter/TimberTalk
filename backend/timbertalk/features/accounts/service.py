@@ -36,6 +36,7 @@ from timbertalk.features.accounts.models import (
 )
 from timbertalk.features.accounts.permissions import (
     ADMIN_ROLE,
+    AREAS,
     DEFAULTS,
     LOCKED,
     PERMISSIONS,
@@ -185,8 +186,17 @@ def list_accounts(session: Session) -> list[AccountInfo]:
 
 def list_people(session: Session) -> list[Person]:
     """Alle aktiven Konten mit Nummer und Name, nach Namen sortiert – für andere Features,
-    z. B. die Plantafel im Kalender (F8). Ohne Rolle, Anmeldename, Personalnummer und Rechte."""
-    statement = select(Account).where(col(Account.active).is_(True)).order_by(Account.display_name)
+    z. B. die Plantafel im Kalender (F8). Ohne Rolle, Anmeldename, Personalnummer und Rechte.
+
+    Ohne Konten mit der Rolle Admin: Das Admin-Konto ist nur zum Verwalten der Software da. Es
+    taucht daher nicht als Person auf – nicht im Kalender, nicht unter „Personal“ –, kann aber
+    alle Seiten öffnen.
+    """
+    statement = (
+        select(Account)
+        .where(col(Account.active).is_(True), Account.role != ADMIN_ROLE)
+        .order_by(Account.display_name)
+    )
     return [
         Person(id=account.id, display_name=account.display_name)
         for account in session.exec(statement)
@@ -651,6 +661,11 @@ def has_permission(session: Session, account: Account, permission: str) -> bool:
     return permission in account_permissions(session, account)
 
 
+def _by_area() -> list[tuple[str, str]]:
+    """Alle Rechte als (Recht, Bereich), sortiert nach den Funktionsbereichen in AREAS."""
+    return [(key, area) for area, keys in AREAS for key in keys]
+
+
 def role_matrix(session: Session) -> RoleMatrix:
     """Alle Rollen mit ihren Rechten – für die Tabelle „Rollen und Rechte“."""
     return RoleMatrix(
@@ -665,7 +680,8 @@ def role_matrix(session: Session) -> RoleMatrix:
             for role, label in ROLES.items()
         ],
         permissions=[
-            PermissionInfo(permission=key, label=text) for key, text in PERMISSIONS.items()
+            PermissionInfo(permission=key, label=PERMISSIONS[key], area=area)
+            for key, area in _by_area()
         ],
     )
 
@@ -710,13 +726,14 @@ def permissions_of(session: Session, account_id: int) -> list[AccountPermission]
     return [
         AccountPermission(
             permission=key,
-            label=text,
+            label=PERMISSIONS[key],
+            area=area,
             from_role=key in from_role,
             allowed=key in effective,
             overridden=key in overridden and key not in locked,
             locked=key in locked,
         )
-        for key, text in PERMISSIONS.items()
+        for key, area in _by_area()
     ]
 
 

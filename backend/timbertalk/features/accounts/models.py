@@ -134,6 +134,7 @@ class AccountPermission(SQLModel):
 
     permission: str
     label: str
+    area: str  # Funktionsbereich, z. B. „Zeitkonto, Urlaub und Personal“ (permissions.AREAS)
     from_role: bool  # hätte die Person es über ihre Rolle?
     allowed: bool  # gilt jetzt für sie
     overridden: bool  # Ausnahme nur für dieses Konto
@@ -184,10 +185,11 @@ class UserPermissionIn(SQLModel):
 
 
 class PermissionInfo(SQLModel):
-    """Ein Recht mit seiner Beschreibung."""
+    """Ein Recht mit seiner Beschreibung und seinem Funktionsbereich."""
 
     permission: str
     label: str
+    area: str  # z. B. „Kalender“ (permissions.AREAS)
 
 
 class RoleMatrix(SQLModel):

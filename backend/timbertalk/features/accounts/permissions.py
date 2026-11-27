@@ -42,12 +42,40 @@ PERMISSIONS: dict[str, str] = {
     "hours.book_own": "Eigene Stunden buchen",  # F4
     "hours.view_all": "Stunden aller Mitarbeitenden sehen",  # F4
     "hours.manage": "Stunden für andere buchen und löschen",  # F4
+    # F14, Reiter „Personal“: „pflegen“ schließt „sehen“ ein – ein Häkchen genügt.
+    "employees.view_all": "„Personal“ sehen (Stunden und Urlaub aller)",
+    "employees.manage": "„Personal“ pflegen (schließt Sehen ein)",
 }
+
+# Funktionsbereiche: So gruppiert „Rollen und Rechte“ die Häkchen, damit man z. B. alles zu
+# Zeitkonto und Urlaub an einer Stelle findet. Jedes Recht steht in genau einem Bereich (Test);
+# ein neues Recht wird hier dem passenden Bereich zugeordnet.
+AREAS: list[tuple[str, list[str]]] = [
+    ("Kalender", ["calendar.view_all", "calendar.dispatch"]),
+    (
+        "Zeitkonto, Urlaub und Personal",
+        [
+            "calendar.request_absence",
+            "calendar.approve_absence",
+            "employees.view_all",
+            "employees.manage",
+        ],
+    ),
+    ("Stunden", ["hours.book_own", "hours.view_all", "hours.manage"]),
+    (
+        "Material, Fahrten und Preise",
+        ["bookings.create", "materials.edit", "finance.view", "finance.edit"],
+    ),
+    ("Verwaltung", ["accounts.manage", "audit.view"]),
+]
 
 # Voreinstellung: welche Rolle welches Recht hat, solange niemand etwas ändert.
 # Urlaubsanträge entscheidet in der Voreinstellung nur der Chef.
 DEFAULTS: dict[str, set[str]] = {
-    "admin": set(PERMISSIONS) - {"calendar.approve_absence"},
+    # Der Admin verwaltet die Software und sieht alles, ist aber keine Person im Betrieb: Er
+    # entscheidet keinen Urlaub, beantragt keinen und bucht keine eigenen Stunden.
+    "admin": set(PERMISSIONS)
+    - {"calendar.approve_absence", "calendar.request_absence", "hours.book_own"},
     "owner": set(PERMISSIONS),
     "master": {
         "finance.view",
@@ -70,6 +98,8 @@ DEFAULTS: dict[str, set[str]] = {
         "hours.book_own",
         "hours.view_all",
         "hours.manage",
+        "employees.view_all",
+        "employees.manage",
     },
     "journeyman": {
         "bookings.create",

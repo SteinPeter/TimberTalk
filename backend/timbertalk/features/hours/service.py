@@ -192,3 +192,19 @@ def list_hours(
     statement = statement.order_by(HoursEntry.work_date, col(HoursEntry.id))
     names = _names(session)
     return [_info(entry, names) for entry in session.exec(statement)]
+
+
+def minutes_per_day(session: Session, account_id: int, start: date, end: date) -> dict[date, int]:
+    """Gebuchte Minuten einer Person je Tag von start bis end – für das Stundenkonto (employees).
+
+    Anders als list_hours() ohne Höchstdauer: Das Stundenkonto rechnet über ein ganzes Jahr.
+    """
+    statement = select(HoursEntry).where(
+        HoursEntry.account_id == account_id,
+        HoursEntry.work_date >= start,
+        HoursEntry.work_date <= end,
+    )
+    totals: dict[date, int] = {}
+    for entry in session.exec(statement):
+        totals[entry.work_date] = totals.get(entry.work_date, 0) + entry.minutes
+    return totals

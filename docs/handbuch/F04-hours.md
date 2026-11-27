@@ -52,6 +52,8 @@ Fehler: `PermissionError` → 403, `LookupError` → 404, `ValueError` → 422.
 ## Abhängigkeiten zu anderen Features
 
 - F8 `planning`: `service.list_entries()`, `models.ABSENCE_KINDS`.
+- Benutzt wird F4 von F14 `employees` über `service.minutes_per_day()` (gebuchte Minuten je Tag
+  über einen beliebig langen Zeitraum, für das Stundenkonto) und `to_hours()`/`to_minutes()`.
 - F10 `accounts`: `service.list_people()`, `deps.require()`, `deps.can()`, `deps.current_account`.
 
 ## Begriffe

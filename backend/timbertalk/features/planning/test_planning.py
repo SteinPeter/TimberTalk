@@ -209,7 +209,7 @@ def test_api_wer_welche_kalender_sieht_stellt_der_chef_ein(
 ) -> None:
     geselle = client_as("journeyman")
     client_as("journeyman")  # ein Kollege
-    assert len(geselle.get("/api/planning/people").json()) == 3  # mit dem Admin von `client`
+    assert len(geselle.get("/api/planning/people").json()) == 2  # ohne den Admin von `client`
 
     client.put(
         "/api/accounts/roles/journeyman/permissions/calendar.view_all", json={"allowed": False}
@@ -239,7 +239,7 @@ def _texts(session: Session, account_id: int) -> list[str]:
 
 
 def test_mitteilungen_beim_einplanen_aendern_und_absagen(session: Session) -> None:
-    chef = _person(session, "chef", "Chef", "admin")
+    chef = _person(session, "chef", "Chef", "owner")
     max_ = _person(session, "max", "Max")
     tom = _person(session, "tom", "Tom")
     saved = service.create_entry(
@@ -364,12 +364,14 @@ def test_urlaub_beantragen_genehmigen_landet_im_kalender(session: Session) -> No
         ("Urlaub", "vacation"),
     ]
     assert _texts(session, max_)[-1] == "Urlaub genehmigt: Di 01.12.–So 06.12."
+    assert _texts(session, chef) == []  # „bitte entscheiden“ ist erledigt und verschwindet
     with pytest.raises(ValueError, match="schon entschieden"):
         service.decide_request(session, request.id, False, chef)
 
 
 def test_urlaub_ablehnen_mit_grund_und_zurueckziehen(session: Session) -> None:
     chef = _person(session, "chef", "Chef", "admin")
+    owner = _person(session, "inhaberin", "Inhaberin", "owner")  # bekommt „bitte entscheiden“
     max_ = _person(session, "max", "Max")
     tom = _person(session, "tom", "Tom")
     first = service.request_absence(session, max_, RequestIn(start_date=MON, end_date=WED))
@@ -380,7 +382,9 @@ def test_urlaub_ablehnen_mit_grund_und_zurueckziehen(session: Session) -> None:
     second = service.request_absence(session, max_, RequestIn(start_date=SUN, end_date=SUN))
     with pytest.raises(LookupError):
         service.withdraw_request(session, second.id, tom)  # fremde Anträge nicht
+    assert len(_texts(session, owner)) == 1
     service.withdraw_request(session, second.id, max_)
+    assert _texts(session, owner) == []  # zurückgezogen: nichts mehr zu entscheiden
     assert [r.status for r in service.list_requests(session, max_, may_approve=False)] == [
         "rejected"
     ]
