@@ -1,8 +1,11 @@
 // Der Reiter "Kalender" (Feature F8): wer ist wann wo – Woche für Woche.
 //
-// Zwei Ansichten:
+// Zwei Ansichten, beide als Raster mit der Kalenderwoche (KW) groß oben:
 // - Plantafel: eine Zeile je Person, eine Spalte je Wochentag. Für die Planung im Büro.
-// - Persönlicher Kalender: die Woche einer Person als Liste nach Tagen. Gut lesbar auf dem Handy.
+// - Persönlicher Kalender: die Woche einer Person, ein Kästchen je Tag. Auf dem Handy untereinander.
+// Ein Termin zeigt im Raster nur seinen Namen (z. B. „Carport Berger“). Alles Weitere – Art, Zeit,
+// Ort, wer noch dabei ist – steht im Tooltip, für Bildschirmleser im Namen des Knopfs und nach
+// einem Klick: mit Planungsrecht im Dialog, sonst klappt der Termin auf.
 // Mit dem Recht „calendar.dispatch“ trägt man Termine ein (Klick auf + in einer Zelle oder
 // „Termin eintragen“) und ändert sie (Klick auf den Termin). Wer „calendar.view_all“ nicht hat,
 // sieht nur den eigenen Kalender. Alles aus der API kommt mit textContent in die Seite.
@@ -71,7 +74,9 @@ export async function render(panel) {
   let view = BOARD;
 
   // --- Gerüst ---
-  const weekLabel = el("p", { class: "planning-week", "aria-live": "polite" });
+  const weekNumberLabel = el("strong", { class: "planning-week-number" });
+  const weekRange = el("span", { class: "planning-week-range" });
+  const weekLabel = el("p", { class: "planning-week", "aria-live": "polite" }, weekNumberLabel, weekRange);
   const viewSelect = el("select", { "aria-label": "Ansicht" });
   const newButton = el("button", { type: "button", class: "button", hidden: !mayDispatch }, "Termin eintragen");
 
@@ -115,7 +120,8 @@ export async function render(panel) {
 
   async function loadWeek() {
     const sunday = addDays(monday, 6);
-    weekLabel.textContent = `KW ${weekNumber(monday)} · ${shortDate(monday)}–${parseDate(sunday).toLocaleDateString("de-DE")}`;
+    weekNumberLabel.textContent = `KW ${weekNumber(monday)}`;
+    weekRange.textContent = `${shortDate(monday)}–${parseDate(sunday).toLocaleDateString("de-DE")}`;
     const params = new URLSearchParams({ start: monday, end: sunday });
     if (view !== BOARD) {
       params.set("account_id", view);
@@ -235,37 +241,52 @@ export async function render(panel) {
     content.replaceChildren(view === BOARD ? board() : personalList(Number(view)));
   }
 
-  // Ein Termin als kleines Kärtchen. Mit Planungsrecht ist es ein Knopf zum Ändern und lässt
-  // sich auf der Plantafel ziehen (drag = { key, day }: woher er gezogen wird).
-  function chip(entry, { withPeople = false, drag = null } = {}) {
-    const time = entry.start_time ? `${shortTime(entry.start_time)}–${shortTime(entry.end_time)}` : "";
-    // Heißt der Termin wie seine Art (z. B. „Urlaub“), steht er nur einmal da.
-    const parts = [el("span", { class: "planning-chip-title" }, entry.title)];
+  // Alles, was man über einen Termin wissen will, als Zeilen: Art, Zeit und Ort, wer noch dabei
+  // ist. withPeople: auch die Personen nennen (im persönlichen Kalender die Kollegen).
+  function detailLines(entry, withPeople) {
+    const lines = [];
     if (entry.title !== entry.kind_label) {
-      parts.unshift(el("span", { class: "planning-chip-kind" }, entry.kind_label));
+      lines.push(entry.kind_label);
     }
-    const details = [time, entry.location].filter(Boolean).join(" · ");
-    if (details) {
-      parts.push(el("span", { class: "planning-chip-detail" }, details));
-    }
+    const time = entry.start_time ? `${shortTime(entry.start_time)}–${shortTime(entry.end_time)}` : "ganztägig";
+    lines.push([time, entry.location].filter(Boolean).join(" · "));
     const together = withPeople ? [...entry.people, ...entry.resources] : entry.resources;
     if (together.length) {
-      parts.push(el("span", { class: "planning-chip-detail" }, together.map((p) => p.display_name).join(", ")));
+      lines.push(together.map((p) => p.display_name).join(", "));
     }
+    if (entry.note) {
+      lines.push(entry.note);
+    }
+    return lines;
+  }
+
+  // Ein Termin als kurzes Kärtchen: nur der Name. Mit Planungsrecht ist es ein Knopf zum Ändern
+  // und lässt sich auf der Plantafel ziehen (drag = { key, day }: woher er gezogen wird). Ohne
+  // Planungsrecht klappt es per Klick auf und zeigt die Einzelheiten.
+  function chip(entry, { withPeople = false, drag = null } = {}) {
+    const lines = detailLines(entry, withPeople);
     const absent = kinds.find((kind) => kind.kind === entry.kind)?.absence;
     const className = `planning-chip${absent ? " planning-chip-absence" : ""}`;
+    const name = el("span", { class: "planning-chip-title" }, entry.title);
+    const tooltip = [entry.title, ...lines].join("\n");
     if (!mayDispatch) {
-      return el("div", { class: className }, ...parts);
+      return el(
+        "details",
+        { class: className, title: tooltip },
+        el("summary", {}, name),
+        ...lines.map((line) => el("span", { class: "planning-chip-detail" }, line)),
+      );
     }
     const button = el(
       "button",
       {
         type: "button",
         class: className,
-        "aria-label": `${entry.kind_label}: ${entry.title} ändern`,
+        title: tooltip,
+        "aria-label": `${entry.title} ändern – ${lines.join(", ")}`,
         onclick: () => dialog.open(entry),
       },
-      ...parts,
+      name,
     );
     if (drag) {
       button.draggable = true;
@@ -326,7 +347,7 @@ export async function render(panel) {
     const head = el(
       "tr",
       {},
-      el("th", { scope: "col", class: "planning-person" }, "Person"),
+      el("th", { scope: "col", class: "planning-person planning-corner" }, `KW ${weekNumber(monday)}`),
       ...days().map((day, i) =>
         el(
           "th",
@@ -368,25 +389,32 @@ export async function render(panel) {
     return el("div", { class: "table-scroll planning-board-wrap" }, el("table", { class: "planning-board" }, el("thead", {}, head), el("tbody", {}, ...rows)));
   }
 
+  // Die Woche einer Person als Raster: ein Kästchen je Tag (auf schmalen Bildschirmen untereinander).
   function personalList(personId) {
     const person = people.find((p) => p.id === personId);
     const list = el("div", { class: "planning-list" });
     if (person) {
       list.append(el("h2", {}, person.id === me.id ? "Meine Woche" : `Woche von ${person.display_name}`));
     }
-    for (const day of days()) {
+    const grid = el("div", { class: "planning-week-grid" });
+    days().forEach((day, i) => {
       const dayEntries = entriesOn(day, rowKey("p", personId));
-      list.append(
+      grid.append(
         el(
           "section",
-          { class: `planning-day${day === today ? " planning-today" : ""}` },
-          el("h3", {}, day === today ? `Heute, ${longDate(day)}` : longDate(day)),
+          {
+            class: `planning-day${day === today ? " planning-today" : ""}`,
+            "aria-label": longDate(day),
+            "aria-current": day === today ? "date" : "false",
+          },
+          el("h3", {}, day === today ? `Heute · ${shortDate(day)}` : `${DAY_NAMES[i]} ${shortDate(day)}`),
           ...(dayEntries.length
             ? dayEntries.map((entry) => chip(entry, { withPeople: entry.people.length > 1 }))
-            : [el("p", { class: "planning-free" }, "Nichts eingeplant.")]),
+            : [el("p", { class: "planning-free" }, "frei")]),
         ),
       );
-    }
+    });
+    list.append(grid);
     return list;
   }
 

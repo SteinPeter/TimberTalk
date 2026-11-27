@@ -16,8 +16,8 @@
 | `frontend/features/planning/widgets/absence-requests.js`, `my-week.js` | Dashboard-Widgets (F12): offene Urlaubsanträge entscheiden; eigene nächste Termine. |
 | `frontend/features/planning/ical.js` | `openIcal()`: Fenster „Kalender aufs Handy holen“ (über „Mehr ▾“): Abo-Link erzeugen, kopieren, ungültig machen. |
 | `frontend/features/settings/sections/planning-resources.js` | Abschnitt „Fahrzeuge und Maschinen“ in den Einstellungen (Recht `calendar.dispatch`). |
-| `backend/timbertalk/features/notifications/` | Eigenes kleines Feature „Mitteilungen“: Tabelle `notifications_message`, `notify()`, `list_notifications()`, `unread_count()`, `mark_all_read()`; Endpunkte `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all` (jeweils nur die eigenen). |
-| `frontend/shared/notifications.js` | Knopf „Mitteilungen“ oben rechts mit Zahl der ungelesenen; holt die Zahl jede Minute neu. |
+| `backend/timbertalk/features/notifications/` | Eigenes kleines Feature „Mitteilungen“: Tabellen `notifications_message` und `notifications_topic` (Thema einer Aufgabe), `notify(..., topic=)`, `resolve(topic)`, `dismiss()`, `list_notifications()`, `unread_count()`, `mark_all_read()`; Endpunkte `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all`, `DELETE /api/notifications/{id}` (jeweils nur die eigenen). |
+| `frontend/shared/notifications.js` | Knopf „Mitteilungen“ oben rechts mit Zahl der ungelesenen; holt die Zahl jede Minute und nach jeder Änderung (`CHANGED_EVENT` aus `api.js`) neu; ✕ entfernt eine Mitteilung. |
 
 In gemeinsamen Dateien geändert:
 
@@ -101,6 +101,11 @@ gehen in der Antwort als `warnings` zurück und stehen in der Oberfläche über 
   rechnet für offene Anträge mit `_warnings()` aus, was in der Zeit schon eingeplant ist.
   `decide_request()` legt beim Genehmigen mit `create_entry(..., notify=False)` den Termin
   „Urlaub“ an und schickt stattdessen „Urlaub genehmigt: …“.
+- **Erledigte Mitteilungen verschwinden:** Die Mitteilung „bitte entscheiden“ trägt das Thema
+  `absence-request:<nr>` (`_request_topic()`). `decide_request()` und `withdraw_request()` rufen
+  `notifications.service.resolve()` mit diesem Thema auf – die Mitteilung verschwindet bei allen
+  Genehmigenden. Das Thema steht in einer eigenen Tabelle `notifications_topic`, damit vorhandene
+  Datenbanken ohne neue Spalte (also ohne Migration) weiterlaufen.
 - **Kilometersatz für F5:** `vehicle_rate()` liefert Nummer, Name und Satz des Fahrzeugs für eine
   Fahrt. Ohne Fahrzeug nimmt es das einzige Fahrzeug mit Satz; gibt es mehrere oder keines, kommt
   ein Fehler mit deutschem Text. `vehicles_with_rate()` nutzt das KI-Werkzeug `fahrt_buchen` zum
@@ -133,6 +138,15 @@ Der Chef klickt in der Zeile von Max beim Montag auf „+“:
 - **Ansicht:** Die Auswahl oben wechselt zwischen „Plantafel – alle“ und einer Person. Sie wird im
   Browser gemerkt (`timbertalk.planning.view`). Wer planen darf, beginnt mit der Plantafel, alle
   anderen mit dem eigenen Kalender. Ein Klick auf einen Namen in der Plantafel öffnet dessen Kalender.
+- **Raster mit KW:** Die Kalenderwoche steht groß über der Woche und in der Ecke der Plantafel. Der
+  persönliche Kalender ist ein Raster aus sieben Tages-Kästchen (`.planning-week-grid`,
+  `auto-fit`), auf schmalen Bildschirmen untereinander.
+- **Kurze Vorschau:** `chip()` zeigt nur den Namen des Termins (höchstens zwei Zeilen, lange
+  Wörter mit Trennstrich). `detailLines()` sammelt Art, Zeit, Ort, Kollegen und Notiz für den
+  Tooltip und den vorlesbaren Namen. Mit Planungsrecht ist der Termin ein Knopf, der den Dialog
+  öffnet; ohne ist er ein `<details>`, das per Klick aufklappt.
+- **„+“ nur bei Bedarf:** Das „+“ in den Zellen erscheint erst beim Darüberfahren oder mit dem
+  Tastatur-Fokus; auf Touch-Geräten (`@media (hover: none)`) ist es immer zu sehen.
 - **Barrierefreiheit:** Jedes „+“ hat einen vorlesbaren Namen („Termin für Max Berger am Mo 30.11.
   eintragen“), der heutige Tag hat `aria-current="date"`, Abwesenheiten sind gestrichelt **und**
   tragen ihren Namen (nicht nur Farbe).

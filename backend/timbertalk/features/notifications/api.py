@@ -4,7 +4,7 @@
 
 # ruff: noqa: B008 – FastAPI erwartet Depends(...) als Standardwert, siehe materials/api.py.
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlmodel import Session
 
 from timbertalk.db import get_session
@@ -35,3 +35,15 @@ def mark_all_read(
     account: Account = Depends(current_account), session: Session = Depends(get_session)
 ) -> None:
     service.mark_all_read(session, account.id)
+
+
+@router.delete("/{notification_id}", status_code=204, summary="Mitteilung entfernen")
+def dismiss(
+    notification_id: int,
+    account: Account = Depends(current_account),
+    session: Session = Depends(get_session),
+) -> None:
+    try:
+        service.dismiss(session, account.id, notification_id)
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error

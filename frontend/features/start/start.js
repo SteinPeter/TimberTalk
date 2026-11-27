@@ -11,7 +11,14 @@
 //   export const permission = "calendar.view_all";   // nur mit diesem Recht (freiwillig)
 //   export const order = 20;                         // Platz in der Voreinstellung (klein = oben)
 //   export const defaultOn = true;                   // ohne eigene Auswahl zu sehen? (freiwillig)
+//   export const showsWhen = "wenn Anträge offen sind"; // erscheint nur bei Bedarf (freiwillig)
 //   export async function render(container) { … }    // füllt die Karte (Pflicht)
+//
+// Gibt render() `false` zurück, gibt es gerade nichts zu zeigen: Die Karte erscheint dann nicht
+// (z. B. „Offene Urlaubsanträge“ ohne offenen Antrag). showsWhen sagt das unter „Anpassen“ an.
+//
+// Die Karten passen ihre Größe selbst an: Jede ist so hoch wie ihr Inhalt, die Spalten füllen
+// die Breite, und ändert sich der Inhalt (Antrag entschieden), rückt der Rest nach.
 //
 // Jede Person stellt mit „Anpassen“ ein, welche Widgets sie in welcher Reihenfolge sieht; das
 // speichert das Backend je Konto (PUT /api/dashboard/layout).
@@ -48,7 +55,7 @@ export async function render(panel) {
     widgets = await loadWidgets();
   } catch (error) {
     const status = await import("./widgets/status.js");
-    grid.replaceChildren(await card({ id: "start/status", module: status }));
+    grid.replaceChildren((await card({ id: "start/status", module: status })) ?? "");
     return;
   }
   let chosen = await currentChoice();
@@ -81,11 +88,14 @@ export async function render(panel) {
   }
 
   // Eine Karte: Überschrift und Inhalt des Widgets. Ein Fehler betrifft nur diese Karte.
+  // null: Das Widget hat gerade nichts zu zeigen (render() gab false zurück).
   async function card(widget) {
     const body = el("div", { class: "dashboard-body" });
     const section = el("section", { class: "dashboard-card", "aria-label": widget.module.title }, el("h2", {}, widget.module.title), body);
     try {
-      await widget.module.render(body);
+      if ((await widget.module.render(body)) === false) {
+        return null;
+      }
     } catch (error) {
       console.error(`Widget "${widget.id}" konnte nicht aufgebaut werden:`, error);
       body.replaceChildren(el("p", { class: "planning-free" }, `Konnte nicht geladen werden (${error.message}).`));
@@ -95,11 +105,27 @@ export async function render(panel) {
 
   async function showGrid() {
     const byId = new Map(widgets.map((widget) => [widget.id, widget]));
-    const cards = await Promise.all(chosen.map((widgetId) => card(byId.get(widgetId))));
-    grid.replaceChildren(
-      ...(cards.length ? cards : [el("p", { class: "empty" }, "Keine Widgets gewählt. Mit „Anpassen“ kommen welche dazu.")]),
-    );
+    const cards = (await Promise.all(chosen.map((widgetId) => card(byId.get(widgetId))))).filter(Boolean);
+    let empty = "Keine Widgets gewählt. Mit „Anpassen“ kommen welche dazu.";
+    if (chosen.length) {
+      empty = "Gerade gibt es nichts zu erledigen.";
+    }
+    grid.replaceChildren(...(cards.length ? cards : [el("p", { class: "empty" }, empty)]));
+    sizer.disconnect();
+    cards.forEach((section) => sizer.observe(section));
   }
+
+  // Jede Karte belegt so viele schmale Raster-Zeilen (style.css: .dashboard-grid), wie sie samt
+  // Abstand darunter hoch ist. So gibt es keine Lücken unter kurzen Karten, und eine Karte wächst
+  // oder schrumpft mit ihrem Inhalt.
+  const sizer = new ResizeObserver((changes) => {
+    const row = parseFloat(getComputedStyle(grid).gridAutoRows);
+    for (const change of changes) {
+      const section = change.target;
+      const height = section.getBoundingClientRect().height + parseFloat(getComputedStyle(section).marginBottom);
+      section.style.gridRowEnd = `span ${Math.max(1, Math.ceil(height / row))}`;
+    }
+  });
 
   // --- Anpassen: an- und abwählen, Reihenfolge ändern ---
 
@@ -123,7 +149,17 @@ export async function render(panel) {
       return el(
         "li",
         {},
-        el("label", { class: "form-check" }, box, el("span", {}, widget.module.title)),
+        el(
+          "label",
+          { class: "form-check" },
+          box,
+          el(
+            "span",
+            {},
+            widget.module.title,
+            ...(widget.module.showsWhen ? [el("small", { class: "dashboard-when" }, `Erscheint nur, ${widget.module.showsWhen}.`)] : []),
+          ),
+        ),
         el(
           "span",
           { class: "dashboard-move" },

@@ -569,8 +569,14 @@ def request_absence(session: Session, account_id: int, data: RequestIn) -> Reque
         f"{_days_text(request.start_date, request.end_date)} – "
         "bitte auf dem Dashboard entscheiden.",
         link="#start",
+        topic=_request_topic(request.id),
     )
     return _request_info(session, request, names)
+
+
+def _request_topic(request_id: int) -> str:
+    """Thema der Mitteilung „bitte entscheiden“ – sie verschwindet, sobald entschieden ist."""
+    return f"absence-request:{request_id}"
 
 
 def list_requests(session: Session, viewer_id: int, may_approve: bool) -> list[RequestInfo]:
@@ -620,6 +626,7 @@ def decide_request(
     text = f"Urlaub {'genehmigt' if approve else 'abgelehnt'}: {days}"  # endet auf „.“
     if request.decision_note:
         text += f" {request.decision_note}"
+    notifications.resolve(session, _request_topic(request.id))
     notifications.notify(session, [request.account_id], text)
     info = _request_info(session, request, _names(session))
     return Decision(request=info, warnings=warnings)
@@ -632,6 +639,7 @@ def withdraw_request(session: Session, request_id: int, account_id: int) -> None
         raise LookupError(f"Den Antrag {request_id} gibt es nicht.")
     session.delete(request)
     session.commit()
+    notifications.resolve(session, _request_topic(request_id))
 
 
 # --- Kalender-Abo (iCal) ------------------------------------------------------------

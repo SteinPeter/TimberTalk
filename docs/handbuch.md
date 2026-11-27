@@ -62,7 +62,8 @@ Beispiel: der Reiter „Start“ zeigt den Zustand von Backend und Datenbank.
 1. Der Browser lädt `index.html`, darin wird `app.js` als Modul geladen. `app.js` lädt über
    `reiter.js` alle Reiter-Dateien und ruft beim ersten Öffnen von „Start“ `render()` in
    `features/start/start.js` auf.
-2. `start.js` ruft `getJson("/api/health")` aus `shared/api.js` auf. `api.js` holt die
+2. Das Dashboard lädt das Widget `features/start/widgets/status.js`. Es ruft
+   `getJson("/api/health")` aus `shared/api.js` auf (und zeigt sich nur, wenn etwas nicht läuft). `api.js` holt die
    API-Adresse aus `config.js` (leer = dieselbe Adresse wie die Seite) und fragt
    `GET /api/health`.
 3. FastAPI leitet die Anfrage an die Funktion `health()` in `main.py`.
@@ -112,7 +113,7 @@ in `.gitignore`.
 | `timbertalk/demo.py` | Beispielbetrieb zum Ausprobieren (Firma, Kataloge, Konten, Termine, Buchungen) über die `service.py` der Features; `uv run python -m timbertalk.demo` für eine bestehende Datenbank. |
 | `timbertalk/db.py` | Verbindung zur Datenbank, Sitzung je Anfrage (`get_session`), Anlegen der Tabellen, Gesundheitsprüfung. |
 | `timbertalk/features/__init__.py` | Findet die Feature-Ordner selbst und lädt ihre Tabellen und Router (`load_features()`). |
-| `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Zehn Ordner sind angelegt, aber noch ohne Inhalt (Tabelle in Abschnitt 6). |
+| `timbertalk/features/<name>/` | Je Feature ein eigener Ordner (Abschnitt 6). Einige Ordner sind angelegt, aber noch ohne Inhalt (Tabelle in Abschnitt 6). |
 | `conftest.py` | Gemeinsame Test-Hilfen (Fixtures) `engine`, `session`, `anonymous_client`, `client_as` und `client` für alle Tests. |
 | `tests/test_health.py` | Tests für `/api/health`, das Gerüst der Startseite, dass jeder Reiter-Ordner in `reiter.js` steht und jeder Abschnitt in der `sections.js` seines Reiters. |
 | `tests/test_grundlagen.py` | Tests für die Datenbank im Arbeitsspeicher und für `load_features()`. |
@@ -125,12 +126,12 @@ in `.gitignore`.
 | `app.js` | Prüft die Anmeldung, baut aus `reiter.js` je Reiter einen Link und einen Bereich (außer „Start“ – dorthin führt das Logo), schaltet die Reiter um und ruft beim ersten Öffnen `render()` des Reiters auf. Rechts in der Leiste: Glocke (Mitteilungen) und Foto mit Nachname als Konto-Menü. Lässt mehrzeilige Felder in älteren Browsern mitwachsen. |
 | `reiter.js` | Liste aller Reiter in der Reihenfolge der Leiste. |
 | `config.js` | Die einzige Stelle mit der Adresse der API. |
-| `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. Ist der Server gar nicht erreichbar, sagen sie das auf Deutsch statt „Failed to fetch“. |
+| `shared/api.js` | `getJson(path)` und `sendJson(method, path, body)`: der gemeinsame Weg aller Reiter zur API. Bei 401 lädt die Seite neu und zeigt die Anmeldung. Ist der Server gar nicht erreichbar, sagen sie das auf Deutsch statt „Failed to fetch“. Nach jeder erfolgreichen Änderung löst `sendJson` das Ereignis `CHANGED_EVENT` („timbertalk:changed“) auf `window` aus. |
 | `shared/session.js` | Das angemeldete Konto: `loadAccount()`, `currentAccount()`, `can(recht)`, `logout()` (F10). |
 | `shared/login.js` | Anmeldeseite, „eigenes Passwort festlegen“ und das Formular `passwordForm()` (F10). |
 | `shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`. |
 | `shared/sections.js` | `renderSections()`: baut in einem gemeinsamen Reiter die Auswahl der Abschnitte und zeigt immer einen davon – nur die, für die das Konto das Recht hat (Abschnitt 7). |
-| `features/start/start.js` | Reiter „Start“: Überschrift „Übersicht“, „TimberTalk läuft“ und der Status von Backend und Datenbank. |
+| `features/start/start.js` | Reiter „Start“: das Dashboard mit Widgets (F12, Kapitel `handbuch/F12-dashboard.md`). |
 | `features/planning/planning.js` | Reiter „Kalender“: Plantafel und persönlicher Kalender (F8, Kapitel `handbuch/F08-planning.md`). |
 | `features/projects/projects.js` | Reiter „Projekte“, noch leer. |
 | `features/customers/customers.js` | Reiter „Kunden“, noch leer. |
@@ -251,7 +252,7 @@ das Feature im Frontend zeigt.
 | `invoices/` | Rechnung als PDF, später E-Rechnung | – | `/api/invoices` |
 | `planning/` | Planung: Kalender und Gantt | `planning` | `/api/planning` |
 | `accounts/` | Benutzerkonten, Rollen und gleichzeitiges Arbeiten | `settings` | `/api/accounts` |
-| `backup/` | Datensicherung, Wiederherstellung und Export | `settings` | `/api/backup` |
+| `backup/` | Datensicherung, Wiederherstellung und Export (F13: Einstellungen exportieren/importieren) | `settings` | `/api/backup` |
 | `notifications/` | Mitteilungen an Personen (F8) | Knopf in der Leiste | `/api/notifications` |
 | `audit/` | Änderungsprotokoll (F11) | `settings` | `/api/audit` |
 | `dashboard/` | Dashboard mit Widgets (F12) | `start` | `/api/dashboard` |
@@ -327,7 +328,8 @@ Der Weg einer Anfrage durch ein Feature:
 - **`shared/api.js`** enthält `getJson(path)` und `sendJson(method, path, body)`. Alle Reiter
   fragen die API darüber; antwortet sie mit einem Fehler, werfen sie eine Ausnahme mit dem
   deutschen Text der API (`detail`) oder dem Statuscode. Bei 401 (Anmeldung abgelaufen) lädt die
-  Seite neu und zeigt die Anmeldung.
+  Seite neu und zeigt die Anmeldung. Nach jeder erfolgreichen Änderung (`sendJson`) löst es das
+  Ereignis `CHANGED_EVENT` auf `window` aus; so holt z. B. die Glocke ihre Zahl sofort neu.
 - **Anmeldung** (F10): Bevor `app.js` die Reiter baut, holt es mit `loadAccount()` aus
   `shared/session.js` das eigene Konto. Ohne Anmeldung zeigt `<main>` nur die Anmeldung, mit
   Startpasswort nur „eigenes Passwort festlegen“. Danach fragt jeder Reiter mit `can("…")`, ob er

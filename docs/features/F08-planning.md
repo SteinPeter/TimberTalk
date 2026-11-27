@@ -9,10 +9,12 @@ Erster Teil des Features `planning/` aus dem Programmaufbau („Kalender je Mita
 ## Was der Zimmerer danach kann
 
 Im Reiter „Kalender“ sieht der Chef die Woche als Plantafel: eine Zeile je Person, eine Spalte je
-Tag. Mit einem Klick auf „+“ in einer Zelle oder auf „Termin eintragen“ legt er einen Termin an –
+Tag, die Kalenderwoche groß darüber („KW 48“). In den Zellen steht von jedem Termin nur der Name,
+z. B. „Carport Berger“; Zeit, Ort und Kollegen zeigt der Tooltip und ein Klick. Mit einem Klick auf „+“ in einer Zelle oder auf „Termin eintragen“ legt er einen Termin an –
 z. B. „Carport Berger“ von Montag bis Mittwoch für Max und Tom, mit Ort und Uhrzeit. Ist jemand
 schon verplant oder im Urlaub, sagt TimberTalk es nach dem Speichern. Ein Geselle sieht auf dem
-Handy seine eigene Woche als Liste nach Tagen – wo er wann ist und mit wem.
+Handy seine eigene Woche als Raster mit einem Kästchen je Tag (schmal untereinander); ein Klick auf
+einen Termin klappt auf, wo er wann ist und mit wem.
 
 Dazu: Fahrzeuge und Maschinen (Transporter, Kran) stehen als eigene Zeilen auf der Plantafel und
 werden wie Personen eingeplant. Termine lassen sich mit der Maus auf einen anderen Tag oder zu
@@ -44,6 +46,8 @@ Im Meeting wird genau das vorgeführt:
 7. **Mitteilungen:** Max sieht oben rechts „Mitteilungen 1“: „Neu eingeplant: Carport Berger,
    Mo 30.11.–Mi 02.12., Potsdam.“ Ändert der Chef den Zeitraum, kommt „Geändert: …“, nimmt er
    Max heraus „Ausgeplant: …“, löscht er den Termin „Abgesagt: …“. Wer plant, bekommt selbst nichts.
+   Mit ✕ entfernt Max eine Mitteilung. Die Mitteilung „Urlaubsantrag … bitte entscheiden“
+   verschwindet von selbst, sobald der Antrag entschieden oder zurückgezogen ist.
 8. **Fahrzeuge und Maschinen:** In „Einstellungen → Fahrzeuge und Maschinen“ legt der Chef
    „Transporter“ und „Autokran“ an. Sie erscheinen als Zeilen auf der Plantafel und im Dialog.
    Ist der Kran schon verplant, kommt der Hinweis „Autokran ist am … schon verplant: …“.

@@ -333,7 +333,10 @@ body {
 }
 
 .notify-list li {
-  padding: 0.6rem 0.9rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.4rem 0.6rem 0.9rem;
   font-size: 0.9rem;
   border-bottom: 1px solid var(--line);
 }
@@ -366,6 +369,31 @@ body {
 
 .notify-empty {
   color: var(--muted);
+}
+
+.notify-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ✕ zum Entfernen: unauffällig, aber groß genug zum Treffen (44 × 44 px). */
+.notify-remove {
+  flex: none;
+  width: 2.75rem;
+  height: 2.75rem;
+  margin: -0.6rem 0;
+  font: inherit;
+  color: var(--muted);
+  background: none;
+  border: 0;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.notify-remove:hover,
+.notify-remove:focus-visible {
+  color: var(--text);
+  background: var(--line);
 }
 
 .account-name {
@@ -955,10 +983,27 @@ h1 {
   gap: 0.5rem;
 }
 
+/* Die Kalenderwoche groß, der Zeitraum klein daneben. */
 .planning-week {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
   margin: 0;
-  font-weight: 600;
   font-variant-numeric: tabular-nums;
+}
+
+.planning-week-number {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.planning-week-range {
+  color: var(--muted);
+}
+
+.planning-board thead .planning-corner {
+  color: var(--text);
+  font-size: 1rem;
 }
 
 .planning-actions select {
@@ -1007,7 +1052,7 @@ h1 {
 
 .planning-board td {
   background: var(--card);
-  height: 4.5rem;
+  height: 3.5rem;
 }
 
 .planning-person {
@@ -1042,13 +1087,16 @@ h1 {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
 
-/* Ein Termin: links ein Balken. Abwesenheit (Urlaub, krank, Schule) gestrichelt und grau. */
+/* Ein Termin: links ein Balken, nur der Name – höchstens zwei Zeilen (zu lang: „…“, ganz im
+   Tooltip).
+   Abwesenheit (Urlaub, krank, Schule) gestrichelt und grau. */
 .planning-chip {
   display: block;
   box-sizing: border-box;
   width: 100%;
+  min-height: 1.75rem;
   margin-bottom: 0.25rem;
-  padding: 0.25rem 0.4rem;
+  padding: 0.2rem 0.4rem;
   font: inherit;
   font-size: 0.8125rem;
   line-height: 1.3;
@@ -1080,8 +1128,29 @@ button.planning-chip:hover {
 }
 
 .planning-chip-title {
-  display: block;
+  display: -webkit-box;
+  overflow: hidden;
   font-weight: 600;
+  hyphens: auto; /* lange Wörter mit Trennstrich: „Dachsanie-rung“ */
+  overflow-wrap: break-word;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+
+/* Ohne Planungsrecht: Klick auf den Namen klappt die Einzelheiten auf. */
+details.planning-chip summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+details.planning-chip summary::-webkit-details-marker {
+  display: none;
+}
+
+details.planning-chip[open] .planning-chip-title {
+  -webkit-line-clamp: unset;
+  line-clamp: none;
 }
 
 .planning-chip-detail {
@@ -1089,13 +1158,15 @@ button.planning-chip:hover {
   color: var(--muted);
 }
 
-/* Das + in jeder Zelle: zum Eintragen für diese Person an diesem Tag. */
+/* Das + in jeder Zelle: zum Eintragen für diese Person an diesem Tag. Es erscheint erst, wenn
+   die Maus über der Zelle steht oder es per Tastatur den Fokus hat – so bleibt die Tafel ruhig.
+   Auf Touch-Geräten (ohne Maus) ist es immer zu sehen. */
 .planning-add {
   width: 100%;
   min-height: 1.75rem;
   padding: 0;
   font: inherit;
-  color: var(--muted);
+  color: transparent;
   background: transparent;
   border: 1px dashed transparent;
   border-radius: 0.25rem;
@@ -1108,6 +1179,12 @@ button.planning-chip:hover {
   border-color: var(--line);
 }
 
+@media (hover: none) {
+  .planning-add {
+    color: var(--muted);
+  }
+}
+
 .planning-board button:focus-visible,
 .planning-list button:focus-visible,
 .planning-dialog :focus-visible {
@@ -1115,15 +1192,28 @@ button.planning-chip:hover {
   outline-offset: 2px;
 }
 
-/* Persönlicher Kalender: die Woche als Liste nach Tagen. */
+/* Persönlicher Kalender: die Woche als Raster, ein Kästchen je Tag; schmal untereinander. */
 .planning-list h2 {
   margin: 0 0 0.5rem;
   font-size: 1.125rem;
 }
 
+.planning-week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: 0.5rem;
+}
+
 .planning-day {
-  padding: 0.5rem 0 0.75rem;
-  border-top: 1px solid var(--line);
+  min-height: 5rem;
+  padding: 0.5rem;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+}
+
+.planning-day.planning-today {
+  box-shadow: inset 0 0 0 2px var(--accent);
 }
 
 .planning-day h3 {
@@ -1136,8 +1226,7 @@ button.planning-chip:hover {
 }
 
 .planning-day .planning-chip {
-  max-width: 32rem;
-  font-size: 0.9rem;
+  font-size: 0.875rem;
 }
 
 .planning-free {
@@ -1600,14 +1689,23 @@ textarea {
   gap: 0.5rem 1rem;
 }
 
+/* Karten wie Mauersteine: Spalten füllen die Breite (auto-fit), Zeilen sind nur 0,25rem hoch.
+   start.js gibt jeder Karte so viele Zeilen, wie ihr Inhalt braucht – der Abstand nach unten
+   steckt im margin-bottom der Karte. */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(19rem, 100%), 1fr));
+  grid-auto-rows: 0.25rem;
+  column-gap: 1rem;
   align-items: start;
 }
 
+.dashboard-grid > .empty {
+  grid-column: 1 / -1;
+}
+
 .dashboard-card {
+  margin-bottom: 1rem;
   padding: 0.75rem 1rem 1rem;
   background: var(--card);
   border: 1px solid var(--line);
@@ -1677,6 +1775,11 @@ textarea {
 
 .dashboard-choose .form-check {
   margin-top: 0;
+}
+
+.dashboard-when {
+  display: block;
+  color: var(--muted);
 }
 
 .dashboard-move {
