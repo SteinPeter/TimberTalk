@@ -54,7 +54,17 @@ geändert:
 - Endpunkte holen ihre Datenbank-Sitzung mit `session: Session = Depends(get_session)` aus
   `timbertalk.db` – nie selbst eine Verbindung bauen.
 - Tests benutzen die Fixtures aus `backend/conftest.py`: `session` für `service.py`, `client` für
-  `api.py`. Jeder Test bekommt eine leere Datenbank.
+  `api.py`. Jeder Test bekommt eine leere Datenbank. `client` ist als Admin angemeldet;
+  `client_as("journeyman")` gibt einen Browser mit einer anderen Rolle.
+- Jeder Endpunkt verlangt eine Anmeldung (`main.py`). Braucht er ein Recht, steht es im Endpunkt:
+  `Depends(require("finance.view"))` aus `features/accounts/deps.py`; neue Rechte stehen in
+  `features/accounts/permissions.py` (F10).
+- Wer ein Feature baut, ergänzt `backend/timbertalk/demo.py` um ein paar Beispieldaten (über die
+  eigene `service.py`), damit man es nach dem Start sofort ausprobieren kann.
+- Ein Dashboard-Widget ist eine Datei `frontend/features/<ordner>/widgets/<name>.js` im eigenen
+  Ordner (Bauplan oben in `frontend/features/start/start.js`); es wird nirgends eingetragen (F12).
+- Jeder ändernde Endpunkt (POST, PUT, DELETE) bekommt `summary="…"` – das ist sein Name im
+  Änderungsprotokoll (F11).
 - Andere Features werden nur über deren `service.py` benutzt, nie über deren Tabellen oder
   `api.py`. So kann jede Person ihr Feature intern umbauen, ohne andere zu brechen.
 

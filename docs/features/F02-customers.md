@@ -1,11 +1,12 @@
 # F2 – Kunden
 
 > **Status: als Arbeitsgrundlage freigegeben am 2026-11-25 – Feature noch nicht abgeschlossen.**
-> Arbeitspaket AP-1.4, Frist 27.11.2026. Fertig: Backend, API, Reiter mit Liste, Suche, Export
-> sowie Formularen und Dialogen (Speichern noch ausgeschaltet), Demo-Datensatz (LD-09),
-> Export-Prüfungen (LN-05), S-11-Vorbereitung ohne Registrierung.
-> Offen: Speichern aus dem Reiter freischalten (D6), Registrierung und Bestätigung der
-> KI-Werkzeuge (S-09/S-10), `kunde_anlegen` nach S-11 (D9), DSGVO-Löschung (D3).
+> Arbeitspaket AP-1.4, Frist 27.11.2026. Fertig: Backend, API (mit Anmeldung F10 und
+> Änderungsprotokoll F11), Reiter mit Liste, Suche, Export, Formularen und Dialogen – Speichern
+> über `sendJson()` aus `shared/api.js`, Demo-Datensatz (LD-09), Export-Prüfungen (LN-05),
+> S-11-Vorbereitung ohne Registrierung.
+> Offen: Registrierung und Bestätigung der KI-Werkzeuge (S-09/S-10), `kunde_anlegen` nach S-11
+> (D9), DSGVO-Löschung (D3), Rechte für Kunden (D11), Demo-Daten in `timbertalk/demo.py` (D12).
 >
 > Drei Arten von Angaben werden hier auseinandergehalten:
 > - **bestätigt** – Anforderungen aus AP-1.4 und die Freigabe dieses Steckbriefs;
@@ -58,11 +59,13 @@ Im Meeting wird genau das vorgeführt:
 10. **Testdaten:** Alle Tests und Demo-Daten verwenden nur erfundene Personen, Firmen und Adressen.
 11. **Oberfläche:** Punkte 1–6 auch im Reiter „Kunden“. Suchen, Ansehen und Export
     funktionieren. Die Formulare (Anlegen, Bearbeiten, Privat/Firma) und die Dialoge (Archivieren,
-    Wiederherstellen, Löschen mit Häkchen) lassen sich öffnen, ausfüllen und prüfen.
-    **[OFFEN – D6]** Speichern ist ausgeschaltet (`WRITE_ENABLED = false`), bis
-    `frontend/shared/api.js` Methode und Inhalt mitschickt; bis dahin meldet jeder Versuch
-    „Nicht gespeichert“ und es geht keine Schreibabfrage an den Server.
-12. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün; die
+    Wiederherstellen, Löschen mit Häkchen) speichern über `sendJson()` (`WRITE_ENABLED = true`).
+    Eine Erfolgsmeldung erscheint nur, wenn die Antwort die Änderung bestätigt; lehnt der Server
+    ab, steht seine deutsche Meldung im Dialog („Nicht gespeichert: …“).
+12. **Anmeldung und Protokoll:** Ohne Anmeldung antwortet jeder Kunden-Endpunkt (auch der Export)
+    mit 401. Jede erfolgreiche Änderung steht im Änderungsprotokoll unter „Kunden“ mit ihrem Namen
+    (`summary`, z. B. „Kunde anlegen“).
+13. `uv run pytest`, `uv run ruff check .` und `uv run ruff format --check .` sind grün; die
     Oberfläche ist mit dem Skill `apple-design` durchgesehen.
 
 ## Demo-Datensatz (LD-09)
@@ -127,8 +130,12 @@ aus Datenbank, Liste und Export entfernt. **Nicht geklärt und nicht umgesetzt:*
 3. **Auskunft (Art. 15) und Datenübertragbarkeit (Art. 20):** Export für einen einzelnen Kunden?
 4. **Nachweis:** Wird eine Löschung protokolliert (wer, wann), ohne die gelöschten Daten zu behalten?
 5. **Datensicherungen:** Wie lange bleiben gelöschte Kunden in Sicherungen (Feature `backup`)?
-6. **Berechtigung:** Wer darf löschen und exportieren (Feature `accounts`)?
+6. **Berechtigung:** Wer darf löschen und exportieren (Feature `accounts`, siehe D11)?
 7. **Exportdateien:** Sie enthalten personenbezogene Daten; Hinweis zum Umgang in der Oberfläche?
+8. **Änderungsprotokoll (F11):** Die gemeinsame Middleware schreibt bei jeder Änderung die
+   gesendeten Angaben (Name, Adresse, Telefon, E-Mail, Notiz) gekürzt in das Protokoll. Nach dem
+   Löschen eines Kunden stehen sie dort weiter. Wie lange bleibt das Protokoll, und reicht für
+   Kunden „wer, wann, welcher Kunde“ ohne Inhalte? Zu klären mit F11 – nicht in F2 änderbar.
 
 Die Löschregel wird erst geändert, wenn diese Punkte fachlich entschieden sind.
 
@@ -195,6 +202,22 @@ ganze Zahl als `customer_id` erwartet.
 Bewusst **nicht** enthalten: IBAN oder andere Bankdaten, USt-IdNr., Kennzeichen für § 13b UStG,
 Zusatzfelder. Sie kommen nur mit bestätigter fachlicher Anforderung. Geldbeträge gibt es hier nicht.
 
+## Offene Fragen im Überblick
+
+Stand 2026-11-27, angepasst an `main`. Details in der Tabelle darunter.
+
+- **Berechtigungen (D11):** Heute darf jede angemeldete Person Kunden sehen, anlegen, ändern,
+  archivieren, löschen und exportieren. Welche Rollen was dürfen, ist nicht entschieden; ein Recht
+  braucht eine Zeile in der gemeinsamen Datei `features/accounts/permissions.py`.
+- **S-09 (D1):** Werkzeugkatalog fehlt; `kunde_suchen`, `kunde_aendern`, `kunde_archivieren` sind
+  in `tools.py` nur vorbereitet, nicht registriert.
+- **S-10 (D2):** Bestätigung von Entwürfen fehlt; F2 baut sie nicht nach.
+- **S-11 (D9, D10):** `kunde_anlegen` kennt nur `name` (D9); erlaubte Schlüssel in `felder` (D10).
+- **DSGVO (D3):** Löschen gegen Aufbewahrungspflichten, Kunden mit Projekten, Auskunft, Nachweis,
+  Sicherungen, Exportdateien und Kundendaten im Änderungsprotokoll – siehe „Datenschutz“.
+- **Demo-Daten (D12):** `customers/demo.py` bleibt; die gemeinsame `timbertalk/demo.py` ist
+  unverändert.
+
 ## Offene Entscheidungen
 
 | Nr. | Frage | Vorgehen bis zur Klärung |
@@ -204,11 +227,13 @@ Zusatzfelder. Sie kommen nur mit bestätigter fachlicher Anforderung. Geldbeträ
 | D3 | **Löschen/DSGVO:** siehe „Datenschutz“. | Nur archivierte Kunden löschbar. |
 | D4 | ~~S-11 als Exportformat~~ – erledigt: S-11 beschreibt KI-Werkzeuge, kein Exportformat. | Export nach Abschnitt „Export“ (LN-05). |
 | D5 | **Export vs. Backup:** Gehört der Export zu F2 oder zum Feature `backup`? | F2 exportiert nur die Kundenliste. |
-| D6 | **`frontend/shared/api.js`:** `getJson()` kann nur GET. Gemeinsame Datei – mit Peter/Anton abzustimmen. | Nicht in diesem Branch ändern. Formulare und Dialoge sind fertig, Schreiben läuft nur über `sendChange()` und ist mit `WRITE_ENABLED = false` ausgeschaltet. Nach der Freigabe: `WRITE_ENABLED = true`, dann im Browser prüfen. |
+| D6 | ~~`shared/api.js` kann nur GET~~ – erledigt: `main` bietet `sendJson(method, path, body)`. | `sendChange()` ruft `sendJson()`; `WRITE_ENABLED = true`, im Browser mit Anmeldung geprüft. Fehlertexte kommen als Text in `detail`. |
 | D7 | **Pflichtfelder:** Reichen Nachname bzw. Firmenname? | Ja, sonst alles freiwillig. |
 | D8 | **Archivierte Kunden in Projekten:** Darf F3 einem archivierten Kunden ein Projekt geben? | `get_customer` liefert auch archivierte Kunden mit `archived`; F3 entscheidet. |
 | D9 | **`kunde_anlegen` in S-11 v0.1 hat nur `name`.** S-11 um Kundenart und Vor-/Nachname bzw. Firmenname ergänzen, oder `name` in F2 einer Kundenart zuordnen? | Nicht umgesetzt; Vorschlag an S-11: optionale Felder `kundenart`, `vorname`, `nachname`, `firmenname`. |
 | D10 | **`felder` in `kunde_aendern`:** Welche Schlüssel sind erlaubt, darf `name` geändert werden? | Erlaubt sind `strasse`, `plz`, `ort`, `telefon`, `email`; `name` wird abgewiesen (Code `offen`). |
+| D11 | **Rechte (F10):** Wer darf Kunden sehen, anlegen, ändern, archivieren, löschen und exportieren? `permissions.py` hat noch kein Kundenrecht. | Jede angemeldete Person darf alles. Ein Recht (z. B. `customers.edit`, `customers.delete`) braucht eine Zeile in der gemeinsamen Datei `permissions.py` – erst nach Abstimmung. |
+| D12 | **Demo-Daten (CLAUDE.md):** Features ergänzen den Beispielbetrieb in `backend/timbertalk/demo.py`. F2 hat eigene Demo-Daten in `customers/demo.py` (LD-09). | Unverändert gelassen; `timbertalk/demo.py` ist eine gemeinsame Datei. Nach Freigabe: Kunden aus `DEMO_CUSTOMERS` über `customers.service` in `seed()` anlegen. |
 
 ## Nicht dabei
 
@@ -230,9 +255,9 @@ Zusatzfelder. Sie kommen nur mit bestätigter fachlicher Anforderung. Geldbeträ
   ohne etwas zu schreiben – die Grundlage für eine spätere Vorschau in S-10.
 - **Demo-Daten in eigener Datei:** `python -m …customers.demo <datei.db>`; die echte Datenbank wird
   verweigert.
-- **Erfolg nur mit Nachweis:** Im Reiter laufen alle Schreibaktionen über `sendChange()`. Eine
-  Erfolgsmeldung gibt es nur, wenn die Antwort der API die Änderung bestätigt (`confirmsChange`).
-  So erscheint nie „Gespeichert“, wenn eine Abfrage zum Beispiel still als GET lief.
+- **Erfolg nur mit Nachweis:** Im Reiter laufen alle Schreibaktionen über `sendChange()` und damit
+  über `sendJson()`. Eine Erfolgsmeldung gibt es nur, wenn die Antwort der API die Änderung
+  bestätigt (`confirmsChange`). So erscheint nie „Gespeichert“, wenn etwas schiefging.
 
 ## Reiter
 

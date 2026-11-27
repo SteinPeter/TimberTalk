@@ -15,6 +15,7 @@ from pydantic import ValidationError
 from sqlmodel import Session, SQLModel
 
 from timbertalk.db import IN_MEMORY_URL, make_engine
+from timbertalk.features.audit import service as audit
 from timbertalk.features.customers import demo, service, tools
 from timbertalk.features.customers.models import CustomerInput, CustomerUpdate
 from timbertalk.main import FRONTEND_DIR
@@ -366,8 +367,33 @@ def test_api_kunde_anlegen(client: TestClient) -> None:
 def test_api_anlegen_ohne_pflichtfeld_gibt_422_mit_meldung(client: TestClient) -> None:
     response = client.post("/api/customers", json=PRIVAT_JSON | {"last_name": ""})
     assert response.status_code == 422
-    assert response.json()["detail"]["code"] == "ungueltig"
-    assert "Nachname" in response.json()["detail"]["message"]
+    assert "Nachname" in response.json()["detail"]  # deutsche Meldung als Text für api.js
+
+
+def test_api_nur_mit_anmeldung(anonymous_client: TestClient) -> None:
+    # main.py verlangt für jeden Router eine Anmeldung (F10) – auch für Export und Schreiben.
+    assert anonymous_client.get("/api/customers").status_code == 401
+    assert anonymous_client.get("/api/customers/export.csv").status_code == 401
+    assert anonymous_client.post("/api/customers", json=PRIVAT_JSON).status_code == 401
+    assert anonymous_client.delete("/api/customers/1").status_code == 401
+
+
+def test_api_jede_aenderung_hat_einen_namen_fuers_protokoll() -> None:
+    # CLAUDE.md (F11): Jeder ändernde Endpunkt bekommt summary="…".
+    from timbertalk.features.customers.api import router
+
+    for route in router.routes:
+        if route.methods & {"POST", "PUT", "PATCH", "DELETE"}:
+            assert route.summary, route.path
+
+
+def test_api_aenderungen_stehen_im_protokoll(client: TestClient, session: Session) -> None:
+    created = anlegen(client, PRIVAT_JSON)
+    client.post(f"/api/customers/{created['id']}/archive")
+    client.delete("/api/customers/999")  # abgelehnt (404) → kein Eintrag
+
+    actions = [event.action for event in audit.list_events(session, area="Kunden")]
+    assert actions == ["Kunde archivieren", "Kunde anlegen"]
 
 
 def test_api_anlegen_mit_falscher_kundenart_gibt_422(client: TestClient) -> None:
@@ -396,7 +422,7 @@ def test_api_kunde_anzeigen(client: TestClient) -> None:
 def test_api_unbekannter_kunde_gibt_404(client: TestClient) -> None:
     response = client.get("/api/customers/999")
     assert response.status_code == 404
-    assert response.json()["detail"]["code"] == "nicht_gefunden"
+    assert response.json()["detail"] == "Kunde 999 gibt es nicht."
     assert client.patch("/api/customers/999", json={"city": "X"}).status_code == 404
     assert client.post("/api/customers/999/archive").status_code == 404
     assert client.post("/api/customers/999/restore").status_code == 404
@@ -441,7 +467,7 @@ def test_api_loeschen_nur_archivierte(client: TestClient) -> None:
 
     abgelehnt = client.delete(url)
     assert abgelehnt.status_code == 409
-    assert abgelehnt.json()["detail"]["code"] == "nicht_archiviert"
+    assert "archiviert" in abgelehnt.json()["detail"]
     assert client.get(url).status_code == 200
 
     client.post(f"{url}/archive")
@@ -736,14 +762,16 @@ def reiter_code() -> str:
     return CUSTOMERS_JS.read_text(encoding="utf-8")
 
 
-def test_reiter_fragt_die_api_nur_ueber_getjson() -> None:
+def test_reiter_fragt_die_api_nur_ueber_shared_api_js() -> None:
     code = reiter_code()
-    assert 'import { getJson } from "../../shared/api.js";' in code
+    assert 'import { getJson, sendJson } from "../../shared/api.js";' in code
     assert "fetch(" not in code
     assert "XMLHttpRequest" not in code
-    # Genau zwei Aufrufe: die Liste laden und sendChange() für alle Schreibaktionen.
-    assert code.count("await getJson(") == 2
-    assert "async function sendChange(" in code
+    # Lesen: genau ein Aufruf (die Liste). Schreiben: genau einer, in sendChange().
+    assert code.count("await getJson(") == 1
+    assert code.count("await sendJson(") == 1
+    send = code[code.index("async function sendChange(") :]
+    assert "await sendJson(" in send[: send.index("\n}\n")]
 
 
 def test_reiter_setzt_innerhtml_nur_mit_festem_text() -> None:
@@ -753,12 +781,12 @@ def test_reiter_setzt_innerhtml_nur_mit_festem_text() -> None:
     assert "${" not in templates[0]  # keine Daten im HTML, die kommen mit textContent
 
 
-def test_schreiben_bleibt_aus_solange_getjson_nur_get_kann() -> None:
-    # getJson(path) ohne zweiten Parameter ignoriert Methode und Inhalt: Ein „Speichern“ liefe
-    # still als GET. Erst wenn shared/api.js erweitert ist, darf WRITE_ENABLED true werden.
+def test_schreiben_nur_an_wenn_shared_api_js_sendjson_hat() -> None:
+    # Schreiben braucht sendJson(method, path, body) aus shared/api.js. Fehlt es, liefe ein
+    # „Speichern“ ins Leere – dann muss WRITE_ENABLED aus sein.
     api = SHARED_API_JS.read_text(encoding="utf-8")
-    getjson_kann_nur_get = re.search(r"function getJson\(\s*path\s*\)", api) is not None
-    if getjson_kann_nur_get:
+    hat_sendjson = re.search(r"export async function sendJson\(method, path, body\)", api)
+    if not hat_sendjson:
         assert "const WRITE_ENABLED = false;" in reiter_code()
 
 

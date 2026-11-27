@@ -1,7 +1,7 @@
-# Feature „Planung: Kalender und Gantt“.
-# Reiter im Frontend: frontend/features/planning/planning.js.
+# Feature „Planung: Kalender je Mitarbeiter“ (F8).
+# Reiter im Frontend: frontend/features/planning/planning.js („Kalender“).
 #
-# Wer dieses Feature baut, arbeitet nur in diesem Ordner (und im Reiter-Ordner oben).
-# Der Ordner wird automatisch geladen – er muss nirgends eingetragen werden.
-# Dazu gehören: Steckbrief docs/features/F<nr>-<name>.md und Handbuch-Kapitel
-# docs/handbuch/F<nr>-<name>.md (Vorlage: docs/handbuch/_vorlage.md).
+# Termine und Einsätze je Person: Plantafel für die ganze Woche und persönlicher Kalender.
+# Personen und Rechte kommen aus F10 (accounts). Arbeitspakete je Projekt und die Gantt-Ansicht
+# gehören später auch hierher.
+# Handbuch-Kapitel: docs/handbuch/F08-planning.md, Steckbrief: docs/features/F08-planning.md.

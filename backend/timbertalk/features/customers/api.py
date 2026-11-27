@@ -4,8 +4,13 @@
 # Das Objekt `router` muss bleiben: load_features() hängt es an die App.
 #
 # Fachliche Fehler (CustomerError) werden hier nur in HTTP-Statuscodes übersetzt:
-# nicht_gefunden → 404, ungueltig → 422, nicht_archiviert → 409.
+# nicht_gefunden → 404, ungueltig → 422, nicht_archiviert → 409. Die Antwort trägt die deutsche
+# Meldung als Text in "detail" – so zeigt shared/api.js sie im Reiter an.
 # Falsche Kundenart oder zu lange Texte weist FastAPI selbst mit 422 ab.
+#
+# Anmeldung: main.py hängt require_login an diesen Router, ohne Anmeldung kommt 401 (F10).
+# Ein eigenes Recht für Kunden gibt es in permissions.py noch nicht (Steckbrief, D11).
+# Jeder ändernde Endpunkt hat summary="…": sein Name im Änderungsprotokoll (F11).
 #
 # ruff meldet B008 bei `Depends(...)` im Parameter; CLAUDE.md schreibt genau das vor
 # (so auch in den Branches von F3 und F5). Deshalb gilt die Ausnahme nur für diese Datei.
@@ -34,14 +39,14 @@ ERROR_STATUS = {
 def _run(function: Callable[..., Any], *args: Any, **kwargs: Any) -> Any:
     """Ruft eine Service-Funktion auf und macht aus CustomerError eine HTTP-Antwort.
 
-    Die Antwort enthält {"detail": {"code": ..., "message": ...}} mit deutscher Meldung.
+    Die Antwort enthält {"detail": "<deutsche Meldung>"}.
     """
     try:
         return function(*args, **kwargs)
     except service.CustomerError as error:
         raise HTTPException(
             status_code=ERROR_STATUS.get(error.code, status.HTTP_400_BAD_REQUEST),
-            detail={"code": error.code, "message": str(error)},
+            detail=str(error),
         ) from error
 
 
@@ -72,13 +77,15 @@ def get_customer(customer_id: int, session: Session = Depends(get_session)):
     return _run(service.require_customer, session, customer_id)
 
 
-@router.post("", response_model=CustomerRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "", response_model=CustomerRead, status_code=status.HTTP_201_CREATED, summary="Kunde anlegen"
+)
 def create_customer(data: CustomerInput, session: Session = Depends(get_session)):
     """Legt einen Kunden an."""
     return _run(service.create_customer, session, data)
 
 
-@router.patch("/{customer_id}", response_model=CustomerRead)
+@router.patch("/{customer_id}", response_model=CustomerRead, summary="Kunde bearbeiten")
 def update_customer(
     customer_id: int, changes: CustomerUpdate, session: Session = Depends(get_session)
 ):
@@ -86,19 +93,21 @@ def update_customer(
     return _run(service.update_customer, session, customer_id, changes)
 
 
-@router.post("/{customer_id}/archive", response_model=CustomerRead)
+@router.post("/{customer_id}/archive", response_model=CustomerRead, summary="Kunde archivieren")
 def archive_customer(customer_id: int, session: Session = Depends(get_session)):
     """Archiviert einen Kunden."""
     return _run(service.archive_customer, session, customer_id)
 
 
-@router.post("/{customer_id}/restore", response_model=CustomerRead)
+@router.post(
+    "/{customer_id}/restore", response_model=CustomerRead, summary="Kunde wiederherstellen"
+)
 def restore_customer(customer_id: int, session: Session = Depends(get_session)):
     """Holt einen archivierten Kunden zurück."""
     return _run(service.restore_customer, session, customer_id)
 
 
-@router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{customer_id}", status_code=status.HTTP_204_NO_CONTENT, summary="Kunde löschen")
 def delete_customer(customer_id: int, session: Session = Depends(get_session)) -> None:
     """Löscht einen Kunden endgültig – vorläufig nur archivierte (Steckbrief D3)."""
     _run(service.delete_customer, session, customer_id)

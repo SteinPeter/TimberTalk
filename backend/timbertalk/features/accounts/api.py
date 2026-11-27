@@ -1,11 +1,292 @@
-# Die Endpunkte des Features „Benutzerkonten, Rollen und gleichzeitiges Arbeiten“ unter
-# /api/accounts. Noch ohne Endpunkte.
+# Die Endpunkte des Features „Benutzerkonten und Rechte“ unter /api/accounts.
 # Ein Endpunkt nimmt die Anfrage an, ruft eine Funktion aus service.py auf und gibt das Ergebnis
-# zurück – sonst nichts. Die Sitzung kommt aus Depends(get_session).
+# zurück. Dazu kommt hier nur, was HTTP betrifft: das Cookie mit dem Sitzungsschlüssel setzen und
+# löschen und Fehler des Service in Antworten mit deutschem Text übersetzen.
 # Das Objekt `router` muss bleiben: load_features() hängt es an die App.
 
-from fastapi import APIRouter
+# ruff: noqa: B008 – FastAPI erwartet Depends(...) als Standardwert, siehe materials/api.py.
 
-router = APIRouter(
-    prefix="/api/accounts", tags=["Benutzerkonten, Rollen und gleichzeitiges Arbeiten"]
+from collections.abc import Callable
+
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlmodel import Session
+
+from timbertalk.db import get_session
+from timbertalk.features.accounts import service
+from timbertalk.features.accounts.deps import (
+    COOKIE_NAME,
+    current_account,
+    require,
+    session_token,
 )
+from timbertalk.features.accounts.models import (
+    Account,
+    AccountIn,
+    AccountInfo,
+    AccountPermission,
+    AccountUpdateIn,
+    CreatedAccount,
+    DemoLoginIn,
+    DemoModeIn,
+    LoginIn,
+    LoginInfo,
+    Me,
+    PasswordChangeIn,
+    PermissionIn,
+    PhotoIn,
+    ResetPasswordIn,
+    RoleMatrix,
+    StartPassword,
+    UserPermissionIn,
+)
+from timbertalk.settings import get_settings
+
+router = APIRouter(prefix="/api/accounts", tags=["Benutzerkonten und Rechte"])
+
+
+def _run(function: Callable, *args):
+    """Ruft eine Service-Funktion auf und macht aus ihren Fehlern eine Antwort mit Text."""
+    try:
+        return function(*args)
+    except service.LoginFailed as error:
+        raise HTTPException(status_code=401, detail=str(error)) from error
+    except PermissionError as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+    except LookupError as error:
+        raise HTTPException(status_code=404, detail=str(error)) from error
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+def _set_cookie(response: Response, token: str) -> None:
+    # httponly: JavaScript kommt nicht an den Schlüssel. samesite=strict: fremde Seiten können
+    # keine Anfragen mit diesem Cookie schicken.
+    response.set_cookie(
+        COOKIE_NAME,
+        token,
+        max_age=service.SESSION_DAYS * 24 * 60 * 60,
+        httponly=True,
+        samesite="strict",
+        path="/",
+    )
+
+
+# --- Anmelden und eigenes Konto -------------------------------------------------------
+
+
+@router.get("/login-info")
+def login_info(session: Session = Depends(get_session)) -> LoginInfo:
+    return service.login_info(session, get_settings().dev_login_hint)
+
+
+@router.post("/demo-login")
+def demo_login(
+    data: DemoLoginIn, response: Response, session: Session = Depends(get_session)
+) -> Me:
+    account, token = _run(service.demo_login, session, data.account_id)
+    _set_cookie(response, token)
+    return service.me(session, account)
+
+
+@router.post("/login")
+def login(data: LoginIn, response: Response, session: Session = Depends(get_session)) -> Me:
+    account, token = _run(service.login, session, data.identifier, data.password)
+    _set_cookie(response, token)
+    return service.me(session, account)
+
+
+@router.post("/logout", status_code=204)
+def logout(request: Request, response: Response, session: Session = Depends(get_session)) -> None:
+    token = session_token(request)
+    if token:
+        service.logout(session, token)
+    response.delete_cookie(COOKIE_NAME, path="/")
+
+
+@router.get("/me")
+def get_me(
+    account: Account = Depends(current_account), session: Session = Depends(get_session)
+) -> Me:
+    return service.me(session, account)
+
+
+@router.post("/me/password", summary="Eigenes Passwort ändern")
+def change_password(
+    data: PasswordChangeIn,
+    request: Request,
+    account: Account = Depends(current_account),
+    session: Session = Depends(get_session),
+) -> Me:
+    _run(
+        service.change_own_password,
+        session,
+        account,
+        data.old_password,
+        data.new_password,
+        session_token(request),
+    )
+    return service.me(session, account)
+
+
+@router.put("/me/photo", summary="Eigenes Foto ändern")
+def set_own_photo(
+    data: PhotoIn,
+    account: Account = Depends(current_account),
+    session: Session = Depends(get_session),
+) -> Me:
+    _run(service.set_photo, session, account.id, data.photo)
+    return service.me(session, account)
+
+
+# --- Demo-Modus (Recht „accounts.manage“) ----------------------------------------------
+
+
+@router.get("/demo-mode")
+def get_demo_mode(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> DemoModeIn:
+    return service.demo_settings(session)
+
+
+@router.put("/demo-mode", summary="Demo-Modus ändern")
+def set_demo_mode(
+    data: DemoModeIn,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> DemoModeIn:
+    return _run(service.set_demo_mode, session, data.enabled, data.account_id)
+
+
+# Achtung Reihenfolge: Feste Adressen wie /demo-mode stehen vor /{account_id}.
+# --- Konten verwalten (Recht „accounts.manage“) ------------------------------------------
+
+
+@router.get("/standard-password")
+def get_standard_password(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> StartPassword:
+    return StartPassword(start_password=service.standard_password(session))
+
+
+@router.put("/standard-password", summary="Standardpasswort ändern")
+def set_standard_password(
+    data: StartPassword,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> StartPassword:
+    return StartPassword(
+        start_password=_run(service.set_standard_password, session, data.start_password)
+    )
+
+
+@router.put("/{account_id}/photo", summary="Foto eines Kontos ändern")
+def set_photo(
+    account_id: int,
+    data: PhotoIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> AccountInfo:
+    return service.info(_run(service.set_photo, session, account_id, data.photo, acting))
+
+
+@router.get("")
+def list_accounts(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> list[AccountInfo]:
+    return service.list_accounts(session)
+
+
+@router.post("", status_code=201, summary="Konto anlegen")
+def create_account(
+    data: AccountIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> CreatedAccount:
+    account, start_password = _run(
+        service.create_account,
+        session,
+        data.username,
+        data.display_name,
+        data.role,
+        data.personnel_number,
+        data.start_password,
+        acting,
+    )
+    return CreatedAccount(account=service.info(account), start_password=start_password)
+
+
+@router.put("/{account_id}", summary="Konto ändern")
+def update_account(
+    account_id: int,
+    data: AccountUpdateIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> AccountInfo:
+    account = _run(
+        service.update_account,
+        session,
+        account_id,
+        data.display_name,
+        data.role,
+        data.personnel_number,
+        data.active,
+        acting,
+    )
+    return service.info(account)
+
+
+@router.post("/{account_id}/reset-password", summary="Passwort zurücksetzen")
+def reset_password(
+    account_id: int,
+    data: ResetPasswordIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> StartPassword:
+    start_password = _run(service.reset_password, session, account_id, data.start_password, acting)
+    return StartPassword(start_password=start_password)
+
+
+# --- Rollen und Rechte (Recht „accounts.manage“) -----------------------------------------
+
+
+@router.get("/roles")
+def role_matrix(
+    _: Account = Depends(require("accounts.manage")), session: Session = Depends(get_session)
+) -> RoleMatrix:
+    return service.role_matrix(session)
+
+
+@router.put("/roles/{role}/permissions/{permission}", summary="Recht einer Rolle ändern")
+def set_role_permission(
+    role: str,
+    permission: str,
+    data: PermissionIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> RoleMatrix:
+    return _run(service.set_role_permission, session, role, permission, data.allowed, acting)
+
+
+# --- Rechte eines einzelnen Kontos (Recht „accounts.manage“) -----------------------------
+
+
+@router.get("/{account_id}/permissions")
+def account_permissions(
+    account_id: int,
+    _: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> list[AccountPermission]:
+    return _run(service.permissions_of, session, account_id)
+
+
+@router.put("/{account_id}/permissions/{permission}", summary="Recht eines Kontos ändern")
+def set_account_permission(
+    account_id: int,
+    permission: str,
+    data: UserPermissionIn,
+    acting: Account = Depends(require("accounts.manage")),
+    session: Session = Depends(get_session),
+) -> list[AccountPermission]:
+    return _run(
+        service.set_account_permission, session, account_id, permission, data.allowed, acting
+    )

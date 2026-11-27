@@ -13,14 +13,14 @@
 | `backend/timbertalk/features/customers/api.py` | Endpunkte unter `/api/customers`; übersetzt `CustomerError` in HTTP-Statuscodes |
 | `backend/timbertalk/features/customers/demo.py` | Demo-Datensatz (LD-09): zehn erfundene Kunden, `load_demo_customers()` und Befehl zum Laden in eine eigene Datei |
 | `backend/timbertalk/features/customers/tools.py` | S-11-Vorbereitung: übersetzt Werkzeug-Eingaben auf den Service, prüft ohne Speichern; kein Katalog, keine Registrierung |
-| `backend/timbertalk/features/customers/test_customers.py` | Tests für Service, Endpunkte, Demo-Datensatz, Export und `tools.py` mit erfundenen Daten; Regelprüfungen am Quelltext von `customers.js` (nur `getJson`, `innerHTML` nur fest, Schreiben aus, Längen und Pflicht wie im Backend) |
-| `frontend/features/customers/customers.js` | Reiter „Kunden“: Liste mit Suche, Schalter „Archivierte zeigen“, Kundendaten, CSV-Link; Formular Anlegen/Bearbeiten, Dialoge Archivieren/Wiederherstellen/Löschen; Speichern über `sendChange()`, ausgeschaltet |
+| `backend/timbertalk/features/customers/test_customers.py` | Tests für Service, Endpunkte, Demo-Datensatz, Export und `tools.py` mit erfundenen Daten; Anmeldung (401), Protokoll-Namen (`summary`); Regelprüfungen am Quelltext von `customers.js` (nur `getJson`/`sendJson`, `innerHTML` nur fest, Schreiben nur mit `sendJson`, Längen und Pflicht wie im Backend) |
+| `frontend/features/customers/customers.js` | Reiter „Kunden“: Liste mit Suche, Schalter „Archivierte zeigen“, Kundendaten, CSV-Link; Formular Anlegen/Bearbeiten, Dialoge Archivieren/Wiederherstellen/Löschen; Speichern über `sendChange()` → `sendJson()` |
 
 ## Der Reiter
 
-Abfragen laufen laut `CLAUDE.md` nur über `getJson()` aus `shared/api.js`, und das kann bisher nur
-GET (Steckbrief D6). Lesen funktioniert deshalb vollständig; **Speichern ist ausgeschaltet**
-(`WRITE_ENABLED = false`). Eigene CSS-Klassen gibt es noch nicht; der Reiter benutzt nur `hint`,
+Abfragen laufen nur über `shared/api.js`: Lesen mit `getJson()`, Schreiben mit
+`sendJson(method, path, body)`. Beide schicken das Anmelde-Cookie mit; bei 401 lädt `api.js` die
+Seite neu und zeigt die Anmeldung. Eigene CSS-Klassen gibt es noch nicht; der Reiter benutzt nur `hint`,
 `empty`, `status` und Standard-Elemente des Browsers (`<details>`, `<dialog>`, `<fieldset>`).
 
 - **Liste:** `GET /api/customers` über `getJson()`. Jeder Kunde ist ein `<details>`: die Zeile
@@ -39,15 +39,16 @@ GET (Steckbrief D6). Lesen funktioniert deshalb vollständig; **Speichern ist au
   „Endgültig löschen“ (nur bei archivierten Kunden) braucht zusätzlich das Häkchen
   „Ja, ich möchte diesen Kunden endgültig löschen.“. „Abbrechen“ hat jeweils den Fokus.
 - **Schreiben** (`sendChange(action, id, body)`): der einzige Weg für Änderungen. Methode und
-  Adresse stehen in `ACTIONS`. Ist `WRITE_ENABLED` aus, wirft die Funktion sofort einen Fehler –
-  es geht keine Abfrage hinaus. Sonst prüft `confirmsChange()` die Antwort: Anlegen/Bearbeiten
+  Adresse stehen in `ACTIONS`; abgeschickt wird mit `sendJson()`. Ist `WRITE_ENABLED` aus, wirft
+  die Funktion sofort einen Fehler – es geht keine Abfrage hinaus. Sonst prüft `confirmsChange()`
+  die Antwort: Anlegen/Bearbeiten
   müssen jeden gesendeten Wert zurückgeben, Archivieren `archived: true`, Wiederherstellen
   `archived: false`, Löschen eine leere Antwort (204). Nur dann schließt der Dialog und oben
   erscheint „… wurde gespeichert/archiviert/…“. Sonst bleibt er offen mit einer Meldung aus
-  `errorMessage()` (404, 409, 422, ausgeschaltet, unbestätigt).
-- **Freischalten** nach Erweiterung von `shared/api.js` zu `getJson(path, options)`:
-  `WRITE_ENABLED = true` setzen. Der Test `test_schreiben_bleibt_aus_solange_getjson_nur_get_kann`
-  schlägt fehl, wenn jemand vorher umschaltet.
+  `errorMessage()`: „Nicht gespeichert: “ und der deutsche Text des Servers, ohne Text ein Satz zum
+  Statuscode (403, 404, 409, 422); dazu „ausgeschaltet“ und „unbestätigt“.
+- **`WRITE_ENABLED`** ist `true`. Der Test `test_schreiben_nur_an_wenn_shared_api_js_sendjson_hat`
+  schlägt fehl, wenn `shared/api.js` kein `sendJson(method, path, body)` mehr anbietet.
 - `validateCustomer`, `confirmsChange` und `errorMessage` sind zusätzlich exportiert, damit sie
   sich im Browser prüfen lassen; `app.js` nutzt nur `id`, `title` und `render`.
 - Alle Daten kommen mit `textContent` oder als `value` in die Seite; `innerHTML` steht nur einmal,
@@ -66,8 +67,15 @@ GET (Steckbrief D6). Lesen funktioniert deshalb vollständig; **Speichern ist au
 | `POST /api/customers/{customer_id}/restore` | `restore_customer()` | Wiederherstellen |
 | `DELETE /api/customers/{customer_id}` | `delete_customer()` | Endgültig löschen, nur archivierte → 204 |
 
-Fehler: `nicht_gefunden` → 404, `ungueltig` → 422, `nicht_archiviert` → 409, jeweils mit
-`{"detail": {"code": …, "message": …}}`. Falsche Kundenart oder zu lange Texte → 422 von FastAPI.
+Fehler: `nicht_gefunden` → 404, `ungueltig` → 422, `nicht_archiviert` → 409, jeweils mit der
+deutschen Meldung als Text: `{"detail": "Kunde 4 gibt es nicht."}` – so zeigt `shared/api.js` sie
+an. Falsche Kundenart oder zu lange Texte → 422 von FastAPI.
+
+Anmeldung: `main.py` hängt `require_login` an den Router; ohne Anmeldung antwortet jeder
+Endpunkt, auch `export.csv`, mit 401. Ein eigenes Recht für Kunden gibt es nicht (Steckbrief D11).
+Änderungsprotokoll (F11): Die ändernden Endpunkte haben `summary` – „Kunde anlegen“, „Kunde
+bearbeiten“, „Kunde archivieren“, „Kunde wiederherstellen“, „Kunde löschen“; der Bereich ist der
+Tag „Kunden“.
 `export.csv` steht in `api.py` vor `/{customer_id}`, damit es nicht als Kundennummer gilt.
 Wegen `Depends(...)` im Parameter steht oben in `api.py` `# ruff: noqa: B008`.
 
@@ -102,12 +110,13 @@ Fachliche Fehler sind `CustomerError` mit `code`: `ungueltig`, `nicht_gefunden`,
 
 Archivierten Kunden löschen: `DELETE /api/customers/4`
 
-1. FastAPI findet über den `router` aus `api.py` die Funktion `delete_customer` und gibt ihr
-   über `Depends(get_session)` eine Datenbank-Sitzung.
+1. `require_login` prüft die Anmeldung (sonst 401). FastAPI findet über den `router` aus `api.py`
+   die Funktion `delete_customer` und gibt ihr über `Depends(get_session)` eine Datenbank-Sitzung.
 2. `api.py` ruft über `_run` die Funktion `service.delete_customer(session, 4)`.
 3. Der Service holt Kunde 4 aus der Tabelle `customer`. Ist er nicht archiviert, wirft er
    `CustomerError("nicht_archiviert", …)`; `_run` macht daraus 409 mit Meldung.
-4. Sonst löscht er die Zeile; die API antwortet 204 ohne Inhalt.
+4. Sonst löscht er die Zeile; die API antwortet 204 ohne Inhalt. Die Middleware des
+   Änderungsprotokolls schreibt „Kunde löschen“, „Nr. 4“ und das angemeldete Konto.
 
 Andere Features lesen ohne HTTP: F3 ruft `customers.service.get_customer(session, 4)` und bekommt
 einen `Customer` mit `id` und `name` – oder `None`.
@@ -127,7 +136,8 @@ sonst `DemoRefused`. Gleiche Reihenfolge ergibt in jeder leeren Datenbank diesel
 Befehl (im Ordner `backend/`): `uv run python -m timbertalk.features.customers.demo data/demo.db`.
 `main()` prüft das Ziel mit `demo_database_url()`: nicht `data/timbertalk.db` (`REAL_DATABASE`),
 nur Dateien mit `.db`. Dann legt es die Tabellen an und lädt. Vorführen:
-`TIMBERTALK_DATABASE_URL=sqlite:///data/demo.db uv run timbertalk`.
+`TIMBERTALK_DATABASE_URL=sqlite:///data/demo.db uv run timbertalk`. Der gemeinsame
+Beispielbetrieb in `backend/timbertalk/demo.py` enthält noch keine Kunden (Steckbrief D12).
 
 ## S-11-Vorbereitung (`tools.py`)
 
@@ -147,7 +157,9 @@ Privat/Firma (Steckbrief D9).
 
 ## Abhängigkeiten zu anderen Features
 
-Keine – F2 ruft keine anderen Features auf.
+F2 ruft keine anderen Features auf. Es nutzt die gemeinsame Infrastruktur: Anmeldung
+(`require_login` aus `accounts`, über `main.py`), Änderungsprotokoll (`audit`-Middleware, über
+`summary`) und `getJson()`/`sendJson()` aus `frontend/shared/api.js`.
 
 Andere erwarten von F2 (aus den noch nicht gemergten Branches von F3): `get_customer(session, id)`
 und `list_customers(session)` mit `id` und `name`. Offen und noch nicht angeschlossen:

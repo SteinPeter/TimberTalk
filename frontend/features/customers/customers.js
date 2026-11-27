@@ -1,23 +1,22 @@
 // Der Reiter "Kunden" (Feature F2): Kundenliste mit Suche, Kundendaten, CSV-Export und die
 // Formulare und Dialoge zum Anlegen, Bearbeiten, Archivieren, Wiederherstellen und Löschen.
 //
-// Schreiben ist ausgeschaltet (WRITE_ENABLED = false). Abfragen laufen laut CLAUDE.md über
-// getJson() aus shared/api.js, und das kann bisher nur GET: Methode und Inhalt würden still
-// ignoriert. Formulare und Dialoge lassen sich öffnen und prüfen, gespeichert wird nichts
-// (Steckbrief docs/features/F02-customers.md, D6). Alle Schreibaktionen laufen über sendChange();
-// nach der Freigabe von shared/api.js wird nur WRITE_ENABLED umgestellt.
+// Abfragen laufen über shared/api.js: Lesen mit getJson(), alle Schreibaktionen über sendChange(),
+// das sendJson() aufruft und erst nach einer passenden Antwort Erfolg meldet. Mit
+// WRITE_ENABLED = false lassen sich Formulare und Dialoge öffnen, gespeichert wird dann nichts
+// (Steckbrief docs/features/F02-customers.md, D6).
 // Eigene CSS-Klassen kommen erst mit der Freigabe für style.css; bis dahin nur vorhandene Klassen
 // (hint, empty, status) und Standard-Elemente des Browsers (<dialog>, <fieldset>).
 
 import { API_BASE } from "../../config.js";
-import { getJson } from "../../shared/api.js";
+import { getJson, sendJson } from "../../shared/api.js";
 
 export const id = "customers";
 export const title = "Kunden";
 
-// Schreiben über die API. Erst auf true stellen, wenn getJson(path, options) Methode und Inhalt
-// mitschickt – ein Test in test_customers.py prüft das.
-const WRITE_ENABLED = false;
+// Schreiben über die API. Nur true, solange shared/api.js sendJson(method, path, body) anbietet –
+// ein Test in test_customers.py prüft das.
+const WRITE_ENABLED = true;
 
 // Hinweis, solange WRITE_ENABLED aus ist – auf der Seite und in jedem Formular und Dialog.
 const WRITE_DISABLED_NOTICE =
@@ -101,7 +100,8 @@ export function confirmsChange(action, sent, result) {
   return Object.entries(sent).every(([key, value]) => result[key] === value);
 }
 
-// Deutsche Meldung zu einem Fehler aus getJson(). Nutzt error.status, sonst „Antwort 409“.
+// Deutsche Meldung zu einem Fehler aus sendJson(). Bringt der Server einen deutschen Text mit
+// ("detail"), wird er gezeigt; sonst ein eigener Satz zum Statuscode („Antwort 409“).
 export function errorMessage(error) {
   if (error?.writeDisabled) {
     return `Nicht gespeichert. ${WRITE_DISABLED_NOTICE}`;
@@ -109,16 +109,19 @@ export function errorMessage(error) {
   if (error?.unconfirmed) {
     return "Nicht gespeichert: Die Antwort des Servers bestätigt die Änderung nicht.";
   }
-  const status = error?.status ?? Number(/Antwort (\d+)/.exec(error?.message ?? "")?.[1]);
+  const text = error?.message ?? "";
+  const status = Number(/^Antwort (\d+)$/.exec(text)?.[1]);
+  // Ohne deutschen Text vom Server: ein eigener Satz je Statuscode.
   const texts = {
+    403: "Dafür fehlt Ihnen das Recht.",
     404: "Diesen Kunden gibt es nicht mehr. Bitte schließen Sie den Dialog und suchen Sie neu.",
     409: "Nur archivierte Kunden lassen sich endgültig löschen. Bitte erst archivieren.",
     422: "Die Angaben wurden abgelehnt. Bitte prüfen Sie die Pflichtfelder.",
   };
-  const base = texts[status] ?? "Die Änderung konnte nicht gespeichert werden.";
-  // Kommt eine deutsche Meldung vom Server mit (nach Erweiterung von getJson), steht sie dahinter.
-  const detail = error?.message && !/^Antwort \d+$/.test(error.message) ? ` (${error.message})` : "";
-  return base + detail;
+  if (status) {
+    return `Nicht gespeichert. ${texts[status] ?? "Die Änderung konnte nicht gespeichert werden."}`;
+  }
+  return text ? `Nicht gespeichert: ${text}` : "Die Änderung konnte nicht gespeichert werden.";
 }
 
 // --- Schreiben: der einzige Weg zur API für Änderungen ----------------------------------------
@@ -130,12 +133,7 @@ async function sendChange(action, customerId, body) {
     throw Object.assign(new Error("Schreiben ausgeschaltet"), { writeDisabled: true });
   }
   const { method, path } = ACTIONS[action];
-  const options = { method };
-  if (body) {
-    options.headers = { "Content-Type": "application/json" };
-    options.body = JSON.stringify(body);
-  }
-  const result = await getJson(path(customerId), options);
+  const result = await sendJson(method, path(customerId), body);
   if (!confirmsChange(action, body ?? {}, result)) {
     throw Object.assign(new Error("Nicht bestätigt"), { unconfirmed: true });
   }

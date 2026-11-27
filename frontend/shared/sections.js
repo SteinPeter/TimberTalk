@@ -7,9 +7,15 @@
 // layout "tabs":    Reiter über dem Abschnitt (Buchungen).
 // Beide sind für Bildschirmleser eine Reiterliste (role="tablist") und mit den Pfeiltasten
 // bedienbar. Der zuletzt gewählte Abschnitt wird im Browser gemerkt.
+//
+// Exportiert ein Abschnitt zusätzlich `permission` (z. B. "finance.view"), erscheint er nur für
+// Konten mit diesem Recht (F10).
+
+import { can } from "./session.js";
 
 // Baut die Abschnitte in `panel` auf. Gibt es noch keinen, steht dort `emptyText`.
-export function renderSections(panel, { tabId, sections, layout, emptyText }) {
+export function renderSections(panel, { tabId, sections: all, layout, emptyText }) {
+  const sections = all.filter((section) => !section.permission || can(section.permission));
   if (sections.length === 0) {
     const empty = document.createElement("p");
     empty.className = "empty";

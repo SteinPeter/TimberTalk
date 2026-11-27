@@ -1,7 +1,7 @@
-# Feature „Stunden buchen“.
-# Reiter im Frontend: frontend/features/bookings/bookings.js.
+# Feature „Stunden buchen“ (F4) – Grundversion.
+# Reiter im Frontend: Abschnitt „Stunden“ im Reiter „Buchungen“
+# (frontend/features/bookings/sections/hours.js).
 #
-# Wer dieses Feature baut, arbeitet nur in diesem Ordner (und im Reiter-Ordner oben).
-# Der Ordner wird automatisch geladen – er muss nirgends eingetragen werden.
-# Dazu gehören: Steckbrief docs/features/F<nr>-<name>.md und Handbuch-Kapitel
-# docs/handbuch/F<nr>-<name>.md (Vorlage: docs/handbuch/_vorlage.md).
+# Jede Person bucht ihre Arbeitsstunden je Tag und Projekt. Was im Kalender (F8) steht, schlägt
+# TimberTalk als Stunden vor; abends genügt dann „Bestätigen“.
+# Handbuch-Kapitel: docs/handbuch/F04-hours.md, Steckbrief: docs/features/F04-hours.md.
