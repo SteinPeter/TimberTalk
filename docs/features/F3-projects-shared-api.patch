@@ -1,0 +1,13 @@
+--- a/frontend/shared/api.js
++++ b/frontend/shared/api.js
+@@ -5,8 +5,8 @@
+ 
+ // Holt path (z. B. "/api/health") und gibt die Antwort als Objekt zurück.
+ // Antwortet die API mit einem Fehler, wird eine Ausnahme mit dem Statuscode geworfen.
+-export async function getJson(path) {
+-  const response = await fetch(`${API_BASE}${path}`);
++export async function getJson(path, options) {
++  const response = await fetch(`${API_BASE}${path}`, options);
+   if (!response.ok) {
+     throw new Error(`Antwort ${response.status}`);
+   }
