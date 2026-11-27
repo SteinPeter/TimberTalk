@@ -19,6 +19,8 @@ from sqlmodel import Session, select
 
 from timbertalk.features.accounts import service as accounts
 from timbertalk.features.accounts.models import Account, Setting
+from timbertalk.features.employees import service as employees
+from timbertalk.features.employees.models import ContractIn
 from timbertalk.features.hours import service as hours
 from timbertalk.features.hours.models import HoursIn
 from timbertalk.features.materials import service as materials
@@ -282,6 +284,21 @@ def seed(session: Session, today: date | None = None) -> bool:
         session, DACH, material_ids["Mineralwolle WLG 035, 160 mm"], Decimal("85"), first
     )
     materials.book_travel(session, DACH, Decimal("52"), first, pritsche)
+
+    # --- Stunden- und Urlaubskonten (F14) --------------------------------------------
+    # Eintritt diesen Montag: So passt das Soll zu den Stunden, die oben gebucht sind.
+    # Petra arbeitet Teilzeit, Lena hat als Azubi weniger Urlaub; Max und Tom haben Rest aus dem
+    # Vorjahr.
+    contracts = {chef: ("40", 30), meisterin: ("40", 30), ids["p.lange"]: ("30", 30)}
+    contracts |= {max_: ("40", 30), tom: ("40", 30), jonas: ("40", 28), lena: ("40", 25)}
+    for person, (weekly, vacation) in contracts.items():
+        employees.save_contract(
+            session,
+            person,
+            ContractIn(weekly_hours=Decimal(weekly), vacation_days=vacation, start_date=monday),
+        )
+    employees.set_carryover(session, max_, today.year, 3)
+    employees.set_carryover(session, tom, today.year, 2)
 
     # --- Demo-Modus an, automatisch als Chef ----------------------------------------
     accounts.set_demo_mode(session, True, chef)

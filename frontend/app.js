@@ -4,7 +4,7 @@
 //
 // Vorher wird geprüft, wer angemeldet ist (F10): Ohne Anmeldung zeigt die Seite nur die
 // Anmeldung, mit Startpasswort nur „eigenes Passwort festlegen“. Ein Reiter mit `permission`
-// erscheint nur, wenn das Konto dieses Recht hat.
+// erscheint nur, wenn das Konto dieses Recht hat (bei einer Liste: eines davon).
 
 import { REITER } from "./reiter.js";
 import { sendJson } from "./shared/api.js";
@@ -12,6 +12,10 @@ import { avatar, el, lastName, menuButton, openSettings } from "./shared/dom.js"
 import { loadLoginInfo, renderFirstPassword, renderLogin } from "./shared/login.js";
 import { notificationsButton } from "./shared/notifications.js";
 import { can, loadAccount, logout } from "./shared/session.js";
+import { watchTables } from "./shared/tables.js";
+
+// Keine Seite soll quer scrollen: Zu breite Tabellen stehen dann untereinander (tables.js).
+watchTables();
 
 const DEFAULT_TAB = "start";
 const header = document.querySelector(".topbar");
@@ -55,6 +59,7 @@ if (reachable && account === null) {
     header.querySelector(".account").prepend(notificationsButton());
   }
   startTabs(REITER.filter((reiter) => !reiter.permission || can(reiter.permission)));
+  sideMenu();
 }
 
 function showLogin(info) {
@@ -160,6 +165,86 @@ function startTabs(tabs) {
   // mit "hashchange". Dasselbe passiert bei Zurück und Vor.
   window.addEventListener("hashchange", showTabFromAddress);
   showTabFromAddress();
+}
+
+// --- Handy: Reiter im Seitenmenü ---------------------------------------------------
+
+// Auf schmalen Bildschirmen (unter 40rem, style.css) stehen die Reiter nicht oben, sondern in
+// einem Menü, das von links hereinkommt. Der Knopf ☰ links in der Leiste öffnet es; ein Klick auf
+// einen Reiter öffnet ihn und schließt das Menü, ebenso ein Klick daneben oder Escape.
+// Es sind dieselben Links wie in der Reiterleiste – auf breiten Bildschirmen ist der Knopf weg.
+// Die Leiste oben (☰, Logo, Glocke, Foto) bleibt dabei sichtbar und bedienbar: Menü und
+// Abdunklung beginnen erst unter ihr.
+function sideMenu() {
+  const icon = slatsIcon();
+  nav.id = "tabs-menu";
+  const button = el(
+    "button",
+    { type: "button", class: "nav-toggle", "aria-label": "Menü", "aria-expanded": "false", "aria-controls": "tabs-menu" },
+    icon,
+  );
+  const backdrop = el("div", { class: "nav-backdrop", hidden: true });
+  header.prepend(button);
+  document.body.append(backdrop);
+
+  const isOpen = () => document.body.classList.contains("nav-open");
+  function setOpen(open) {
+    // Menü und Abdunklung beginnen an der Unterkante der Leiste.
+    const top = open ? `${Math.max(0, header.getBoundingClientRect().bottom)}px` : "";
+    nav.style.top = top;
+    backdrop.style.top = top;
+    document.body.classList.toggle("nav-open", open);
+    button.setAttribute("aria-expanded", String(open));
+    backdrop.hidden = !open;
+    if (open) {
+      (nav.querySelector("[aria-current=page]") ?? nav.querySelector("a"))?.focus();
+    }
+  }
+  button.addEventListener("click", () => setOpen(!isOpen()));
+  backdrop.addEventListener("click", () => setOpen(false));
+  nav.addEventListener("click", (event) => {
+    if (event.target.closest("a")) {
+      setOpen(false);
+    }
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isOpen()) {
+      setOpen(false);
+      button.focus();
+    }
+  });
+}
+
+// Das Symbol des Menüknopfs: drei Holzlatten mit etwas Maserung statt drei Striche. Die Latten
+// haben die Textfarbe, die Maserung die Farbe der Leiste – sie sieht aus wie eingeschnitzt.
+// Jede Latte bekommt eine etwas andere Maserung, damit es nicht gestempelt wirkt.
+// Geöffnet dreht sich das Symbol um 90° (style.css, .nav-open .nav-toggle-icon).
+function slatsIcon() {
+  const ns = "http://www.w3.org/2000/svg";
+  const icon = document.createElementNS(ns, "svg");
+  icon.setAttribute("viewBox", "0 0 24 24");
+  icon.setAttribute("aria-hidden", "true");
+  icon.setAttribute("class", "nav-toggle-icon");
+  const grains = [
+    ["M4.5 5.6c2.5-.7 4.5.5 7 0s4-.6 7.5 0", "M8 7.3c2-.5 3.5.3 5.5-.1"],
+    ["M4.5 12.4c3-.6 5 .4 7.5-.1s3.5-.5 7.5.2", "M12.5 11c1.8-.4 3 .2 4.5-.1"],
+    ["M4.5 18.6c2-.5 3.8.5 6.5 0s4.8-.6 8.5.1", "M6.5 17.2c1.6-.4 2.8.2 4.2-.1"],
+  ];
+  [4, 10.25, 16.5].forEach((y, i) => {
+    const slat = document.createElementNS(ns, "rect");
+    for (const [key, value] of Object.entries({ x: 2.5, y, width: 19, height: 4.25, rx: 0.9 })) {
+      slat.setAttribute(key, String(value));
+    }
+    slat.setAttribute("class", "nav-slat");
+    icon.append(slat);
+    for (const d of grains[i]) {
+      const grain = document.createElementNS(ns, "path");
+      grain.setAttribute("d", d);
+      grain.setAttribute("class", "nav-grain");
+      icon.append(grain);
+    }
+  });
+  return icon;
 }
 
 // --- Textfelder wachsen mit --------------------------------------------------------

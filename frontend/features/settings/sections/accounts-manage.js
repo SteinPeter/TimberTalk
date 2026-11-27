@@ -52,7 +52,21 @@ export function render(container) {
     el(
       "table",
       { class: "table" },
-      el("thead", {}, el("tr", {}, ...["Name", "Rolle", "Status", "Zuletzt angemeldet", ""].map((text) => el("th", { scope: "col" }, text)))),
+      // Wird es eng, fällt zuerst „Zuletzt angemeldet“ weg, dann „Rolle“ (data-priority,
+      // shared/tables.js). Beides steht auch unter „Bearbeiten“.
+      el(
+        "thead",
+        {},
+        el(
+          "tr",
+          {},
+          el("th", { scope: "col" }, "Name"),
+          el("th", { scope: "col", "data-priority": "2" }, "Rolle"),
+          el("th", { scope: "col" }, "Status"),
+          el("th", { scope: "col", "data-priority": "3" }, "Zuletzt angemeldet"),
+          el("th", { scope: "col" }, ""),
+        ),
+      ),
       tableBody,
     ),
   );
@@ -213,6 +227,7 @@ export function render(container) {
     showPhoto(account ?? { display_name: "?", photo: null });
     rights.hidden = !account;
     rights.open = false;
+    openAreas.clear();
     rightsList.replaceChildren();
     if (account) {
       loadRights(account);
@@ -222,33 +237,51 @@ export function render(container) {
     nameInput.focus();
   }
 
+  // Nach Funktionsbereichen gruppiert, wie in „Rollen und Rechte“: je Bereich ein aufklappbarer
+  // Block (<details>), zu Beginn zugeklappt. Offene Bereiche bleiben nach einem Häkchen offen.
+  const openAreas = new Set();
   function showRights(account, list) {
+    const areas = [...new Set(list.map((right) => right.area))];
     rightsList.replaceChildren(
-      ...list.map((right) => {
-        const box = el("input", {
-          type: "checkbox",
-          checked: right.allowed,
-          disabled: right.locked,
-          "aria-label": right.label,
-        });
-        const tag = right.locked ? "immer" : right.overridden ? "Ausnahme" : "wie Rolle";
-        box.addEventListener("change", async () => {
-          // Gleich wie die Rolle → keine Ausnahme speichern (None).
-          const allowed = box.checked === right.from_role ? null : box.checked;
-          try {
-            showRights(account, await sendJson("PUT", `/api/accounts/${account.id}/permissions/${right.permission}`, { allowed }));
-          } catch (error) {
-            box.checked = !box.checked;
-            formMessage.show(error.message, true);
-          }
-        });
-        return el(
-          "li",
-          {},
-          el("label", { class: "form-check" }, box, el("span", {}, right.label)),
-          el("span", { class: `accounts-rights-tag${right.overridden ? " accounts-rights-own" : ""}` }, tag),
+      ...areas.map((area) => {
+        const rights = list.filter((right) => right.area === area);
+        const own = rights.filter((right) => right.overridden).length;
+        const block = el(
+          "details",
+          { class: "accounts-rights-area" },
+          el("summary", {}, area, el("span", { class: "accounts-rights-tag" }, own ? `${own} Ausnahme${own === 1 ? "" : "n"}` : "")),
+          el("ul", {}, ...rights.map((right) => rightItem(account, right))),
         );
+        block.open = openAreas.has(area); // als Eigenschaft: das Attribut open="false" hieße „offen“
+        block.addEventListener("toggle", () => (block.open ? openAreas.add(area) : openAreas.delete(area)));
+        return el("li", {}, block);
       }),
+    );
+  }
+
+  function rightItem(account, right) {
+    const box = el("input", {
+      type: "checkbox",
+      checked: right.allowed,
+      disabled: right.locked,
+      "aria-label": right.label,
+    });
+    const tag = right.locked ? "immer" : right.overridden ? "Ausnahme" : "wie Rolle";
+    box.addEventListener("change", async () => {
+      // Gleich wie die Rolle → keine Ausnahme speichern (None).
+      const allowed = box.checked === right.from_role ? null : box.checked;
+      try {
+        showRights(account, await sendJson("PUT", `/api/accounts/${account.id}/permissions/${right.permission}`, { allowed }));
+      } catch (error) {
+        box.checked = !box.checked;
+        formMessage.show(error.message, true);
+      }
+    });
+    return el(
+      "li",
+      {},
+      el("label", { class: "form-check" }, box, el("span", {}, right.label)),
+      el("span", { class: `accounts-rights-tag${right.overridden ? " accounts-rights-own" : ""}` }, tag),
     );
   }
 

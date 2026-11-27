@@ -12,12 +12,12 @@
 | `backend/timbertalk/features/planning/test_planning.py` | Tests für Service und Endpunkte. |
 | `frontend/features/planning/planning.js` | Der Reiter „Kalender“: Plantafel mit Personen und Fahrzeugen, Ziehen mit „Rückgängig“, persönlicher Kalender, Dialog „Termin eintragen“. |
 | `frontend/features/planning/dialog.js` | `makeDialog(titel)`: ein Fenster mit Überschrift, Inhalt und „Schließen“. |
-| `frontend/features/planning/requests.js` | `openOwnRequests()`: Fenster „Urlaub beantragen“ mit den eigenen Anträgen (über „Mehr ▾“); `card()` und `range()` für die Anzeige eines Antrags. |
+| `frontend/features/planning/requests.js` | `card()` und `range()` für die Anzeige eines Antrags im Dashboard-Widget. Beantragt wird im Reiter „Zeitkonto“ (`timeaccount/absence.js`, F14) über dieselben Endpunkte. |
 | `frontend/features/planning/widgets/absence-requests.js`, `my-week.js` | Dashboard-Widgets (F12): offene Urlaubsanträge entscheiden; eigene nächste Termine. |
 | `frontend/features/planning/ical.js` | `openIcal()`: Fenster „Kalender aufs Handy holen“ (über „Mehr ▾“): Abo-Link erzeugen, kopieren, ungültig machen. |
 | `frontend/features/settings/sections/planning-resources.js` | Abschnitt „Fahrzeuge und Maschinen“ in den Einstellungen (Recht `calendar.dispatch`). |
 | `backend/timbertalk/features/notifications/` | Eigenes kleines Feature „Mitteilungen“: Tabellen `notifications_message` und `notifications_topic` (Thema einer Aufgabe), `notify(..., topic=)`, `resolve(topic)`, `dismiss()`, `list_notifications()`, `unread_count()`, `mark_all_read()`; Endpunkte `GET /api/notifications`, `GET /api/notifications/unread-count`, `POST /api/notifications/read-all`, `DELETE /api/notifications/{id}` (jeweils nur die eigenen). |
-| `frontend/shared/notifications.js` | Knopf „Mitteilungen“ oben rechts mit Zahl der ungelesenen; holt die Zahl jede Minute und nach jeder Änderung (`CHANGED_EVENT` aus `api.js`) neu; ✕ entfernt eine Mitteilung. |
+| `frontend/shared/notifications.js` | Knopf „Mitteilungen“ oben rechts mit Zahl der ungelesenen; holt die Zahl jede Minute und nach jeder Änderung (`CHANGED_EVENT` aus `api.js`) neu; ✕ entfernt eine Mitteilung. Auf dem Handy (unter 40rem) liegt die Liste über die volle Bildschirmbreite direkt unter der Leiste (`position: fixed`, Oberkante setzt `open()`). |
 
 In gemeinsamen Dateien geändert:
 
@@ -145,6 +145,17 @@ Der Chef klickt in der Zeile von Max beim Montag auf „+“:
   Wörter mit Trennstrich). `detailLines()` sammelt Art, Zeit, Ort, Kollegen und Notiz für den
   Tooltip und den vorlesbaren Namen. Mit Planungsrecht ist der Termin ein Knopf, der den Dialog
   öffnet; ohne ist er ein `<details>`, das per Klick aufklappt.
+- **Schmale Bildschirme:** Auf dem Tablet wird die Plantafel eng gesetzt (mindestens 40rem
+  breit). Passt auch das nicht (Handy), stellt `shared/tables.js` sie untereinander: je Person ein
+  Block, darin **nur die Tage mit Terminen** (Name aus `data-label` am Tageskopf, mit Feiertag);
+  das „+“ entfällt dort, neue Termine über „Termin eintragen“. Querscrollen gibt es nicht.
+- **Farben je Terminart:** `chip()` setzt `planning-kind-<art>`; in `style.css` hat jede Art eine
+  Farbe `--kind` (hell, dunkel), daraus Balken links und ein leichter Hintergrund
+  (`color-mix()`). Die Akzentfarbe bleibt für „klickbar“ reserviert. `fillLegend()` baut die
+  Legende aus `GET /api/planning/kinds` – eine neue Art braucht nur eine Zeile in `style.css`.
+- **Feiertage:** `loadWeek()` holt zusätzlich `GET /api/holidays?start=…&end=…` (F15). Feiertage
+  stehen mit Namen im Spaltenkopf bzw. im Tages-Kästchen (`planning-holiday-name`) und sind mit
+  `--holiday` hinterlegt.
 - **„+“ nur bei Bedarf:** Das „+“ in den Zellen erscheint erst beim Darüberfahren oder mit dem
   Tastatur-Fokus; auf Touch-Geräten (`@media (hover: none)`) ist es immer zu sehen.
 - **Barrierefreiheit:** Jedes „+“ hat einen vorlesbaren Namen („Termin für Max Berger am Mo 30.11.
@@ -160,6 +171,8 @@ Der Chef klickt in der Zeile von Max beim Montag auf „+“:
   `service.people_with_permission()` für Urlaubsanträge; `deps.current_account`, `deps.can()` und
   `deps.require()` für Rechte.
 - `notifications`: `service.notify()`.
+- Benutzt wird F8 von F14 `employees` über `service.absence_days()` (Abwesenheiten einer Person
+  je Tag, ohne Höchstdauer) und `service.list_requests()` (offene Urlaubsanträge).
 
 ## Begriffe
 

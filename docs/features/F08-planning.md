@@ -10,7 +10,10 @@ Erster Teil des Features `planning/` aus dem Programmaufbau („Kalender je Mita
 
 Im Reiter „Kalender“ sieht der Chef die Woche als Plantafel: eine Zeile je Person, eine Spalte je
 Tag, die Kalenderwoche groß darüber („KW 48“). In den Zellen steht von jedem Termin nur der Name,
-z. B. „Carport Berger“; Zeit, Ort und Kollegen zeigt der Tooltip und ein Klick. Mit einem Klick auf „+“ in einer Zelle oder auf „Termin eintragen“ legt er einen Termin an –
+z. B. „Carport Berger“; Zeit, Ort und Kollegen zeigt der Tooltip und ein Klick. Jede Art von
+Termin hat eine eigene Farbe – Baustelle blau, Werkstatt grün, Termin (Beratung, Besichtigung,
+Abnahme) violett, Urlaub grau, krank rot, Berufsschule ocker –, eine Legende über der Woche nennt
+sie. Feiertage stehen mit Namen im Tageskopf und sind farbig hinterlegt (F15). Mit einem Klick auf „+“ in einer Zelle oder auf „Termin eintragen“ legt er einen Termin an –
 z. B. „Carport Berger“ von Montag bis Mittwoch für Max und Tom, mit Ort und Uhrzeit. Ist jemand
 schon verplant oder im Urlaub, sagt TimberTalk es nach dem Speichern. Ein Geselle sieht auf dem
 Handy seine eigene Woche als Raster mit einem Kästchen je Tag (schmal untereinander); ein Klick auf
@@ -19,7 +22,7 @@ einen Termin klappt auf, wo er wann ist und mit wem.
 Dazu: Fahrzeuge und Maschinen (Transporter, Kran) stehen als eigene Zeilen auf der Plantafel und
 werden wie Personen eingeplant. Termine lassen sich mit der Maus auf einen anderen Tag oder zu
 einer anderen Person ziehen, mit „Rückgängig“. Wer ein-, aus- oder umgeplant wird, bekommt oben
-rechts eine Mitteilung (Glocke). Gesellen beantragen Urlaub über „Mehr ▾ → Urlaub beantragen …“;
+rechts eine Mitteilung (Glocke). Gesellen beantragen Urlaub im Reiter „Zeitkonto“ (F14);
 hat jemand Urlaub beantragt, bekommt der Chef eine Mitteilung und sieht den Antrag auf dem
 Dashboard (F12), bis er ihn genehmigt oder ablehnt. Jede Person kann ihren Kalender über „Mehr ▾ → Kalender
 aufs Handy holen …“ in der Kalender-App des Handys abonnieren. Jedes Fahrzeug hat seinen eigenen
@@ -29,7 +32,7 @@ Kilometersatz für Fahrtbuchungen. Was man selten braucht, steht nicht dauerhaft
 
 Im Meeting wird genau das vorgeführt:
 
-1. **Plantafel:** Der Chef sieht KW 49 mit allen aktiven Konten als Zeilen, blättert mit
+1. **Plantafel:** Der Chef sieht KW 49 mit allen aktiven Konten als Zeilen (ohne das Admin-Konto), blättert mit
    „Vorwoche“, „Heute“, „Nächste“, und der heutige Tag ist hervorgehoben.
 2. **Einplanen:** Er trägt „Carport Berger, Potsdam“ von Mo bis Mi für Max und Tom ein. Der
    Termin steht in beiden Zeilen an allen drei Tagen.
@@ -55,8 +58,8 @@ Im Meeting wird genau das vorgeführt:
 9. **Ziehen:** Der Chef zieht „Carport Berger“ bei Max von Montag auf Dienstag: Der Termin läuft
    jetzt Di–Do, mit Hinweis auf Überschneidungen. „Rückgängig“ holt ihn zurück. Auf eine andere
    Person gezogen, tritt diese an die Stelle von Max.
-10. **Urlaubsantrag:** Max beantragt über „Mehr ▾ → Urlaub beantragen …“ Urlaub (das Fenster zeigt
-    auch seine Anträge). Der Chef bekommt eine Mitteilung, die per Klick zum Dashboard führt.
+10. **Urlaubsantrag:** Max beantragt im Reiter „Zeitkonto“ über „Urlaub beantragen“ Urlaub
+    (darunter stehen seine Anträge; offene kann er zurückziehen). Der Chef bekommt eine Mitteilung, die per Klick zum Dashboard führt.
     Dort steht der Antrag im Widget „Offene Urlaubsanträge“ mit „Achtung: Max Berger ist am …
     schon eingeplant …“, bis der Chef genehmigt oder ablehnt. Der Urlaub steht
     im Kalender, Max bekommt „Urlaub genehmigt: …“. Abgelehnt mit Grund steht der Grund dabei.
@@ -75,7 +78,7 @@ Im Meeting wird genau das vorgeführt:
 | --- | :-: | :-: | :-: | :-: | :-: | :-: |
 | Kalender aller Mitarbeitenden sehen (`calendar.view_all`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Termine für alle planen und ändern, Fahrzeuge pflegen (`calendar.dispatch`) | ✓ | ✓ | ✓ | ✓ | – | – |
-| Urlaub beantragen (`calendar.request_absence`) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Urlaub beantragen (`calendar.request_absence`) | – | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Urlaubsanträge genehmigen oder ablehnen (`calendar.approve_absence`) | – | ✓ | – | – | – | – |
 
 Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
@@ -106,7 +109,9 @@ Ohne `calendar.view_all` sieht man nur den eigenen Kalender.
 ## Reiter
 
 `frontend/features/planning/planning.js` („Kalender“) – war bisher leer – mit
-`requests.js` (Urlaubsanträge) und `ical.js` (Kalender-Abo) im selben Ordner. Dazu der Abschnitt
+`requests.js` (Anzeige eines Antrags für das Dashboard-Widget) und `ical.js` (Kalender-Abo) im
+selben Ordner; das Formular „Urlaub beantragen“ liegt im Reiter „Zeitkonto“
+(`frontend/features/timeaccount/absence.js`, F14). Dazu der Abschnitt
 `frontend/features/settings/sections/planning-resources.js` („Fahrzeuge und Maschinen“) und der
 Knopf „Mitteilungen“ in der Leiste (`frontend/shared/notifications.js`).
 

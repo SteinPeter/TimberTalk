@@ -13,12 +13,16 @@
 // Fahrzeuge und Maschinen stehen als eigene Zeilen unter den Personen. Wer planen darf, zieht
 // einen Termin mit der Maus auf einen anderen Tag oder eine andere Zeile; „Rückgängig“ holt ihn
 // zurück. Auf dem Handy (ohne Ziehen) geht dasselbe über den Dialog.
+//
+// Farben: Jede Art von Termin (Baustelle, Werkstatt, Termin wie Beratung oder Besichtigung, Urlaub,
+// krank, Berufsschule) hat eine eigene Farbe (Klasse planning-kind-<art> in style.css); eine
+// Legende unter der Leiste erklärt sie. Feiertage (Feature holidays, F15) stehen mit Namen im
+// Tageskopf und sind farbig hinterlegt – Farbe ist nie das Einzige, der Name steht immer dabei.
 
 import { getJson, sendJson } from "../../shared/api.js";
 import { el, field, menuButton, messageBox } from "../../shared/dom.js";
 import { can, currentAccount } from "../../shared/session.js";
 import { openIcal } from "./ical.js";
-import { openOwnRequests } from "./requests.js";
 
 export const id = "planning";
 export const title = "Kalender";
@@ -71,6 +75,7 @@ export async function render(panel) {
   let resources = [];
   let kinds = [];
   let entries = [];
+  let holidays = new Map(); // Tag (JJJJ-MM-TT) → Name des Feiertags
   let view = BOARD;
 
   // --- Gerüst ---
@@ -81,12 +86,9 @@ export async function render(panel) {
   const newButton = el("button", { type: "button", class: "button", hidden: !mayDispatch }, "Termin eintragen");
 
   // Was man selten braucht, steht im Menü „Mehr“ statt dauerhaft auf der Seite.
+  // Urlaub beantragt man im Reiter „Zeitkonto“ (F14), nicht hier.
   function moreMenu() {
-    const items = [];
-    if (can("calendar.request_absence") && !can("calendar.approve_absence")) {
-      items.push({ label: "Urlaub beantragen …", onSelect: openOwnRequests });
-    }
-    items.push({ label: "Kalender aufs Handy holen …", onSelect: openIcal });
+    const items = [{ label: "Kalender aufs Handy holen …", onSelect: openIcal }];
     return menuButton(el("button", { type: "button", class: "button-quiet" }, "Mehr ▾"), items);
   }
   const toolbar = el(
@@ -103,15 +105,23 @@ export async function render(panel) {
     el("div", { class: "planning-actions" }, viewSelect, newButton, moreMenu()),
   );
   const message = messageBox();
+  const legend = el("ul", { class: "planning-legend", "aria-label": "Farben der Terminarten" });
   const content = el("div", { class: "planning-content" });
 
   panel.replaceChildren(
     el("h1", {}, "Kalender"),
     el("p", { class: "hint" }, "Wer ist wann wo – Woche für Woche."),
     toolbar,
+    legend,
     message,
     content,
   );
+
+  // Die Legende: je Art ein farbiges Kästchen mit Namen, dazu „Feiertag“.
+  function fillLegend() {
+    const item = (className, label) => el("li", {}, el("span", { class: `planning-swatch ${className}`, "aria-hidden": "true" }), label);
+    legend.replaceChildren(...kinds.map((kind) => item(`planning-kind-${kind.kind}`, kind.label)), item("planning-swatch-holiday", "Feiertag"));
+  }
 
   const dialog = buildDialog();
   panel.append(dialog.node);
@@ -127,7 +137,12 @@ export async function render(panel) {
       params.set("account_id", view);
     }
     try {
-      entries = await getJson(`/api/planning/entries?${params}`);
+      const [found, free] = await Promise.all([
+        getJson(`/api/planning/entries?${params}`),
+        getJson(`/api/holidays?start=${monday}&end=${sunday}`),
+      ]);
+      entries = found;
+      holidays = new Map(free.map((holiday) => [holiday.day, holiday.name]));
     } catch (error) {
       entries = [];
       message.show(error.message, true);
@@ -266,7 +281,7 @@ export async function render(panel) {
   function chip(entry, { withPeople = false, drag = null } = {}) {
     const lines = detailLines(entry, withPeople);
     const absent = kinds.find((kind) => kind.kind === entry.kind)?.absence;
-    const className = `planning-chip${absent ? " planning-chip-absence" : ""}`;
+    const className = `planning-chip planning-kind-${entry.kind}${absent ? " planning-chip-absence" : ""}`;
     const name = el("span", { class: "planning-chip-title" }, entry.title);
     const tooltip = [entry.title, ...lines].join("\n");
     if (!mayDispatch) {
@@ -300,9 +315,10 @@ export async function render(panel) {
 
   // Eine Zelle der Plantafel: Termine dieser Zeile an diesem Tag, dazu „+“ und Ablegen.
   function cell(key, label, day, dayIndex) {
+    const classes = [day === today ? "planning-today" : "", holidays.has(day) ? "planning-holiday" : ""];
     const td = el(
       "td",
-      { class: day === today ? "planning-today" : "" },
+      { class: classes.filter(Boolean).join(" ") },
       ...entriesOn(day, key).map((entry) => chip(entry, { drag: mayDispatch ? { key, day } : null })),
     );
     if (!mayDispatch) {
@@ -351,8 +367,15 @@ export async function render(panel) {
       ...days().map((day, i) =>
         el(
           "th",
-          { scope: "col", class: day === today ? "planning-today" : "", "aria-current": day === today ? "date" : "false" },
+          {
+            scope: "col",
+            class: [day === today ? "planning-today" : "", holidays.has(day) ? "planning-holiday" : ""].filter(Boolean).join(" "),
+            "aria-current": day === today ? "date" : "false",
+            // Name des Tages, wenn die Tafel untereinander steht (shared/tables.js).
+            "data-label": holidays.has(day) ? `${DAY_NAMES[i]} ${shortDate(day)} · ${holidays.get(day)}` : `${DAY_NAMES[i]} ${shortDate(day)}`,
+          },
           `${DAY_NAMES[i]} ${shortDate(day)}`,
+          ...(holidays.has(day) ? [el("small", { class: "planning-holiday-name" }, holidays.get(day))] : []),
         ),
       ),
     );
@@ -403,14 +426,17 @@ export async function render(panel) {
         el(
           "section",
           {
-            class: `planning-day${day === today ? " planning-today" : ""}`,
+            class: `planning-day${day === today ? " planning-today" : ""}${holidays.has(day) ? " planning-holiday" : ""}`,
             "aria-label": longDate(day),
             "aria-current": day === today ? "date" : "false",
           },
           el("h3", {}, day === today ? `Heute · ${shortDate(day)}` : `${DAY_NAMES[i]} ${shortDate(day)}`),
+          ...(holidays.has(day) ? [el("p", { class: "planning-holiday-name" }, `Feiertag: ${holidays.get(day)}`)] : []),
           ...(dayEntries.length
             ? dayEntries.map((entry) => chip(entry, { withPeople: entry.people.length > 1 }))
-            : [el("p", { class: "planning-free" }, "frei")]),
+            : holidays.has(day)
+              ? []
+              : [el("p", { class: "planning-free" }, "frei")]),
         ),
       );
     });
@@ -627,5 +653,6 @@ export async function render(panel) {
     getJson("/api/planning/kinds"),
   ]);
   fillViewSelect();
+  fillLegend();
   await loadWeek();
 }

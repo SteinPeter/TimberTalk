@@ -34,7 +34,7 @@ Im Meeting wird genau das vorgeführt:
 
 | Recht | Admin | Meister | Verwaltung | Geselle | Azubi |
 | --- | :-: | :-: | :-: | :-: | :-: |
-| Eigene Stunden buchen (`hours.book_own`) | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Eigene Stunden buchen (`hours.book_own`) | – | ✓ | ✓ | ✓ | ✓ |
 | Stunden aller Mitarbeitenden sehen (`hours.view_all`) | ✓ | ✓ | ✓ | – | – |
 | Stunden für andere buchen und löschen (`hours.manage`) | ✓ | – | ✓ | – | – |
 

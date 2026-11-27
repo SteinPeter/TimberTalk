@@ -6,7 +6,7 @@
 
 | Datei | Wofür |
 | --- | --- |
-| `backend/timbertalk/features/accounts/permissions.py` | Rollen (`ROLES`), Rechte (`PERMISSIONS`) und die Voreinstellung (`DEFAULTS`). Ein neues Recht kommt hier dazu. |
+| `backend/timbertalk/features/accounts/permissions.py` | Rollen (`ROLES`), Rechte (`PERMISSIONS`), Funktionsbereiche (`AREAS`) und die Voreinstellung (`DEFAULTS`). Ein neues Recht kommt hier dazu. |
 | `backend/timbertalk/features/accounts/security.py` | Passwort-Hash mit `scrypt`, Startpasswörter, Sitzungsschlüssel und deren Hash. |
 | `backend/timbertalk/features/accounts/models.py` | Die drei Tabellen und die Antwort- und Eingabeklassen. |
 | `backend/timbertalk/features/accounts/service.py` | Die Logik: Konten, Anmelden, Passwörter, Rechte, erstes Admin-Konto. |
@@ -19,7 +19,7 @@
 | `frontend/shared/dom.js` | Helfer für Formulare und Tabellen: `el()`, `field()`, `messageBox()`, `formatDateTime()`; dazu `avatar()`, `lastName()`, `photoFromFile()`, `menuButton()` (kleines Menü unter einem Knopf) und `openSettings()`. |
 | `frontend/features/settings/sections/accounts-own.js` | Abschnitt „Mein Konto“: Foto, Name, Anmeldename, Personalnummer, Passwort ändern. Für alle. Die Rolle steht nur in „Benutzerkonten“. |
 | `frontend/features/settings/sections/accounts-manage.js` | Abschnitt „Benutzerkonten“: Standardpasswort, Liste mit Fotos; „+ Neues Konto“ und „Bearbeiten“ öffnen ein Fenster (anlegen, Foto, sperren, Passwort zurücksetzen). |
-| `frontend/features/settings/sections/accounts-roles.js` | Abschnitt „Rollen und Rechte“: Tabelle mit Häkchen. |
+| `frontend/features/settings/sections/accounts-roles.js` | Abschnitt „Rollen und Rechte“: Tabelle mit Häkchen, je Funktionsbereich ein Tabellenteil; die Kopfzeile ist ein Knopf (▸/▾, `aria-expanded`), zu Beginn sind alle Bereiche zugeklappt. „Rechte dieser Person“ in `accounts-manage.js` ist genauso gruppiert – je Bereich ein `<details>`, ebenfalls zugeklappt, mit Zahl der Ausnahmen. |
 | `frontend/features/settings/sections/accounts-demo.js` | Abschnitt „Demo-Modus“: an/aus, Demo-Konto, Warnhinweis. |
 
 In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
@@ -60,7 +60,9 @@ In gemeinsamen Dateien geändert (Grundgerüst, siehe auch `docs/handbuch.md`):
 | `PUT /api/accounts/roles/{role}/permissions/{permission}` | `accounts.manage` | `set_role_permission()` | Ein Häkchen setzen oder entfernen. |
 
 Für andere Features ohne eigenen Endpunkt: `list_people()` – alle aktiven Konten nur mit Nummer,
-Name (z. B. für die Zeilen der Plantafel in F8). Die Rolle gibt es bewusst nur über `GET /api/accounts`.
+Name (z. B. für die Zeilen der Plantafel in F8), **ohne Admin-Konten**: Das Admin-Konto verwaltet
+nur die Software und ist keine Person im Betrieb – es erscheint nicht im Kalender, nicht beim
+Stundenbuchen für andere und nicht unter „Personal“ (F14). Öffnen darf es alle Seiten. Die Rolle gibt es bewusst nur über `GET /api/accounts`.
 
 Fehler aus dem Service werden in `_run()` zu Antworten mit deutschem Text: `LoginFailed` → 401,
 `PermissionError` → 403, `LookupError` → 404, `ValueError` → 422.
@@ -164,8 +166,11 @@ from timbertalk.features.accounts.models import Account
 def create_invoice(..., account: Account = Depends(require("finance.edit"))): ...
 ```
 
-Ein neues Recht: eine Zeile in `PERMISSIONS` und das Recht in `DEFAULTS` bei den Rollen, die es von
-Anfang an haben sollen. In der Oberfläche erscheint es dann von selbst in „Rollen und Rechte“.
+Ein neues Recht: eine Zeile in `PERMISSIONS`, das Recht in genau einem Bereich von `AREAS` (ein
+Test prüft das) und in `DEFAULTS` bei den Rollen, die es von Anfang an haben sollen. In der
+Oberfläche erscheint es dann von selbst im passenden Bereich von „Rollen und Rechte“.
+`role_matrix()` und `permissions_of()` liefern zu jedem Recht seinen Bereich (`area`), sortiert
+nach `AREAS`.
 
 ## Abhängigkeiten zu anderen Features
 

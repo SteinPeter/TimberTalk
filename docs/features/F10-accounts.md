@@ -71,8 +71,14 @@ Im Meeting wird genau das vorgeführt:
 | Kalender aller Mitarbeitenden sehen (F8) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Termine für alle planen und ändern (F8) | ✓ | ✓ | ✓ | ✓ | – | – |
 
-Der Chef hat alle Rechte. Der Admin hat alle außer „Urlaubsanträge genehmigen“; „Konten verwalten“
-kann man ihm nie nehmen. Wer „Konten verwalten“ hat, ändert die Häkchen je Rolle („Rollen und
+Der Chef hat alle Rechte. Der Admin hat alle außer „Urlaubsanträge genehmigen“, „Urlaub
+beantragen“ und „Eigene Stunden buchen“ – er verwaltet die Software und ist keine Person im
+Betrieb: Er steht nicht im Kalender und nicht unter „Personal“, kann aber alle Seiten öffnen.
+„Konten verwalten“ kann man ihm nie nehmen.
+
+In „Rollen und Rechte“ stehen die Rechte nach Funktionsbereichen gruppiert: Kalender; Zeitkonto,
+Urlaub und Personal; Stunden; Material, Fahrten und Preise; Verwaltung. Jeder Bereich ist zu
+Beginn zugeklappt und klappt per Klick auf (ebenso unter „Rechte dieser Person“). Wer „Konten verwalten“ hat, ändert die Häkchen je Rolle („Rollen und
 Rechte“) und Ausnahmen für einzelne Personen („Benutzerkonten → Bearbeiten → Rechte dieser
 Person“). Admin-Konten legt, ändert und setzt nur ein Admin zurück.
 

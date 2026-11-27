@@ -282,6 +282,31 @@ def list_entries(
     return [_info(session, entry, names) for entry in session.exec(statement)]
 
 
+def absence_days(session: Session, account_id: int, start: date, end: date) -> dict[date, str]:
+    """An welchen Tagen von start bis end eine Person abwesend ist und warum („vacation“, „sick“,
+    „school“) – für Stunden- und Urlaubskonto (employees). Ohne Höchstdauer, gerechnet wird über
+    ein ganzes Jahr. Überschneiden sich zwei Abwesenheiten, zählt die früher eingetragene.
+    """
+    statement = (
+        select(CalendarEntry)
+        .join(CalendarAssignment, CalendarAssignment.entry_id == CalendarEntry.id)
+        .where(
+            CalendarAssignment.account_id == account_id,
+            col(CalendarEntry.kind).in_(ABSENCE_KINDS),
+            CalendarEntry.start_date <= end,
+            CalendarEntry.end_date >= start,
+        )
+        .order_by(CalendarEntry.id)
+    )
+    days: dict[date, str] = {}
+    for entry in session.exec(statement):
+        day = max(entry.start_date, start)
+        while day <= min(entry.end_date, end):
+            days.setdefault(day, entry.kind)
+            day += timedelta(days=1)
+    return days
+
+
 # --- Schreiben ------------------------------------------------------------------
 
 

@@ -33,8 +33,11 @@ export function currentAccount() {
 }
 
 // Hat das eigene Konto dieses Recht? Die Namen stehen in backend/…/accounts/permissions.py.
+// permission: ein Recht – oder eine Liste, dann genügt eines davon
+// (z. B. ["employees.view_all", "employees.manage"]).
 export function can(permission) {
-  return account !== null && account.permissions.includes(permission);
+  const wanted = Array.isArray(permission) ? permission : [permission];
+  return account !== null && wanted.some((p) => account.permissions.includes(p));
 }
 
 // Meldet ab und zeigt wieder die Anmeldung. Der Merker sorgt dafür, dass der Demo-Modus einen

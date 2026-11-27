@@ -8,6 +8,8 @@ import { getJson, sendJson } from "../../../shared/api.js";
 import { el, field, messageBox } from "../../../shared/dom.js";
 import { can } from "../../../shared/session.js";
 
+const PRIORITY = { Art: "3", Status: "3", "€ je km": "2" };
+
 export const id = "planning-resources";
 export const title = "Fahrzeuge und Maschinen";
 export const permission = "calendar.dispatch";
@@ -41,7 +43,12 @@ export function render(container) {
     el(
       "table",
       { class: "table" },
-      el("thead", {}, el("tr", {}, ...headers.map((text) => el("th", { scope: "col" }, text)))),
+      // Wird es eng (Handy), fallen zuerst Art und Status weg, dann „€ je km“ (shared/tables.js).
+      el(
+        "thead",
+        {},
+        el("tr", {}, ...headers.map((text) => el("th", { scope: "col", ...(PRIORITY[text] ? { "data-priority": PRIORITY[text] } : {}) }, text))),
+      ),
       tableBody,
     ),
   );

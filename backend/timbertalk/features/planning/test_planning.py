@@ -209,7 +209,7 @@ def test_api_wer_welche_kalender_sieht_stellt_der_chef_ein(
 ) -> None:
     geselle = client_as("journeyman")
     client_as("journeyman")  # ein Kollege
-    assert len(geselle.get("/api/planning/people").json()) == 3  # mit dem Admin von `client`
+    assert len(geselle.get("/api/planning/people").json()) == 2  # ohne den Admin von `client`
 
     client.put(
         "/api/accounts/roles/journeyman/permissions/calendar.view_all", json={"allowed": False}
@@ -239,7 +239,7 @@ def _texts(session: Session, account_id: int) -> list[str]:
 
 
 def test_mitteilungen_beim_einplanen_aendern_und_absagen(session: Session) -> None:
-    chef = _person(session, "chef", "Chef", "admin")
+    chef = _person(session, "chef", "Chef", "owner")
     max_ = _person(session, "max", "Max")
     tom = _person(session, "tom", "Tom")
     saved = service.create_entry(

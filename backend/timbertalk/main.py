@@ -61,10 +61,25 @@ for router in load_features():
     app.include_router(router, dependencies=[Depends(require_login)])
 
 
+class FrontendFiles(StaticFiles):
+    """Liefert die Dateien aus frontend/ mit „Cache-Control: no-cache“ aus.
+
+    Ohne diese Angabe behält der Browser HTML, CSS und JavaScript eine Weile, ohne nachzufragen –
+    nach einem Update fehlt dann z. B. ein neuer Reiter. „no-cache“ heißt: Der Browser darf die
+    Datei behalten, fragt aber jedes Mal nach, ob sie sich geändert hat (ETag). Unveränderte
+    Dateien werden dabei nicht neu übertragen.
+    """
+
+    def file_response(self, *args, **kwargs):
+        response = super().file_response(*args, **kwargs)
+        response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 # Das Frontend sind einfache Dateien. Diese Zeile steht hinter der API,
 # damit /api/health zuerst gefunden wird.
 if FRONTEND_DIR.is_dir():
-    app.mount("/", StaticFiles(directory=FRONTEND_DIR, html=True), name="frontend")
+    app.mount("/", FrontendFiles(directory=FRONTEND_DIR, html=True), name="frontend")
 
 
 def run() -> None:

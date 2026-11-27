@@ -1,12 +1,17 @@
 // Der Knopf „Mitteilungen“ oben rechts in der Leiste (Feature notifications, F8).
 // Er zeigt, wie viele Mitteilungen ungelesen sind, und öffnet darunter eine Liste. Beim Öffnen
 // gelten alle als gelesen. Aufgaben („bitte Urlaubsantrag entscheiden“) verschwinden von selbst,
-// sobald sie erledigt sind; jede andere Mitteilung entfernt man mit ✕. Die Zahl wird jede Minute neu geholt, solange die Seite sichtbar ist.
+// sobald sie erledigt sind; jede andere Mitteilung entfernt man mit ✕. Die Zahl wird jede
+// Minute neu geholt, solange die Seite sichtbar ist, und sofort nach jeder Änderung in
+// TimberTalk (CHANGED_EVENT aus api.js).
+// Auf dem Handy (unter 40rem) liegt die Liste über die volle Bildschirmbreite direkt unter der
+// Leiste (style.css); dafür setzt open() ihre Oberkante.
 
 import { CHANGED_EVENT, getJson, sendJson } from "./api.js";
 import { el, formatDateTime } from "./dom.js";
 
 const REFRESH_MS = 60_000;
+const PHONE = window.matchMedia("(max-width: 40rem)");
 
 export function notificationsButton() {
   const badge = el("span", { class: "notify-badge", hidden: true });
@@ -117,6 +122,9 @@ export function notificationsButton() {
         ? messages.map(row)
         : [el("li", { class: "notify-empty" }, "Keine Mitteilungen.")]),
     );
+    // Handy: direkt unter der Leiste, volle Breite (style.css, .notify-panel in @media 40rem).
+    const header = box.closest(".topbar");
+    panel.style.top = header && PHONE.matches ? `${Math.max(0, header.getBoundingClientRect().bottom)}px` : "";
     panel.hidden = false;
     button.setAttribute("aria-expanded", "true");
     if (messages.some((message) => !message.read_at)) {

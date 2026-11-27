@@ -438,13 +438,14 @@ def test_azubi_bucht_und_sieht_keine_preise(session: Session) -> None:
     assert not service.has_permission(session, azubi, "finance.view")
 
 
-def test_personenliste_fuer_andere_features_ohne_gesperrte(session: Session) -> None:
+def test_personenliste_fuer_andere_features_ohne_gesperrte_und_admin(session: Session) -> None:
     admin = _admin(session)
     service.create_account(session, "max", "Max Berger", "journeyman")
     weg, _ = service.create_account(session, "weg", "Alt Geselle", "journeyman")
     service.update_account(session, weg.id, "Alt Geselle", "journeyman", None, False, admin)
     people = service.list_people(session)
-    assert [p.display_name for p in people] == ["Admin", "Max Berger"]
+    # Das Admin-Konto ist nur zum Verwalten da: keine Person im Kalender oder unter „Personal“.
+    assert [p.display_name for p in people] == ["Max Berger"]
     assert "role" not in people[0].model_dump_json()  # die Rolle sieht nur der Admin
 
 
@@ -549,3 +550,23 @@ def test_notfall_befehl_setzt_vergessenes_admin_passwort_zurueck(
     assert account.must_change_password
     with pytest.raises(LookupError):
         cli.reset("gibt-es-nicht")
+
+
+def test_jedes_recht_steht_in_genau_einem_funktionsbereich() -> None:
+    from timbertalk.features.accounts.permissions import AREAS, PERMISSIONS
+
+    listed = [key for _, keys in AREAS for key in keys]
+    assert sorted(listed) == sorted(PERMISSIONS), "Jedes Recht braucht genau einen Bereich in AREAS"
+
+
+def test_rollen_und_rechte_nach_bereichen(session: Session) -> None:
+    matrix = service.role_matrix(session)
+    areas = list(dict.fromkeys(p.area for p in matrix.permissions))
+    assert areas[:2] == ["Kalender", "Zeitkonto, Urlaub und Personal"]
+    zeitkonto = [p.permission for p in matrix.permissions if p.area == areas[1]]
+    assert zeitkonto == [
+        "calendar.request_absence",
+        "calendar.approve_absence",
+        "employees.view_all",
+        "employees.manage",
+    ]

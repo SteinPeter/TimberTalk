@@ -1,8 +1,7 @@
-# Feature „Mitarbeitende“.
-# Reiter im Frontend: noch keiner.
-# Nur Stammdaten (Name, Funktion, Stundensatz). Anmeldung und Rechte liegen in accounts/.
-#
-# Wer dieses Feature baut, arbeitet nur in diesem Ordner (und im Reiter-Ordner oben).
-# Der Ordner wird automatisch geladen – er muss nirgends eingetragen werden.
-# Dazu gehören: Steckbrief docs/features/F<nr>-<name>.md und Handbuch-Kapitel
-# docs/handbuch/F<nr>-<name>.md (Vorlage: docs/handbuch/_vorlage.md).
+# Feature „Mitarbeitende“ (F14): Stundenkonto und Urlaubskonto je Person.
+# Reiter im Frontend: frontend/features/timeaccount/ („Zeitkonto“), frontend/features/employees/
+# („Personal“).
+# Jede Person sieht ihre eigenen Konten (Reiter „Zeitkonto“). Wer „employees.view_all“ hat, sieht
+# alle (Reiter „Personal“); wer „employees.manage“ hat, sieht alle und pflegt Soll-Stunden und
+# Urlaubsanspruch. Voreinstellung: beides Chef und Verwaltung.
+# Anmeldung und Rechte liegen in accounts/.
